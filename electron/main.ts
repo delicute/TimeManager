@@ -213,11 +213,20 @@ function createWindow() {
   }
 
   mainWindow.on('close', (e) => {
-    // We handle close in renderer via IPC, but prevent default
-    // so the app stays in tray
-    e.preventDefault();
-    mainWindow?.hide();
-    mainWindow?.setSkipTaskbar(true);
+    // Check if user has enabled minimize-to-tray
+    try {
+      const p = getSettingsPath();
+      if (fs.existsSync(p)) {
+        const s = JSON.parse(fs.readFileSync(p, 'utf-8'));
+        if (s.minimizeToTray === true) {
+          e.preventDefault();
+          mainWindow?.hide();
+          mainWindow?.setSkipTaskbar(true);
+          return;
+        }
+      }
+    } catch { /* ignore */ }
+    // minimizeToTray disabled or unknown — let window close normally
   });
 
   mainWindow.once('ready-to-show', () => {
@@ -335,7 +344,8 @@ if (!gotTheLock) {
   });
 
   app.on('window-all-closed', () => {
-    // Don't quit on close - tray keeps running
+    tray?.destroy();
+    app.quit();
   });
 
   app.on('before-quit', () => {
