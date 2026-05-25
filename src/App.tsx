@@ -7,7 +7,6 @@ import { EntertainmentPage } from './pages/EntertainmentPage';
 import { RecordPage } from './pages/RecordPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReminderPage } from './pages/ReminderPage';
-import { ReminderModal } from './components/ReminderModal';
 
 export function App() {
   const [currentPage, setCurrentPage] = useState('Study');
@@ -37,7 +36,6 @@ export function App() {
           {renderPage()}
         </div>
       </main>
-      <ReminderModal />
     </div>
   );
 }

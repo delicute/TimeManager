@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
-import type { AppState, SessionType, BalanceState, AppSettings, TimeLogEntry, ReminderRule, ReminderMetric, ReminderTriggerState } from '../types';
+import type { AppState, SessionType, BalanceState, AppSettings, TimeLogEntry, ReminderRule, ReminderCondition, ReminderMetric, ReminderOperator, ReminderTriggerState } from '../types';
 import { todayStr } from '../utils/formatting';
 import { t } from '../i18n';
 import type { Locale } from '../i18n';
@@ -55,8 +55,7 @@ type Action =
   | { type: 'REMINDER_LOAD_RULES'; payload: ReminderRule[] }
   | { type: 'REMINDER_ADD_RULE'; payload: ReminderRule }
   | { type: 'REMINDER_UPDATE_RULE'; payload: ReminderRule }
-  | { type: 'REMINDER_DELETE_RULE'; payload: string }
-  | { type: 'REMINDER_SHOW_MODAL'; payload: ReminderRule | null };
+  | { type: 'REMINDER_DELETE_RULE'; payload: string };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -87,7 +86,6 @@ function reducer(state: AppState, action: Action): AppState {
         session: { ...state.session, tickCount: state.session.tickCount + 1 },
       };
     case 'BALANCE_ADD_EARNED':
-      // During debt (earnedBalance < 0), don't add — effectively repaying debt
       if (state.balance.earnedBalance < 0) return state;
       return {
         ...state,
@@ -98,7 +96,6 @@ function reducer(state: AppState, action: Action): AppState {
       };
     case 'BALANCE_TRY_CONSUME': {
       const { earnedBalance, dailyGiftedRemaining } = state.balance;
-      // Debt: double consumption rate
       const rate = earnedBalance < 0 ? 2 : 1;
       if (dailyGiftedRemaining + earnedBalance <= 0) return state;
       if (dailyGiftedRemaining >= rate) {
@@ -107,7 +104,6 @@ function reducer(state: AppState, action: Action): AppState {
           balance: { ...state.balance, dailyGiftedRemaining: dailyGiftedRemaining - rate },
         };
       }
-      // Deplete gifted first, then earned
       const remaining = rate - dailyGiftedRemaining;
       return {
         ...state,
@@ -144,8 +140,6 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         reminderRules: state.reminderRules.filter(r => r.id !== action.payload),
       };
-    case 'REMINDER_SHOW_MODAL':
-      return { ...state, showReminderModal: action.payload };
     default:
       return state;
   }
@@ -159,11 +153,20 @@ interface AppStore {
   startSession: (type: SessionType) => void;
   stopSession: () => void;
   persistBalance: () => Promise<void>;
-  dismissReminder: () => void;
-  snoozeReminder: (minutes: number) => void;
 }
 
 const AppContext = createContext<AppStore | null>(null);
+
+function evalCondition(c: ReminderCondition, metrics: Record<string, number>): boolean {
+  const val = metrics[c.metric] ?? 0;
+  switch (c.operator) {
+    case 'lt': return val < c.value;
+    case 'gt': return val > c.value;
+    case 'gte': return val >= c.value;
+    case 'lte': return val <= c.value;
+    case 'eq': return val === c.value;
+  }
+}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState);
@@ -174,6 +177,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const todayLogsRef = useRef<TimeLogEntry[]>([]);
   const reminderRulesRef = useRef<ReminderRule[]>([]);
   const triggerStatesRef = useRef<Map<string, ReminderTriggerState>>(new Map());
+  const currentToastRuleRef = useRef<ReminderRule | null>(null);
+  const initialMountRef = useRef(true);
 
   // Keep refs in sync
   useEffect(() => { balanceRef.current = state.balance; }, [state.balance]);
@@ -228,6 +233,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return () => clearTimeout(t);
     }
   }, [state.balance, persistBalance]);
+
+  // Persist settings on every change (skip initial mount)
+  useEffect(() => {
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      return;
+    }
+    persistSettings(state.settings);
+  }, [state.settings, persistSettings]);
 
   // ─── Timer (1-second heartbeat) ─────────────────────────
   useEffect(() => {
@@ -291,9 +305,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const available = Math.max(0, bal.earnedBalance) + bal.dailyGiftedRemaining;
         const debtAmount = bal.earnedBalance < 0 ? Math.abs(bal.earnedBalance) : 0;
 
-        // Metric values map
+        // Metric values map (with new fields)
         const metrics: Record<ReminderMetric, number> = {
           entertainmentBalance: bal.earnedBalance,
+          dailyGiftedBalance: bal.dailyGiftedRemaining,
+          earnedBalance: bal.earnedBalance,
           studyDuration: todaySec.Study,
           hobbyDuration: todaySec.Hobby,
           entertainmentDuration: todaySec.Entertainment,
@@ -314,15 +330,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             triggerStatesRef.current.set(rule.id, ts);
           }
 
-          // Always evaluate condition (even for dismissed/snoozed)
-          const metricVal = metrics[rule.condition.metric] ?? 0;
-          let met = false;
-          switch (rule.condition.operator) {
-            case 'lt': met = metricVal < rule.condition.value; break;
-            case 'gt': met = metricVal > rule.condition.value; break;
-            case 'gte': met = metricVal >= rule.condition.value; break;
-            case 'lte': met = metricVal <= rule.condition.value; break;
-            case 'eq': met = metricVal === rule.condition.value; break;
+          // Evaluate condition (supports dual conditions with AND/OR)
+          let met = evalCondition(rule.condition, metrics);
+          if (rule.condition2) {
+            const met2 = evalCondition(rule.condition2, metrics);
+            met = rule.logic === 'or' ? met || met2 : met && met2;
           }
 
           if (!met) {
@@ -338,13 +350,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (now - ts.lastTriggered < REMINDER_INTERVAL - 100) continue;
 
           ts.lastTriggered = now;
-          dispatch({ type: 'REMINDER_SHOW_MODAL', payload: rule });
-          await window.electronAPI.windowSetAlwaysOnTop(true);
+          currentToastRuleRef.current = rule;
+          await window.electronAPI.reminderShowToast(rule);
         }
       } catch { /* ignore */ }
     }, REMINDER_INTERVAL);
 
     return () => clearInterval(interval);
+  }, []);
+
+  // ─── Listen for toast actions from notification window ──
+  useEffect(() => {
+    const handler = (action: { action: string; minutes?: number }) => {
+      const rule = currentToastRuleRef.current;
+      if (!rule) return;
+
+      const ts = triggerStatesRef.current.get(rule.id);
+      if (!ts) return;
+
+      if (action.action === 'dismiss') {
+        ts.dismissed = true;
+        currentToastRuleRef.current = null;
+      } else if (action.action === 'snooze' && action.minutes) {
+        ts.snoozedUntil = Date.now() + action.minutes * 60 * 1000;
+        ts.snoozeCount++;
+        if (rule.snoozeRepeat > 0 && ts.snoozeCount >= rule.snoozeRepeat) {
+          ts.dismissed = true;
+        }
+        currentToastRuleRef.current = null;
+      }
+    };
+
+    window.electronAPI.onReminderToastAction(handler);
   }, []);
 
   // ─── Session Management ──────────────────────────────────
@@ -376,44 +413,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startSession = useCallback((type: SessionType) => {
-    // No balance guard for entertainment — debt is allowed
     if (sessionRef.current.isActive) stopSession();
     dispatch({ type: 'SESSION_START', payload: type });
   }, [stopSession]);
-
-  // ─── Reminder callbacks ──────────────────────────────────
-  const dismissReminder = useCallback(() => {
-    const rule = state.showReminderModal;
-    if (rule) {
-      const ts = triggerStatesRef.current.get(rule.id);
-      if (ts) ts.dismissed = true;
-    }
-    dispatch({ type: 'REMINDER_SHOW_MODAL', payload: null });
-    window.electronAPI.windowSetAlwaysOnTop(false);
-  }, [state.showReminderModal]);
-
-  const snoozeReminder = useCallback((minutes: number) => {
-    const rule = state.showReminderModal;
-    if (rule) {
-      const ts = triggerStatesRef.current.get(rule.id);
-      if (ts) {
-        ts.snoozedUntil = Date.now() + minutes * 60 * 1000;
-        ts.snoozeCount++;
-        if (rule.snoozeRepeat > 0 && ts.snoozeCount >= rule.snoozeRepeat) {
-          ts.dismissed = true;
-        }
-      }
-    }
-    dispatch({ type: 'REMINDER_SHOW_MODAL', payload: null });
-    window.electronAPI.windowSetAlwaysOnTop(false);
-  }, [state.showReminderModal]);
-
-  // ─── Persist settings when they change ───────────────────
-  useEffect(() => {
-    if (state.settings.studyWeight !== 2 || state.settings.hobbyWeight !== 4) {
-      persistSettings(state.settings);
-    }
-  }, [state.settings]);
 
   return (
     <AppContext.Provider value={{
@@ -423,8 +425,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       startSession,
       stopSession,
       persistBalance,
-      dismissReminder,
-      snoozeReminder,
     }}>
       {children}
     </AppContext.Provider>

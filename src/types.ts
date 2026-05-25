@@ -42,6 +42,8 @@ export interface LogItem {
 
 export type ReminderMetric =
   | 'entertainmentBalance'
+  | 'dailyGiftedBalance'
+  | 'earnedBalance'
   | 'studyDuration'
   | 'hobbyDuration'
   | 'entertainmentDuration'
@@ -64,6 +66,8 @@ export interface ReminderRule {
   title: string;
   content: string;
   condition: ReminderCondition;
+  condition2?: ReminderCondition;
+  logic?: 'and' | 'or';
   urgency: ReminderUrgency;
   snoozeRepeat: number; // 0 = unlimited
   enabled: boolean;
@@ -140,6 +144,10 @@ declare global {
       remindersSave: (rules: ReminderRule[]) => Promise<void>;
       windowSetAlwaysOnTop: (onTop: boolean) => Promise<void>;
       getBeepDataUrl: () => Promise<string>;
+      reminderShowToast: (rule: ReminderRule) => Promise<void>;
+      reminderToastDismiss: () => Promise<void>;
+      reminderToastSnooze: (minutes: number) => Promise<void>;
+      onReminderToastAction: (callback: (action: { action: string; minutes?: number }) => void) => void;
     };
   }
 }

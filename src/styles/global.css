@@ -199,7 +199,7 @@ body {
 .content-inner {
   width: 100%;
   max-width: 520px;
-  padding: var(--space-xxl) var(--space-lg);
+  padding: 23px var(--space-lg) var(--space-xxl);
 }
 
 /* ── Page Title ── */
@@ -847,6 +847,38 @@ body {
 .snooze-field span {
   font-size: 13px;
   color: var(--color-on-dark);
+}
+
+/* ── Logic (AND/OR) Toggle ── */
+.logic-group {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.logic-btn {
+  padding: 4px 16px;
+  height: 28px;
+  font-size: 12px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-on-dark-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.logic-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.logic-btn.active {
+  background: var(--color-accent-teal);
+  color: var(--color-on-primary);
+  border-color: var(--color-accent-teal);
 }
 
 .form-actions {

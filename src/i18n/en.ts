@@ -114,4 +114,10 @@ export const en: Translations = {
   reminder5min: '5 min',
   reminder10min: '10 min',
   reminderCustom: 'Custom',
+  reminderMetricDailyGiftedBalance: 'Gifted Balance',
+  reminderMetricEarnedBalance: 'Earned Balance',
+  reminderAnd: 'AND',
+  reminderOr: 'OR',
+  reminderAddCondition: 'Add Condition',
+  reminderRemoveCondition: 'Remove Condition',
 };

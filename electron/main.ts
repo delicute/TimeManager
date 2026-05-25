@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import zlib from 'zlib';
@@ -11,6 +11,7 @@ function getSettingsPath() { return path.join(BASE_PATH, 'settings.json'); }
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let reminderToastWindow: BrowserWindow | null = null;
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -173,6 +174,144 @@ function setupIPC() {
     }
   });
 
+  // Reminder toast notification window
+  ipcMain.handle('reminder:showToast', (_, rule) => {
+    showReminderToast(rule);
+  });
+
+  ipcMain.handle('reminder:toastDismiss', () => {
+    closeReminderToast();
+    mainWindow?.webContents.send('reminder:toastAction', { action: 'dismiss' });
+  });
+
+  ipcMain.handle('reminder:toastSnooze', (_, minutes) => {
+    closeReminderToast();
+    mainWindow?.webContents.send('reminder:toastAction', { action: 'snooze', minutes });
+  });
+
+}
+
+function closeReminderToast() {
+  if (reminderToastWindow && !reminderToastWindow.isDestroyed()) {
+    reminderToastWindow.close();
+    reminderToastWindow = null;
+  }
+}
+
+function showReminderToast(rule: any) {
+  closeReminderToast();
+
+  // Play beep sound
+  try {
+    const audioPath = getAssetPath('assets/audio/beep.wav');
+    if (fs.existsSync(audioPath)) {
+      Notification.isSupported() && new Notification({ title: rule.title || '', body: rule.content || '', silent: false }).show();
+    }
+  } catch { /* ignore */ }
+
+  reminderToastWindow = new BrowserWindow({
+    width: 340,
+    height: 195,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  const html = generateToastHtml(rule);
+  reminderToastWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+  reminderToastWindow.once('ready-to-show', () => {
+    positionReminderToast();
+    reminderToastWindow?.show();
+  });
+
+  reminderToastWindow.on('closed', () => {
+    reminderToastWindow = null;
+  });
+}
+
+function positionReminderToast() {
+  if (!reminderToastWindow || reminderToastWindow.isDestroyed()) return;
+  const display = screen.getPrimaryDisplay();
+  const { width, height } = display.workAreaSize;
+  const [winWidth, winHeight] = reminderToastWindow.getSize();
+  reminderToastWindow.setPosition(width - winWidth - 20, height - winHeight - 20);
+}
+
+function generateToastHtml(rule: any): string {
+  const urgencyColors: Record<string, string> = {
+    low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
+  };
+  const barColor = urgencyColors[rule.urgency] || '#e8a55a';
+  const urgentClass = rule.urgency === 'critical' ? 'toast-alert' : rule.urgency === 'high' ? 'toast-pulse' : '';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#faf9f5;background:#252320;overflow:hidden;user-select:none}
+.bar{height:3px;background:${barColor}}
+.bt{padding:12px 16px}
+.ul{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${barColor};margin-bottom:2px}
+.tt{font-size:15px;font-weight:600;color:#faf9f5;margin-bottom:4px;line-height:1.3}
+.ct{font-size:12px;color:#a09d96;line-height:1.4;margin-bottom:8px}
+.ac{display:flex;gap:6px;justify-content:flex-end}
+.b{padding:5px 12px;height:26px;border-radius:6px;font:inherit;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .12s}
+.b1{background:#cc785c;color:#fff}
+.b1:hover{background:#a9583e}
+.b2{background:rgba(255,255,255,.06);color:#faf9f5;border:1px solid rgba(255,255,255,.12)}
+.b2:hover{background:rgba(255,255,255,.1)}
+.sp{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.si{width:50px;padding:3px 5px;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.06);color:#faf9f5;font-size:12px;outline:none}
+.si:focus{border-color:#cc785c}
+.su{font-size:11px;color:#a09d96}
+.cl{font-size:11px;color:#a09d96}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,165,90,.4)}50%{box-shadow:0 0 0 8px rgba(232,165,90,0)}}
+@keyframes alert{0%,100%{box-shadow:inset 0 0 0 0 rgba(198,69,69,.3)}50%{box-shadow:inset 0 0 0 2px rgba(198,69,69,.3)}}
+.toast-alert{animation:alert 1.5s ease-in-out infinite}
+.toast-pulse{animation:pulse 2.5s ease-in-out infinite}
+</style>
+</head>
+<body>
+<div class="bar"></div>
+<div class="bt ${urgentClass}">
+<div class="ul">${(rule.urgency || '').toUpperCase()}</div>
+<div class="tt">${escapeHtml(rule.title || '')}</div>
+${rule.content ? `<div class="ct">${escapeHtml(rule.content)}</div>` : ''}
+<div class="ac" id="ac">
+<button class="b b1" onclick="d()">确定</button>
+<button class="b b2" onclick="ts()">等等</button>
+</div>
+<div class="sp" id="sp" style="display:none">
+<button class="b b2" onclick="s(5)">5分钟</button>
+<button class="b b2" onclick="s(10)">10分钟</button>
+<span class="cl">自定义</span>
+<input type="number" class="si" id="cm" value="15" min="1">
+<span class="su">分钟</span>
+<button class="b b1" onclick="sc()">确定</button>
+</div>
+</div>
+<script>
+function d(){window.electronAPI.reminderToastDismiss()}
+function ts(){var p=document.getElementById('sp');p.style.display=p.style.display==='none'?'flex':'none'}
+function s(m){window.electronAPI.reminderToastSnooze(m)}
+function sc(){var v=parseInt(document.getElementById('cm').value)||15;window.electronAPI.reminderToastSnooze(v)}
+</script>
+</body>
+</html>`;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
 function fmtDate(d: Date) {

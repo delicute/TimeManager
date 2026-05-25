@@ -95,4 +95,10 @@ export interface Translations {
   reminder5min: string;
   reminder10min: string;
   reminderCustom: string;
+  reminderMetricDailyGiftedBalance: string;
+  reminderMetricEarnedBalance: string;
+  reminderAnd: string;
+  reminderOr: string;
+  reminderAddCondition: string;
+  reminderRemoveCondition: string;
 }

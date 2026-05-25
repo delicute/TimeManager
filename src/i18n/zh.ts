@@ -114,4 +114,10 @@ export const zh: Translations = {
   reminder5min: '5分钟',
   reminder10min: '10分钟',
   reminderCustom: '自定义',
+  reminderMetricDailyGiftedBalance: '赠送余额',
+  reminderMetricEarnedBalance: '赚取余额',
+  reminderAnd: '且',
+  reminderOr: '或',
+  reminderAddCondition: '添加条件',
+  reminderRemoveCondition: '移除条件',
 };

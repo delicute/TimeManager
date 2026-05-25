@@ -41,4 +41,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Audio
   getBeepDataUrl: () => ipcRenderer.invoke('audio:getBeepDataUrl'),
 
+  // Reminder toast window
+  reminderShowToast: (rule: any) => ipcRenderer.invoke('reminder:showToast', rule),
+  reminderToastDismiss: () => ipcRenderer.invoke('reminder:toastDismiss'),
+  reminderToastSnooze: (minutes: number) => ipcRenderer.invoke('reminder:toastSnooze', minutes),
+  onReminderToastAction: (callback: (action: any) => void) => {
+    ipcRenderer.on('reminder:toastAction', (_event, action) => callback(action));
+  },
+
 });

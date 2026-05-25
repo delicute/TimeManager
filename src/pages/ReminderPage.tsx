@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, navKeyMap } from '../hooks/useI18n';
-import type { ReminderRule, ReminderMetric, ReminderOperator, ReminderUrgency } from '../types';
+import type { ReminderRule, ReminderCondition, ReminderMetric, ReminderOperator, ReminderUrgency } from '../types';
 
 function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function emptyCondition(): ReminderCondition {
+  return { metric: 'totalAvailableBalance', operator: 'lt', value: 600 };
 }
 
 function emptyRule(): ReminderRule {
@@ -12,7 +16,7 @@ function emptyRule(): ReminderRule {
     id: '',
     title: '',
     content: '',
-    condition: { metric: 'totalAvailableBalance', operator: 'lt', value: 600 },
+    condition: emptyCondition(),
     urgency: 'medium',
     snoozeRepeat: 3,
     enabled: true,
@@ -21,6 +25,8 @@ function emptyRule(): ReminderRule {
 
 const metricKeys: ReminderMetric[] = [
   'entertainmentBalance',
+  'dailyGiftedBalance',
+  'earnedBalance',
   'studyDuration',
   'hobbyDuration',
   'entertainmentDuration',
@@ -40,21 +46,70 @@ const urgencyColors: Record<ReminderUrgency, string> = {
   critical: 'var(--color-error)',
 };
 
+function ConditionRow({ condition, onChange }: {
+  condition: ReminderCondition;
+  onChange: (c: ReminderCondition) => void;
+}) {
+  const t = useT();
+  return (
+    <div className="condition-group">
+      <select
+        className="form-select"
+        value={condition.metric}
+        onChange={e => onChange({ ...condition, metric: e.target.value as ReminderMetric })}
+      >
+        {metricKeys.map(m => (
+          <option key={m} value={m}>{t(`reminderMetric${m.charAt(0).toUpperCase()}${m.slice(1)}` as any)}</option>
+        ))}
+      </select>
+      <select
+        className="form-select"
+        value={condition.operator}
+        onChange={e => onChange({ ...condition, operator: e.target.value as ReminderOperator })}
+      >
+        {operatorKeys.map(op => (
+          <option key={op} value={op}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>
+        ))}
+      </select>
+      <input
+        className="form-input"
+        type="number"
+        value={condition.value}
+        onChange={e => {
+          const v = Number(e.target.value);
+          onChange({ ...condition, value: v });
+        }}
+        style={{ width: 80 }}
+      />
+      <span className="hint-text" style={{ margin: 0 }}>{t('reminderSeconds')}</span>
+    </div>
+  );
+}
+
+function displayCondition(c: ReminderCondition, t: ReturnType<typeof useT>): string {
+  const metricKey = `reminderMetric${c.metric.charAt(0).toUpperCase()}${c.metric.slice(1)}` as any;
+  const opKey = `reminderOper${c.operator.charAt(0).toUpperCase()}${c.operator.slice(1)}` as any;
+  return `${t(metricKey)} ${t(opKey)} ${c.value}${t('reminderSeconds')}`;
+}
+
 export function ReminderPage() {
   const { state, dispatch } = useAppStore();
   const { reminderRules } = state;
   const t = useT();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ReminderRule>(emptyRule);
+  const [showCondition2, setShowCondition2] = useState(false);
 
   const startAdd = () => {
     setForm(emptyRule());
     setEditingId('__new__');
+    setShowCondition2(false);
   };
 
   const startEdit = (rule: ReminderRule) => {
     setForm({ ...rule });
     setEditingId(rule.id);
+    setShowCondition2(!!rule.condition2);
   };
 
   const cancelEdit = () => {
@@ -63,14 +118,21 @@ export function ReminderPage() {
 
   const saveRule = () => {
     if (!form.title.trim()) return;
+    const toSave: ReminderRule = { ...form };
+    if (!showCondition2) {
+      delete toSave.condition2;
+      delete toSave.logic;
+    } else if (!toSave.condition2) {
+      toSave.condition2 = emptyCondition();
+    }
     if (editingId === '__new__') {
-      const newRule = { ...form, id: genId() };
+      const newRule = { ...toSave, id: genId() };
       dispatch({ type: 'REMINDER_ADD_RULE', payload: newRule });
       window.electronAPI.remindersSave([...reminderRules, newRule]);
     } else if (editingId) {
-      dispatch({ type: 'REMINDER_UPDATE_RULE', payload: form });
+      dispatch({ type: 'REMINDER_UPDATE_RULE', payload: toSave });
       window.electronAPI.remindersSave(
-        reminderRules.map(r => (r.id === form.id ? form : r))
+        reminderRules.map(r => (r.id === toSave.id ? toSave : r))
       );
     }
     setEditingId(null);
@@ -125,40 +187,64 @@ export function ReminderPage() {
               placeholder={t('reminderContentLabel')}
             />
           </div>
+
+          {/* Condition 1 */}
           <div className="form-row">
-            <label>{t('reminderConditionLabel')}</label>
-            <div className="condition-group">
-              <select
-                className="form-select"
-                value={form.condition.metric}
-                onChange={e => setForm({ ...form, condition: { ...form.condition, metric: e.target.value as ReminderMetric } })}
-              >
-                {metricKeys.map(m => (
-                  <option key={m} value={m}>{t(`reminderMetric${m.charAt(0).toUpperCase()}${m.slice(1)}` as any)}</option>
-                ))}
-              </select>
-              <select
-                className="form-select"
-                value={form.condition.operator}
-                onChange={e => setForm({ ...form, condition: { ...form.condition, operator: e.target.value as ReminderOperator } })}
-              >
-                {operatorKeys.map(op => (
-                  <option key={op} value={op}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>
-                ))}
-              </select>
-              <input
-                className="form-input"
-                type="number"
-                value={form.condition.value}
-                onChange={e => {
-                  const v = Number(e.target.value);
-                  setForm(prev => ({ ...prev, condition: { ...prev.condition, value: v } }));
-                }}
-                style={{ width: 80 }}
-              />
-              <span className="hint-text" style={{ margin: 0 }}>{t('reminderSeconds')}</span>
-            </div>
+            <label>{t('reminderConditionLabel')} 1</label>
+            <ConditionRow
+              condition={form.condition}
+              onChange={c => setForm({ ...form, condition: c })}
+            />
           </div>
+
+          {/* AND/OR toggle + condition 2 */}
+          {showCondition2 && (
+            <div className="form-row">
+              <div className="logic-group">
+                <button
+                  className={`logic-btn ${form.logic !== 'or' ? 'active' : ''}`}
+                  onClick={() => setForm({ ...form, logic: 'and' })}
+                >
+                  {t('reminderAnd')}
+                </button>
+                <button
+                  className={`logic-btn ${form.logic === 'or' ? 'active' : ''}`}
+                  onClick={() => setForm({ ...form, logic: 'or' })}
+                >
+                  {t('reminderOr')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showCondition2 && (
+            <div className="form-row">
+              <label>{t('reminderConditionLabel')} 2</label>
+              <ConditionRow
+                condition={form.condition2 || emptyCondition()}
+                onChange={c => setForm({ ...form, condition2: c })}
+              />
+            </div>
+          )}
+
+          <div className="form-row">
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: 12, padding: '4px 12px', height: 28 }}
+              onClick={() => {
+                if (showCondition2) {
+                  const f = { ...form };
+                  delete f.condition2;
+                  delete f.logic;
+                  setForm(f);
+                }
+                setShowCondition2(!showCondition2);
+              }}
+            >
+              {showCondition2 ? t('reminderRemoveCondition') : t('reminderAddCondition')}
+            </button>
+          </div>
+
           <div className="form-row">
             <label>{t('reminderUrgencyLabel')}</label>
             <div className="urgency-group">
@@ -244,10 +330,16 @@ export function ReminderPage() {
                 <div className="rule-content">{rule.content}</div>
               )}
               <div className="rule-condition">
-                {t(`reminderMetric${rule.condition.metric.charAt(0).toUpperCase()}${rule.condition.metric.slice(1)}` as any)}{' '}
-                {t(`reminderOper${rule.condition.operator.charAt(0).toUpperCase()}${rule.condition.operator.slice(1)}` as any)}{' '}
-                {rule.condition.value}{t('reminderSeconds')}
+                {displayCondition(rule.condition, t)}
               </div>
+              {rule.condition2 && (
+                <div className="rule-condition" style={{ marginTop: 2 }}>
+                  <span style={{ color: 'var(--color-accent-teal)', fontWeight: 600 }}>
+                    {rule.logic === 'or' ? t('reminderOr') : t('reminderAnd')}
+                  </span>{' '}
+                  {displayCondition(rule.condition2, t)}
+                </div>
+              )}
               <div className="rule-actions">
                 <button
                   className="btn btn-secondary"
