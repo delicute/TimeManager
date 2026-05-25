@@ -226,17 +226,19 @@ function closeReminderToast() {
 function showReminderToast(rule: any) {
   closeReminderToast();
 
-  // Play beep sound
+  // Read beep.wav for audio playback
+  let beepDataUrl = '';
   try {
     const audioPath = getAssetPath('assets/audio/beep.wav');
     if (fs.existsSync(audioPath)) {
-      Notification.isSupported() && new Notification({ title: rule.title || '', body: rule.content || '', silent: false }).show();
+      const buf = fs.readFileSync(audioPath);
+      beepDataUrl = `data:audio/wav;base64,${buf.toString('base64')}`;
     }
   } catch { /* ignore */ }
 
   reminderToastWindow = new BrowserWindow({
-    width: 340,
-    height: 195,
+    width: 360,
+    height: 240,
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -249,7 +251,7 @@ function showReminderToast(rule: any) {
     },
   });
 
-  const html = generateToastHtml(rule);
+  const html = generateToastHtml(rule, beepDataUrl);
   reminderToastWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
   reminderToastWindow.once('ready-to-show', () => {
@@ -270,12 +272,12 @@ function positionReminderToast() {
   reminderToastWindow.setPosition(width - winWidth - 20, height - winHeight - 20);
 }
 
-function generateToastHtml(rule: any): string {
+function generateToastHtml(rule: any, beepDataUrl: string): string {
   const urgencyColors: Record<string, string> = {
     low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
   };
   const barColor = urgencyColors[rule.urgency] || '#e8a55a';
-  const urgentClass = rule.urgency === 'critical' ? 'toast-alert' : rule.urgency === 'high' ? 'toast-pulse' : '';
+  const animClass = rule.urgency === 'critical' ? 'toast-alert' : rule.urgency === 'high' ? 'toast-pulse' : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -284,22 +286,27 @@ function generateToastHtml(rule: any): string {
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#faf9f5;background:#252320;overflow:hidden;user-select:none}
-.bar{height:3px;background:${barColor}}
-.bt{padding:12px 16px}
-.ul{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${barColor};margin-bottom:2px}
+.ub{height:3px;background:${barColor}}
+.bd{padding:14px 16px}
+.ul{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${barColor};margin-bottom:3px}
 .tt{font-size:15px;font-weight:600;color:#faf9f5;margin-bottom:4px;line-height:1.3}
-.ct{font-size:12px;color:#a09d96;line-height:1.4;margin-bottom:8px}
-.ac{display:flex;gap:6px;justify-content:flex-end}
-.b{padding:5px 12px;height:26px;border-radius:6px;font:inherit;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .12s}
-.b1{background:#cc785c;color:#fff}
-.b1:hover{background:#a9583e}
-.b2{background:rgba(255,255,255,.06);color:#faf9f5;border:1px solid rgba(255,255,255,.12)}
-.b2:hover{background:rgba(255,255,255,.1)}
-.sp{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.si{width:50px;padding:3px 5px;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.06);color:#faf9f5;font-size:12px;outline:none}
-.si:focus{border-color:#cc785c}
-.su{font-size:11px;color:#a09d96}
-.cl{font-size:11px;color:#a09d96}
+.ct{font-size:12px;color:#a09d96;line-height:1.4;margin-bottom:10px}
+.ac{display:flex;gap:8px}
+.ac .btn{flex:1;padding:6px 12px;height:30px;border-radius:6px;font:inherit;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .12s;text-align:center}
+.bdismiss{background:#cc785c;color:#fff}
+.bdismiss:hover{background:#a9583e}
+.bsnooze{background:rgba(255,255,255,.06);color:#faf9f5;border:1px solid rgba(255,255,255,.12)}
+.bsnooze:hover{background:rgba(255,255,255,.1)}
+.sp{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);display:none;flex-direction:column;gap:8px}
+.spr{display:flex;gap:6px}
+.spr .btn{flex:1;padding:4px 4px;height:26px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#faf9f5;transition:all .12s;text-align:center;min-width:0}
+.spr .btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)}
+.scu{display:flex;gap:6px;align-items:center}
+.scu input{width:55px;padding:3px 6px;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.06);color:#faf9f5;font-size:12px;outline:none;height:26px}
+.scu input:focus{border-color:#cc785c}
+.scu .lbl{font-size:11px;color:#a09d96}
+.scu .bcn{padding:4px 12px;height:26px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:#cc785c;color:#fff;transition:all .12s}
+.scu .bcn:hover{background:#a9583e}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,165,90,.4)}50%{box-shadow:0 0 0 8px rgba(232,165,90,0)}}
 @keyframes alert{0%,100%{box-shadow:inset 0 0 0 0 rgba(198,69,69,.3)}50%{box-shadow:inset 0 0 0 2px rgba(198,69,69,.3)}}
 .toast-alert{animation:alert 1.5s ease-in-out infinite}
@@ -307,26 +314,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;f
 </style>
 </head>
 <body>
-<div class="bar"></div>
-<div class="bt ${urgentClass}">
+${beepDataUrl ? `<audio autoplay src="${beepDataUrl}"></audio>` : ''}
+<div class="ub"></div>
+<div class="bd ${animClass}">
 <div class="ul">${(rule.urgency || '').toUpperCase()}</div>
 <div class="tt">${escapeHtml(rule.title || '')}</div>
 ${rule.content ? `<div class="ct">${escapeHtml(rule.content)}</div>` : ''}
-<div class="ac" id="ac">
-<button class="b b1" onclick="d()">确定</button>
-<button class="b b2" onclick="ts()">等等</button>
+<div class="ac">
+<button class="btn bdismiss" onclick="dismiss()">确定</button>
+<button class="btn bsnooze" onclick="ts()">等等</button>
 </div>
-<div class="sp" id="sp" style="display:none">
-<button class="b b2" onclick="s(5)">5分钟</button>
-<button class="b b2" onclick="s(10)">10分钟</button>
-<span class="cl">自定义</span>
-<input type="number" class="si" id="cm" value="15" min="1">
-<span class="su">分钟</span>
-<button class="b b1" onclick="sc()">确定</button>
+<div class="sp" id="sp">
+<div class="spr">
+<button class="btn" onclick="s(1)">1分钟</button>
+<button class="btn" onclick="s(5)">5分钟</button>
+<button class="btn" onclick="s(10)">10分钟</button>
+<button class="btn" onclick="s(30)">30分钟</button>
+</div>
+<div class="scu">
+<input type="number" id="cm" value="15" min="1">
+<span class="lbl">分钟</span>
+<button class="bcn" onclick="sc()">确定</button>
+</div>
 </div>
 </div>
 <script>
-function d(){window.electronAPI.reminderToastDismiss()}
+function dismiss(){window.electronAPI.reminderToastDismiss()}
 function ts(){var p=document.getElementById('sp');p.style.display=p.style.display==='none'?'flex':'none'}
 function s(m){window.electronAPI.reminderToastSnooze(m)}
 function sc(){var v=parseInt(document.getElementById('cm').value)||15;window.electronAPI.reminderToastSnooze(v)}
