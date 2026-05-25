@@ -51,33 +51,12 @@ body {
 
 /* ── Sidebar ── */
 .sidebar {
-  width: 220px;
-  min-width: 220px;
+  width: 245px;
+  min-width: 245px;
   background: var(--color-surface-dark);
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--color-surface-dark-elevated);
-}
-
-.sidebar-header {
-  padding: var(--space-md) var(--space-md);
-  border-bottom: 1px solid var(--color-surface-dark-elevated);
-}
-
-.sidebar-header h1 {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--color-on-dark);
-  letter-spacing: -0.3px;
-}
-
-.sidebar-header .subtitle {
-  font-size: 11px;
-  color: var(--color-on-dark-soft);
-  margin-top: 2px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
 }
 
 .sidebar-nav {
@@ -133,8 +112,8 @@ body {
 
 /* ── Sidebar Balance Panel ── */
 .sidebar-balance {
-  padding: var(--space-md);
-  border-top: 1px solid var(--color-surface-dark-elevated);
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  border-bottom: 1px solid var(--color-surface-dark-elevated);
 }
 
 .balance-label {
@@ -159,10 +138,39 @@ body {
   color: var(--color-on-dark-soft);
 }
 
+/* ── Balance Debt ── */
+.balance-debt-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-pill);
+  padding: 0 5px;
+  margin-left: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.balance-value.debt {
+  color: var(--color-error);
+}
+
+.balance-debt-hint {
+  font-size: 11px;
+  color: var(--color-error);
+  margin-top: 2px;
+}
+
 /* ── Sidebar Daily Summary ── */
 .sidebar-summary {
   padding: var(--space-sm) var(--space-md);
   border-top: 1px solid var(--color-surface-dark-elevated);
+}
+
+.sidebar-summary-first {
+  border-top: none;
 }
 
 .sidebar-summary .summary-title {
@@ -335,6 +343,31 @@ body {
 
 .btn-full {
   width: 100%;
+}
+
+/* ── Text Link Button ── */
+.btn-text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xxs);
+  padding: 4px 10px;
+  height: 28px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-on-dark-soft);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-text-link:hover {
+  color: var(--color-error);
+  background: rgba(198, 69, 69, 0.1);
 }
 
 /* ── Status Text ── */
@@ -635,31 +668,6 @@ body {
   margin-bottom: var(--space-xs);
 }
 
-/* ── Balance Debt ── */
-.balance-debt-badge {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--color-error);
-  border: 1px solid var(--color-error);
-  border-radius: var(--radius-pill);
-  padding: 0 5px;
-  margin-left: 6px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  vertical-align: middle;
-}
-
-.balance-value.debt {
-  color: var(--color-error);
-}
-
-.balance-debt-hint {
-  font-size: 11px;
-  color: var(--color-error);
-  margin-top: 2px;
-}
-
 /* ── Reminder Page ── */
 .reminder-rule-card {
   background: var(--color-surface-dark-elevated);
@@ -773,12 +781,17 @@ body {
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-surface-dark-soft);
   color: var(--color-on-dark);
   font-family: var(--font-body);
   font-size: 13px;
   outline: none;
   cursor: pointer;
+}
+
+.form-select option {
+  background: var(--color-surface-dark);
+  color: var(--color-on-dark);
 }
 
 .form-select:focus {
@@ -842,75 +855,156 @@ body {
   margin-top: var(--space-md);
 }
 
-/* ── Reminder Modal ── */
-.reminder-overlay {
+/* ── Toast Notification (bottom-right) ── */
+.reminder-toast {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.15s ease;
-}
-
-.reminder-dialog {
-  width: 380px;
-  max-width: 90vw;
+  bottom: 24px;
+  right: 24px;
+  width: 340px;
+  max-width: calc(100vw - 48px);
   background: var(--color-surface-dark-elevated);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-  animation: scaleIn 0.2s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  animation: toastSlideIn 0.3s ease;
 }
 
-.reminder-bar {
-  height: 4px;
+.toast-bar {
+  height: 3px;
 }
 
-.reminder-body {
-  padding: var(--space-xl);
+.toast-body {
+  padding: var(--space-md) var(--space-lg);
 }
 
-.reminder-urgency-label {
+.toast-urgency {
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--color-on-dark-soft);
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-xxs);
 }
 
-.reminder-title {
+.toast-title {
   font-family: var(--font-body);
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-on-dark);
-  margin-bottom: var(--space-xs);
+  margin-bottom: 4px;
   line-height: 1.3;
 }
 
-.reminder-content {
-  font-size: 14px;
+.toast-content {
+  font-size: 13px;
   color: var(--color-on-dark-soft);
-  line-height: 1.5;
-  margin-bottom: var(--space-lg);
+  line-height: 1.4;
+  margin-bottom: var(--space-sm);
 }
 
-.reminder-actions {
+.toast-actions {
   display: flex;
   gap: var(--space-xs);
   justify-content: flex-end;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.btn-toast {
+  padding: 6px 14px;
+  height: 30px;
+  font-size: 12px;
 }
 
-@keyframes scaleIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+/* ── Toast Snooze Panel ── */
+.toast-snooze-panel {
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toast-snooze-custom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toast-custom-label {
+  font-size: 12px;
+  color: var(--color-on-dark-soft);
+  margin-right: 2px;
+}
+
+.toast-snooze-input {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-on-dark);
+  font-family: var(--font-body);
+  font-size: 12px;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.toast-snooze-input:focus {
+  border-color: var(--color-primary);
+}
+
+.toast-snooze-unit {
+  font-size: 11px;
+  color: var(--color-on-dark-soft);
+}
+
+/* ── Urgency-based toast visibility ── */
+.reminder-toast.urgency-low {
+  opacity: 0.85;
+}
+
+.reminder-toast.urgency-medium {
+  opacity: 0.95;
+}
+
+.reminder-toast.urgency-high {
+  box-shadow: 0 8px 32px rgba(232, 165, 90, 0.2);
+  animation: toastSlideIn 0.3s ease, toastPulse 2.5s ease-in-out infinite;
+}
+
+.reminder-toast.urgency-critical {
+  box-shadow: 0 8px 40px rgba(198, 69, 69, 0.3);
+  border: 1px solid rgba(198, 69, 69, 0.3);
+  animation: toastSlideIn 0.3s ease, toastAlert 1.5s ease-in-out infinite;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastPulse {
+  0%, 100% { box-shadow: 0 8px 32px rgba(232, 165, 90, 0.2); }
+  50% { box-shadow: 0 8px 32px rgba(232, 165, 90, 0.45); }
+}
+
+@keyframes toastAlert {
+  0%, 100% {
+    box-shadow: 0 8px 40px rgba(198, 69, 69, 0.3);
+    border-color: rgba(198, 69, 69, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(198, 69, 69, 0.6);
+    border-color: rgba(198, 69, 69, 0.6);
+  }
 }
 
 /* ── Language Toggle ── */

@@ -111,4 +111,7 @@ export const zh: Translations = {
   reminderDelete: '删除',
   reminderDeleteConfirm: '确定删除此规则？',
   reminderSeconds: '秒',
+  reminder5min: '5分钟',
+  reminder10min: '10分钟',
+  reminderCustom: '自定义',
 };

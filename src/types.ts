@@ -65,7 +65,6 @@ export interface ReminderRule {
   content: string;
   condition: ReminderCondition;
   urgency: ReminderUrgency;
-  snoozeMinutes: number;
   snoozeRepeat: number; // 0 = unlimited
   enabled: boolean;
 }

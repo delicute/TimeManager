@@ -46,13 +46,32 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
 
   return (
     <aside className="sidebar">
-      {/* App Title */}
-      <div className="sidebar-header">
-        <h1>TimeManager</h1>
+      {/* Balance Panel — at top */}
+      <div className="sidebar-balance">
+        <div className="balance-label">
+          {t('balanceLabel')}
+          {balance.earnedBalance < 0 && (
+            <span className="balance-debt-badge">{t('balanceDebt')}</span>
+          )}
+        </div>
+        <div className={`balance-value ${balance.earnedBalance < 0 ? 'debt' : ''}`}>
+          {balance.earnedBalance < 0
+            ? `-${formatDuration(Math.abs(balance.earnedBalance))}`
+            : formatDuration(totalAvailable)}
+        </div>
+        <div className="balance-detail">
+          {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}
+          {' | '} {t('balanceEarned')}: {formatDuration(balance.earnedBalance)}
+        </div>
+        {balance.earnedBalance < 0 && (
+          <div className="balance-debt-hint">
+            {t('balanceDebtLabel')}: {formatDuration(Math.abs(balance.earnedBalance))}
+          </div>
+        )}
       </div>
 
       {/* Status Indicator */}
-      <div className="sidebar-summary">
+      <div className="sidebar-summary sidebar-summary-first">
         <div className="summary-title">{t('currentStatus')}</div>
         <div style={{
           fontSize: 16,
@@ -91,30 +110,6 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             {activityIcon(type)} {formatDuration(Math.floor(todaySeconds[type] || 0))}
           </div>
         ))}
-      </div>
-
-      {/* Balance Panel */}
-      <div className="sidebar-balance">
-        <div className="balance-label">
-          {t('balanceLabel')}
-          {balance.earnedBalance < 0 && (
-            <span className="balance-debt-badge">{t('balanceDebt')}</span>
-          )}
-        </div>
-        <div className={`balance-value ${balance.earnedBalance < 0 ? 'debt' : ''}`}>
-          {balance.earnedBalance < 0
-            ? `-${formatDuration(Math.abs(balance.earnedBalance))}`
-            : formatDuration(totalAvailable)}
-        </div>
-        <div className="balance-detail">
-          {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}
-          {' | '} {t('balanceEarned')}: {formatDuration(balance.earnedBalance)}
-        </div>
-        {balance.earnedBalance < 0 && (
-          <div className="balance-debt-hint">
-            {t('balanceDebtLabel')}: {formatDuration(Math.abs(balance.earnedBalance))}
-          </div>
-        )}
       </div>
     </aside>
   );

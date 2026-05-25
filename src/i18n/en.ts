@@ -111,4 +111,7 @@ export const en: Translations = {
   reminderDelete: 'Delete',
   reminderDeleteConfirm: 'Delete this rule?',
   reminderSeconds: 's',
+  reminder5min: '5 min',
+  reminder10min: '10 min',
+  reminderCustom: 'Custom',
 };

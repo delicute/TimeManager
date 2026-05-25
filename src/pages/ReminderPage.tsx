@@ -14,7 +14,6 @@ function emptyRule(): ReminderRule {
     content: '',
     condition: { metric: 'totalAvailableBalance', operator: 'lt', value: 600 },
     urgency: 'medium',
-    snoozeMinutes: 5,
     snoozeRepeat: 3,
     enabled: true,
   };
@@ -36,8 +35,8 @@ const urgencyKeys: ReminderUrgency[] = ['low', 'medium', 'high', 'critical'];
 
 const urgencyColors: Record<ReminderUrgency, string> = {
   low: 'var(--color-on-dark-soft)',
-  medium: 'var(--color-accent-amber)',
-  high: 'var(--color-accent-orange)',
+  medium: 'var(--color-accent-teal)',
+  high: 'var(--color-accent-amber)',
   critical: 'var(--color-error)',
 };
 
@@ -183,17 +182,6 @@ export function ReminderPage() {
             <label>{t('reminderSnoozeLabel')}</label>
             <div className="snooze-group">
               <div className="snooze-field">
-                <span>{t('reminderSnoozeMinutes')}</span>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={1}
-                  value={form.snoozeMinutes}
-                  onChange={e => setForm({ ...form, snoozeMinutes: Math.max(1, Number(e.target.value)) })}
-                  style={{ width: 60 }}
-                />
-              </div>
-              <div className="snooze-field">
                 <span>{t('reminderSnoozeRepeat')}</span>
                 <input
                   className="form-input"
@@ -269,8 +257,7 @@ export function ReminderPage() {
                   {t('reminderEdit')}
                 </button>
                 <button
-                  className="btn btn-stop"
-                  style={{ padding: '4px 12px', height: 28, fontSize: 12 }}
+                  className="btn-text-link"
                   onClick={() => deleteRule(rule.id)}
                 >
                   {t('reminderDelete')}

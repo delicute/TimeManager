@@ -92,4 +92,7 @@ export interface Translations {
   reminderDelete: string;
   reminderDeleteConfirm: string;
   reminderSeconds: string;
+  reminder5min: string;
+  reminder10min: string;
+  reminderCustom: string;
 }

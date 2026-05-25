@@ -160,7 +160,7 @@ interface AppStore {
   stopSession: () => void;
   persistBalance: () => Promise<void>;
   dismissReminder: () => void;
-  snoozeReminder: () => void;
+  snoozeReminder: (minutes: number) => void;
 }
 
 const AppContext = createContext<AppStore | null>(null);
@@ -314,11 +314,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             triggerStatesRef.current.set(rule.id, ts);
           }
 
-          // Check snooze
-          if (ts.snoozedUntil > now) continue;
-          if (ts.dismissed && rule.urgency !== 'critical') continue;
-
-          // Evaluate condition
+          // Always evaluate condition (even for dismissed/snoozed)
           const metricVal = metrics[rule.condition.metric] ?? 0;
           let met = false;
           switch (rule.condition.operator) {
@@ -329,17 +325,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             case 'eq': met = metricVal === rule.condition.value; break;
           }
 
-          if (met) {
-            // Avoid re-triggering within same interval
-            if (now - ts.lastTriggered < REMINDER_INTERVAL - 100) continue;
-            ts.lastTriggered = now;
-            dispatch({ type: 'REMINDER_SHOW_MODAL', payload: rule });
-            await window.electronAPI.windowSetAlwaysOnTop(true);
-          } else {
-            // Reset trigger state when condition no longer met
+          if (!met) {
+            // Condition no longer met — reset so it can fire next time
             ts.dismissed = false;
             ts.snoozedUntil = 0;
+            continue;
           }
+
+          // Condition IS met
+          if (ts.snoozedUntil > now) continue;
+          if (ts.dismissed && rule.urgency !== 'critical') continue;
+          if (now - ts.lastTriggered < REMINDER_INTERVAL - 100) continue;
+
+          ts.lastTriggered = now;
+          dispatch({ type: 'REMINDER_SHOW_MODAL', payload: rule });
+          await window.electronAPI.windowSetAlwaysOnTop(true);
         }
       } catch { /* ignore */ }
     }, REMINDER_INTERVAL);
@@ -392,14 +392,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.electronAPI.windowSetAlwaysOnTop(false);
   }, [state.showReminderModal]);
 
-  const snoozeReminder = useCallback(() => {
+  const snoozeReminder = useCallback((minutes: number) => {
     const rule = state.showReminderModal;
     if (rule) {
       const ts = triggerStatesRef.current.get(rule.id);
       if (ts) {
-        ts.snoozedUntil = Date.now() + rule.snoozeMinutes * 60 * 1000;
+        ts.snoozedUntil = Date.now() + minutes * 60 * 1000;
         ts.snoozeCount++;
-        // If repeat limit reached, dismiss instead
         if (rule.snoozeRepeat > 0 && ts.snoozeCount >= rule.snoozeRepeat) {
           ts.dismissed = true;
         }
