@@ -1,0 +1,59 @@
+{
+  "name": "timemanager",
+  "version": "1.0.0",
+  "description": "TimeManager - 时间管理器",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "dev:electron": "node scripts/dev.js",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.node.json",
+    "build": "npm run build:renderer && npm run build:electron",
+    "preview": "vite preview",
+    "start": "electron .",
+    "package": "npm run build && node scripts/package.js"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "electron": "^35.1.2",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.2"
+  },
+  "build": {
+    "appId": "com.timemanager.app",
+    "productName": "TimeManager",
+    "directories": {
+      "output": "output"
+    },
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": ["**/*"]
+      }
+    ],
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": false,
+      "icon": "assets/ico/ico_256x256.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "TimeManager"
+    }
+  }
+}
