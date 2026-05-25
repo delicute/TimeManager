@@ -12,6 +12,7 @@ function getSettingsPath() { return path.join(BASE_PATH, 'settings.json'); }
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let reminderToastWindow: BrowserWindow | null = null;
+let startSilent = process.argv.includes('--silent');
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -134,10 +135,34 @@ function setupIPC() {
 
   // Auto-start
   ipcMain.handle('settings:setAutoStart', (_, enabled: boolean) => {
-    app.setLoginItemSettings({
-      openAtLogin: enabled,
-      args: ['--silent'],
-    });
+    try {
+      if (enabled) {
+        if (app.isPackaged) {
+          app.setLoginItemSettings({ openAtLogin: true, args: ['--silent'] });
+        } else {
+          // For unpackaged dev setup: create startup batch file
+          const startupDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+          ensureDir(startupDir);
+          // Find the project root (parent of electron dir)
+          const projectDir = path.resolve(__dirname, '..');
+          const npxPath = path.join(app.getPath('home'), 'AppData', 'Roaming', 'npm', 'npx.cmd');
+          const batContent =
+            `@echo off\r\n` +
+            `cd /d "${projectDir}"\r\n` +
+            `start "" /B "${npxPath}" electron . --silent\r\n`;
+          fs.writeFileSync(path.join(startupDir, 'TimeManager.cmd'), batContent, 'utf-8');
+        }
+      } else {
+        // Disable: clear both registry and batch file
+        app.setLoginItemSettings({ openAtLogin: false });
+        const startupDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+        for (const name of ['TimeManager.cmd', 'TimeManager.bat', 'TimeManager.lnk']) {
+          try { const p = path.join(startupDir, name); if (fs.existsSync(p)) fs.unlinkSync(p); } catch {}
+        }
+      }
+    } catch (e) {
+      debugLog(`Auto-start error: ${e}`);
+    }
   });
 
   // Reminders
@@ -369,7 +394,11 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+    if (!startSilent) {
+      mainWindow?.show();
+    } else {
+      mainWindow?.setSkipTaskbar(true);
+    }
   });
 }
 
@@ -475,11 +504,6 @@ if (!gotTheLock) {
     setupIPC();
     createWindow();
     createTray();
-
-    // Auto-start setting
-    app.setLoginItemSettings({
-      openAtLogin: false, // Will be set from renderer
-    });
   });
 
   app.on('window-all-closed', () => {
