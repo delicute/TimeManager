@@ -203,6 +203,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (settings) {
         dispatch({ type: 'SET_SETTINGS', payload: { ...defaultSettings, ...settings } });
+        window.electronAPI.setMinimizeToTray(settings.minimizeToTray !== false);
+      } else {
+        window.electronAPI.setMinimizeToTray(defaultSettings.minimizeToTray);
       }
 
       if (balance) {
@@ -243,6 +246,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     persistSettings(state.settings);
+    window.electronAPI.setMinimizeToTray(state.settings.minimizeToTray);
   }, [state.settings, persistSettings]);
 
   // ─── Timer (1-second heartbeat) ─────────────────────────

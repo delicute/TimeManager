@@ -49,4 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('reminder:toastAction', (_event, action) => callback(action));
   },
 
+  // Minimize-to-tray sync
+  setMinimizeToTray: (value: boolean) => ipcRenderer.invoke('settings:setMinimizeToTray', value),
+
 });

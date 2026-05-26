@@ -13,6 +13,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let reminderToastWindow: BrowserWindow | null = null;
 let startSilent = process.argv.includes('--silent');
+let minimizeToTrayEnabled = true; // tracked in-memory, synced from renderer
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -65,7 +66,9 @@ function setupIPC() {
   ipcMain.handle('settings:save', (_, data) => {
     ensureDir(BASE_PATH);
     fs.writeFileSync(getSettingsPath(), JSON.stringify(data, null, 2));
-    // If dataPath is specified, migrate BASE_PATH
+    if (typeof data.minimizeToTray === 'boolean') {
+      minimizeToTrayEnabled = data.minimizeToTray;
+    }
     if (data.dataPath && data.dataPath !== BASE_PATH) {
       BASE_PATH = data.dataPath;
     }
@@ -185,6 +188,11 @@ function setupIPC() {
       mainWindow.setAlwaysOnTop(onTop);
       if (onTop) { mainWindow.show(); mainWindow.focus(); }
     }
+  });
+
+  // Sync minimizeToTray flag from renderer (on settings load)
+  ipcMain.handle('settings:setMinimizeToTray', (_, value: boolean) => {
+    minimizeToTrayEnabled = value;
   });
 
   // Audio: read beep.wav and return as base64 data URL
@@ -443,20 +451,11 @@ function createWindow() {
   }
 
   mainWindow.on('close', (e) => {
-    // Check if user has enabled minimize-to-tray
-    try {
-      const p = getSettingsPath();
-      if (fs.existsSync(p)) {
-        const s = JSON.parse(fs.readFileSync(p, 'utf-8'));
-        if (s.minimizeToTray === true) {
-          e.preventDefault();
-          mainWindow?.hide();
-          mainWindow?.setSkipTaskbar(true);
-          return;
-        }
-      }
-    } catch { /* ignore */ }
-    // minimizeToTray disabled or unknown — let window close normally
+    if (minimizeToTrayEnabled) {
+      e.preventDefault();
+      mainWindow?.hide();
+      mainWindow?.setSkipTaskbar(true);
+    }
   });
 
   mainWindow.once('ready-to-show', () => {

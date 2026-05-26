@@ -149,6 +149,7 @@ declare global {
       reminderToastDismiss: () => Promise<void>;
       reminderToastSnooze: (minutes: number) => Promise<void>;
       onReminderToastAction: (callback: (action: { action: string; minutes?: number }) => void) => void;
+      setMinimizeToTray: (value: boolean) => Promise<void>;
     };
   }
 }
