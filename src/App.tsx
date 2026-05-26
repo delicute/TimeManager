@@ -10,11 +10,38 @@ import { ReminderPage } from './pages/ReminderPage';
 
 export function App() {
   const [currentPage, setCurrentPage] = useState('Study');
-  const { loadInitialData } = useAppStore();
+  const { loadInitialData, startSession, stopSession } = useAppStore();
 
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  // ─── Hotkeys ──────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && !e.shiftKey) {
+        switch (e.key) {
+          case '1': setCurrentPage('Study'); e.preventDefault(); return;
+          case '2': setCurrentPage('Hobby'); e.preventDefault(); return;
+          case '3': setCurrentPage('Entertainment'); e.preventDefault(); return;
+          case '4': setCurrentPage('Record'); e.preventDefault(); return;
+          case '5': setCurrentPage('Reminder'); e.preventDefault(); return;
+          case '6': setCurrentPage('Settings'); e.preventDefault(); return;
+        }
+      }
+      if (e.ctrlKey && e.shiftKey) {
+        switch (e.key.toUpperCase()) {
+          case 'S': startSession('Study'); e.preventDefault(); return;
+          case 'H': startSession('Hobby'); e.preventDefault(); return;
+          case 'E': startSession('Entertainment'); e.preventDefault(); return;
+          case 'X': stopSession(); e.preventDefault(); return;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [startSession, stopSession]);
 
   const renderPage = () => {
     switch (currentPage) {

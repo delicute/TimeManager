@@ -69,14 +69,15 @@ export interface ReminderRule {
   condition2?: ReminderCondition;
   logic?: 'and' | 'or';
   urgency: ReminderUrgency;
-  snoozeRepeat: number; // 0 = unlimited
   enabled: boolean;
+  // Internal: current metric values set by engine when enqueuing
+  _currentValue?: number;
+  _currentValue2?: number;
 }
 
 export interface ReminderTriggerState {
   dismissed: boolean;
   snoozedUntil: number;
-  snoozeCount: number;
   lastTriggered: number;
 }
 

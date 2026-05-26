@@ -87,7 +87,6 @@ export const en: Translations = {
   reminderUrgencyLabel: 'Urgency',
   reminderSnoozeLabel: 'Snooze',
   reminderSnoozeMinutes: 'Delay (min)',
-  reminderSnoozeRepeat: 'Repeat',
   reminderEnabled: 'Enabled',
   reminderDismiss: 'OK',
   reminderSnooze: 'Wait',

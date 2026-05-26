@@ -68,7 +68,6 @@ export interface Translations {
   reminderUrgencyLabel: string;
   reminderSnoozeLabel: string;
   reminderSnoozeMinutes: string;
-  reminderSnoozeRepeat: string;
   reminderEnabled: string;
   reminderDismiss: string;
   reminderSnooze: string;

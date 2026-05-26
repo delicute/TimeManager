@@ -87,7 +87,6 @@ export const zh: Translations = {
   reminderUrgencyLabel: '紧急度',
   reminderSnoozeLabel: '暂停设置',
   reminderSnoozeMinutes: '延迟（分钟）',
-  reminderSnoozeRepeat: '重复次数',
   reminderEnabled: '启用',
   reminderDismiss: '确定',
   reminderSnooze: '等等',

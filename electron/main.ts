@@ -244,6 +244,7 @@ function showReminderToast(rule: any) {
     skipTaskbar: true,
     resizable: false,
     show: false,
+    focusable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -257,6 +258,12 @@ function showReminderToast(rule: any) {
   reminderToastWindow.once('ready-to-show', () => {
     positionReminderToast();
     reminderToastWindow?.show();
+    // Enable focus after showing to allow button clicks (no focus steal)
+    setTimeout(() => {
+      if (reminderToastWindow && !reminderToastWindow.isDestroyed()) {
+        reminderToastWindow.setFocusable(true);
+      }
+    }, 150);
   });
 
   reminderToastWindow.on('closed', () => {
@@ -277,6 +284,14 @@ function generateToastHtml(rule: any, beepDataUrl: string): string {
     low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
   };
   const barColor = urgencyColors[rule.urgency] || '#e8a55a';
+  const bgTint = barColor + '15';
+
+  const cond = rule.condition || {};
+  const threshold = cond.value != null ? cond.value : '';
+  const currentVal = rule._currentValue != null ? Math.round(rule._currentValue) : '';
+  const cond2 = rule.condition2;
+  const currentVal2 = rule._currentValue2 != null ? Math.round(rule._currentValue2) : '';
+
   const animClass = rule.urgency === 'critical' ? 'toast-alert' : rule.urgency === 'high' ? 'toast-pulse' : '';
 
   return `<!DOCTYPE html>
@@ -286,26 +301,35 @@ function generateToastHtml(rule: any, beepDataUrl: string): string {
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#faf9f5;background:#252320;overflow:hidden;user-select:none}
-.ub{height:3px;background:${barColor}}
-.bd{padding:14px 16px}
-.ul{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${barColor};margin-bottom:3px}
-.tt{font-size:15px;font-weight:600;color:#faf9f5;margin-bottom:4px;line-height:1.3}
-.ct{font-size:12px;color:#a09d96;line-height:1.4;margin-bottom:10px}
-.ac{display:flex;gap:8px}
+.ub{height:4px;background:${barColor}}
+.bd{padding:14px 16px 12px;display:flex;flex-direction:column;height:236px}
+.ul{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.ul-badge{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:${barColor};background:${barColor}25;padding:1px 6px;border-radius:3px}
+.ul-time{font-size:10px;color:#888}
+.tt{font-size:15px;font-weight:600;color:#faf9f5;margin-bottom:3px;line-height:1.3}
+.ct{font-size:12px;color:#b0ada6;line-height:1.35;margin-bottom:6px;flex-shrink:0}
+.cv{margin-top:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:3px;padding:8px 10px;background:${bgTint};border-radius:6px;flex-shrink:0}
+.cv-row{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.cv-label{color:#aaa}
+.cv-val{font-weight:600;color:#faf9f5;font-variant-numeric:tabular-nums}
+.cv-op{color:${barColor};font-weight:600;margin:0 2px}
+.cv-thresh{color:#faf9f5}
+.cv-sep{height:1px;background:${barColor}20;margin:2px 0}
+.ac{display:flex;gap:8px;flex-shrink:0}
 .ac .btn{flex:1;padding:6px 12px;height:30px;border-radius:6px;font:inherit;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .12s;text-align:center}
 .bdismiss{background:#cc785c;color:#fff}
 .bdismiss:hover{background:#a9583e}
 .bsnooze{background:rgba(255,255,255,.06);color:#faf9f5;border:1px solid rgba(255,255,255,.12)}
 .bsnooze:hover{background:rgba(255,255,255,.1)}
-.sp{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);display:none;flex-direction:column;gap:8px}
-.spr{display:flex;gap:6px}
-.spr .btn{flex:1;padding:4px 4px;height:26px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#faf9f5;transition:all .12s;text-align:center;min-width:0}
+.sp{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);display:none;flex-direction:column;gap:6px;flex-shrink:0}
+.spr{display:flex;gap:5px}
+.spr .btn{flex:1;padding:4px 2px;height:26px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#faf9f5;transition:all .12s;text-align:center;min-width:0}
 .spr .btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)}
 .scu{display:flex;gap:6px;align-items:center}
-.scu input{width:55px;padding:3px 6px;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.06);color:#faf9f5;font-size:12px;outline:none;height:26px}
+.scu input{width:55px;padding:3px 6px;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.06);color:#faf9f5;font-size:12px;outline:none;height:24px}
 .scu input:focus{border-color:#cc785c}
 .scu .lbl{font-size:11px;color:#a09d96}
-.scu .bcn{padding:4px 12px;height:26px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:#cc785c;color:#fff;transition:all .12s}
+.scu .bcn{padding:3px 14px;height:24px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:#cc785c;color:#fff;transition:all .12s}
 .scu .bcn:hover{background:#a9583e}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,165,90,.4)}50%{box-shadow:0 0 0 8px rgba(232,165,90,0)}}
 @keyframes alert{0%,100%{box-shadow:inset 0 0 0 0 rgba(198,69,69,.3)}50%{box-shadow:inset 0 0 0 2px rgba(198,69,69,.3)}}
@@ -317,9 +341,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;f
 ${beepDataUrl ? `<audio autoplay src="${beepDataUrl}"></audio>` : ''}
 <div class="ub"></div>
 <div class="bd ${animClass}">
-<div class="ul">${(rule.urgency || '').toUpperCase()}</div>
+<div class="ul">
+<span class="ul-badge">${(rule.urgency || '').toUpperCase()}</span>
+<span class="ul-time">${new Date().toLocaleTimeString()}</span>
+</div>
 <div class="tt">${escapeHtml(rule.title || '')}</div>
 ${rule.content ? `<div class="ct">${escapeHtml(rule.content)}</div>` : ''}
+<div class="cv">
+<div class="cv-row">
+<span class="cv-label">${escapeHtml(cond.metric || '')}</span>
+<span><span class="cv-val">${currentVal}</span><span class="cv-op"> ${operatorSymbol(cond.operator)} </span><span class="cv-thresh">${threshold}</span></span>
+</div>
+${cond2 ? `
+<div class="cv-sep"></div>
+<div class="cv-row">
+<span class="cv-label" style="color:${barColor}">${rule.logic === 'or' ? 'OR' : 'AND'}</span>
+</div>
+<div class="cv-row">
+<span class="cv-label">${escapeHtml(cond2.metric)}</span>
+<span><span class="cv-val">${currentVal2}</span><span class="cv-op"> ${operatorSymbol(cond2.operator)} </span><span class="cv-thresh">${cond2.value}</span></span>
+</div>` : ''}
+</div>
 <div class="ac">
 <button class="btn bdismiss" onclick="dismiss()">确定</button>
 <button class="btn bsnooze" onclick="ts()">等等</button>
@@ -350,6 +392,17 @@ function sc(){var v=parseInt(document.getElementById('cm').value)||15;window.ele
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function operatorSymbol(op: string): string {
+  switch (op) {
+    case 'lt': return '<';
+    case 'gt': return '>';
+    case 'gte': return '>=';
+    case 'lte': return '<=';
+    case 'eq': return '=';
+    default: return op;
+  }
 }
 
 function fmtDate(d: Date) {

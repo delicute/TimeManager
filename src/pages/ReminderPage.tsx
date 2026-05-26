@@ -18,7 +18,6 @@ function emptyRule(): ReminderRule {
     content: '',
     condition: emptyCondition(),
     urgency: 'medium',
-    snoozeRepeat: 3,
     enabled: true,
   };
 }
@@ -180,11 +179,12 @@ export function ReminderPage() {
           </div>
           <div className="form-row">
             <label>{t('reminderContentLabel')}</label>
-            <input
-              className="form-input"
+            <textarea
+              className="form-input form-textarea"
               value={form.content}
               onChange={e => setForm({ ...form, content: e.target.value })}
               placeholder={t('reminderContentLabel')}
+              rows={3}
             />
           </div>
 
@@ -262,22 +262,6 @@ export function ReminderPage() {
                   {t(`reminderUrgency${u.charAt(0).toUpperCase()}${u.slice(1)}` as any)}
                 </button>
               ))}
-            </div>
-          </div>
-          <div className="form-row">
-            <label>{t('reminderSnoozeLabel')}</label>
-            <div className="snooze-group">
-              <div className="snooze-field">
-                <span>{t('reminderSnoozeRepeat')}</span>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={0}
-                  value={form.snoozeRepeat}
-                  onChange={e => setForm({ ...form, snoozeRepeat: Math.max(0, Number(e.target.value)) })}
-                  style={{ width: 60 }}
-                />
-              </div>
             </div>
           </div>
           <div className="form-actions">
@@ -359,6 +343,23 @@ export function ReminderPage() {
           ))}
         </div>
       )}
+
+      {/* Hotkey reference */}
+      <div className="card" style={{ marginTop: 32, padding: '12px 16px' }}>
+        <h3 className="card-title" style={{ fontSize: 13, marginBottom: 8 }}>快捷键</h3>
+        <div className="hotkey-grid">
+          <div className="hotkey-item"><kbd>Ctrl+1</kbd><span>学习页面</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+2</kbd><span>爱好页面</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+3</kbd><span>娱乐页面</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+4</kbd><span>记录页面</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+5</kbd><span>提醒页面</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+6</kbd><span>设置页面</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+Shift+S</kbd><span>开始学习</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+Shift+H</kbd><span>开始爱好</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+Shift+E</kbd><span>开始娱乐</span></div>
+          <div className="hotkey-item"><kbd>Ctrl+Shift+X</kbd><span>停止计时</span></div>
+        </div>
+      </div>
     </>
   );
 }

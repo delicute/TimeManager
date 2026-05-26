@@ -177,6 +177,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const todayLogsRef = useRef<TimeLogEntry[]>([]);
   const reminderRulesRef = useRef<ReminderRule[]>([]);
   const triggerStatesRef = useRef<Map<string, ReminderTriggerState>>(new Map());
+  const reminderQueueRef = useRef<ReminderRule[]>([]);
+  const isShowingToastRef = useRef(false);
   const currentToastRuleRef = useRef<ReminderRule | null>(null);
   const initialMountRef = useRef(true);
 
@@ -276,6 +278,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state.session.isActive]);
 
+  // ─── Reminder queue processor ──────────────────────────
+  const processReminderQueue = useRef<() => Promise<void>>();
+  processReminderQueue.current = async () => {
+    if (isShowingToastRef.current) return;
+    if (reminderQueueRef.current.length === 0) return;
+    isShowingToastRef.current = true;
+    const rule = reminderQueueRef.current.shift()!;
+    currentToastRuleRef.current = rule;
+    try {
+      await window.electronAPI.reminderShowToast(rule);
+    } catch {
+      isShowingToastRef.current = false;
+      currentToastRuleRef.current = null;
+      processReminderQueue.current?.();
+    }
+  };
+
   // ─── Reminder evaluation engine (10s interval) ────────
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -305,7 +324,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const available = Math.max(0, bal.earnedBalance) + bal.dailyGiftedRemaining;
         const debtAmount = bal.earnedBalance < 0 ? Math.abs(bal.earnedBalance) : 0;
 
-        // Metric values map (with new fields)
+        // Metric values map
         const metrics: Record<ReminderMetric, number> = {
           entertainmentBalance: bal.earnedBalance,
           dailyGiftedBalance: bal.dailyGiftedRemaining,
@@ -326,11 +345,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Get or init trigger state
           let ts = triggerStatesRef.current.get(rule.id);
           if (!ts) {
-            ts = { dismissed: false, snoozedUntil: 0, snoozeCount: 0, lastTriggered: 0 };
+            ts = { dismissed: false, snoozedUntil: 0, lastTriggered: 0 };
             triggerStatesRef.current.set(rule.id, ts);
           }
 
-          // Evaluate condition (supports dual conditions with AND/OR)
+          // Evaluate condition
           let met = evalCondition(rule.condition, metrics);
           if (rule.condition2) {
             const met2 = evalCondition(rule.condition2, metrics);
@@ -338,21 +357,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (!met) {
-            // Condition no longer met — reset so it can fire next time
+            // Condition cleared — reset for next time
             ts.dismissed = false;
             ts.snoozedUntil = 0;
+            ts.lastTriggered = 0;
             continue;
           }
 
           // Condition IS met
           if (ts.snoozedUntil > now) continue;
           if (ts.dismissed && rule.urgency !== 'critical') continue;
-          if (now - ts.lastTriggered < REMINDER_INTERVAL - 100) continue;
+          if (ts.lastTriggered > 0) continue; // already queued or showing
 
+          // Add to queue with current metric values for display
           ts.lastTriggered = now;
-          currentToastRuleRef.current = rule;
-          await window.electronAPI.reminderShowToast(rule);
+          reminderQueueRef.current.push({
+            ...rule,
+            _currentValue: metrics[rule.condition.metric],
+            _currentValue2: rule.condition2 ? metrics[rule.condition2.metric] : undefined,
+          });
         }
+
+        processReminderQueue.current?.();
       } catch { /* ignore */ }
     }, REMINDER_INTERVAL);
 
@@ -363,22 +389,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handler = (action: { action: string; minutes?: number }) => {
       const rule = currentToastRuleRef.current;
-      if (!rule) return;
+      if (!rule) {
+        isShowingToastRef.current = false;
+        processReminderQueue.current?.();
+        return;
+      }
 
       const ts = triggerStatesRef.current.get(rule.id);
-      if (!ts) return;
 
       if (action.action === 'dismiss') {
-        ts.dismissed = true;
+        if (ts) ts.dismissed = true;
         currentToastRuleRef.current = null;
       } else if (action.action === 'snooze' && action.minutes) {
-        ts.snoozedUntil = Date.now() + action.minutes * 60 * 1000;
-        ts.snoozeCount++;
-        if (rule.snoozeRepeat > 0 && ts.snoozeCount >= rule.snoozeRepeat) {
-          ts.dismissed = true;
-        }
+        if (ts) ts.snoozedUntil = Date.now() + action.minutes * 60 * 1000;
         currentToastRuleRef.current = null;
       }
+
+      isShowingToastRef.current = false;
+      processReminderQueue.current?.();
     };
 
     window.electronAPI.onReminderToastAction(handler);
