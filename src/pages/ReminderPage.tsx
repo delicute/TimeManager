@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, GitBranch, FileText } from 'lucide-react';
+import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, GitBranch, FileText, Shuffle } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator } from '../types';
@@ -11,93 +11,68 @@ const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c6
 const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: Info, info: Circle };
 
 const metricKeys: ReminderMetric[] = [
-  'entertainmentBalance', 'dailyGiftedBalance', 'earnedBalance',
-  'studyDuration', 'hobbyDuration', 'entertainmentDuration',
-  'continuousEntertainment', 'totalAvailableBalance', 'debtAmount',
+  'entertainmentBalance','dailyGiftedBalance','earnedBalance',
+  'studyDuration','hobbyDuration','entertainmentDuration',
+  'continuousEntertainment','totalAvailableBalance','debtAmount',
 ];
-const operatorKeys: ReminderOperator[] = ['lt', 'gt', 'gte', 'lte', 'eq'];
+const operatorKeys: ReminderOperator[] = ['lt','gt','gte','lte','eq'];
 
-function makeLeaf(): ConditionNode {
-  return { type: 'leaf', metric: 'totalAvailableBalance', operator: 'lt', value: 600 };
+function leaf(v?: number): ConditionNode {
+  return { type: 'leaf', metric: 'totalAvailableBalance', operator: 'lt', value: v ?? 600 };
 }
-function cloneNode(n: ConditionNode): ConditionNode {
-  return JSON.parse(JSON.stringify(n));
-}
-function emptyRule(): ReminderRule {
-  return {
-    id: '', title: '', content: '',
-    conditionTree: { type: 'group', logic: 'and', nodes: [makeLeaf()] },
-    urgency: 'reminder', enabled: true,
-  };
+function grp(logic: 'and'|'or' = 'and'): ConditionNode {
+  return { type: 'group', logic, nodes: [leaf()] };
 }
 
-const ins: React.CSSProperties = {
-  padding: '3px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)',
-  background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 12, height: 28,
-  boxSizing: 'border-box',
+const ipt: React.CSSProperties = {
+  padding:'3px 6px', borderRadius:4, border:'1px solid rgba(255,255,255,0.12)',
+  background:'rgba(255,255,255,0.06)', color:'#faf9f5', fontSize:12, height:28, boxSizing:'border-box',
+};
+const tinyBtn: React.CSSProperties = {
+  ...ipt, height:22, fontSize:10, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3,
 };
 
-function LeafNode({ node, onChange }: { node: ConditionNode; onChange: (n: ConditionNode) => void }) {
-  const t = useT();
-  if (node.type !== 'leaf') return null;
+function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:ConditionNode)=>void }) {
+  const t = useT(); if (node.type!=='leaf') return null;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-      <FileText size={12} style={{ color: 'var(--color-on-dark-soft)', flexShrink: 0 }} />
-      <select value={node.metric} onChange={e => onChange({ ...node, metric: e.target.value as ReminderMetric })} style={{ ...ins, width: 130 }}>
-        {metricKeys.map(m => (
-          <option key={m} value={m}>{t(`reminderMetric${m.charAt(0).toUpperCase()}${m.slice(1)}` as any)}</option>
-        ))}
+    <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' }}>
+      <FileText size={13} style={{ color:'var(--color-accent-teal)', flexShrink:0 }} />
+      <select value={node.metric} onChange={e=>onChange({...node, metric:e.target.value as ReminderMetric})} style={{ ...ipt, width:130 }}>
+        {metricKeys.map(m => <option key={m} value={m} style={{background:'#252320',color:'#faf9f5'}}>{t(`reminderMetric${m.charAt(0).toUpperCase()}${m.slice(1)}` as any)}</option>)}
       </select>
-      <select value={node.operator} onChange={e => onChange({ ...node, operator: e.target.value as ReminderOperator })} style={{ ...ins, width: 60 }}>
-        {operatorKeys.map(op => (
-          <option key={op} value={op}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>
-        ))}
+      <select value={node.operator} onChange={e=>onChange({...node, operator:e.target.value as ReminderOperator})} style={{ ...ipt, width:60 }}>
+        {operatorKeys.map(op => <option key={op} value={op} style={{background:'#252320',color:'#faf9f5'}}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>)}
       </select>
-      <input type="number" value={node.value} onChange={e => onChange({ ...node, value: Number(e.target.value) })} style={{ ...ins, width: 70 }} />
-      <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>{t('reminderSeconds')}</span>
+      <input type="number" value={node.value} onChange={e=>onChange({...node, value:Number(e.target.value)})} style={{ ...ipt, width:70 }} />
+      <span style={{ fontSize:11, color:'var(--color-on-dark-soft)' }}>{t('reminderSeconds')}</span>
     </div>
   );
 }
 
-function btnStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '2px 10px', borderRadius: 3, fontSize: 10, cursor: 'pointer', height: 22,
-    border: active ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
-    background: active ? 'rgba(93,184,166,0.15)' : 'transparent',
-    color: active ? 'var(--color-accent-teal)' : '#faf9f5',
-  };
-}
-
-/** Renders a single condition node (leaf or group) with action buttons below */
-function TreeNode({ node, onChange, onDelete, onAddSibling, singleChild }: {
-  node: ConditionNode;
-  onChange: (n: ConditionNode) => void;
-  onDelete: () => void;
-  onAddSibling: (isGroup: boolean) => void;
-  singleChild: boolean;
+/** Tree node: shows leaf or group editor, with child-level actions */
+function BinNode({ node, onChange, onDelete, onConvert, isOnly, label }: {
+  node:ConditionNode; onChange:(n:ConditionNode)=>void;
+  onDelete:()=>void; onConvert:()=>void;
+  isOnly:boolean; label?:string;
 }) {
   const t = useT();
   return (
-    <div>
-      {/* The node content: leaf editor or recursive GroupEditor */}
-      {node.type === 'leaf' ? (
-        <LeafNode node={node} onChange={onChange} />
+    <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', background:'rgba(255,255,255,0.02)' }}>
+      {label && <div style={{ fontSize:10, color:'var(--color-on-dark-soft)', marginBottom:6, fontWeight:600 }}>{label}</div>}
+      {node.type==='leaf' ? (
+        <LeafView node={node} onChange={onChange} />
       ) : (
-        <GroupEditor node={node} onChange={onChange} />
+        <BinTree node={node} onChange={onChange} />
       )}
-
-      {/* Action buttons row */}
-      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-        <button onClick={() => onAddSibling(false)}
-          style={{ ...ins, height: 24, fontSize: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-          <Plus size={10} />{t('reminderAddCondition')}
-        </button>
-        <button onClick={() => onAddSibling(true)}
-          style={{ ...ins, height: 24, fontSize: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-          <GitBranch size={10} />{t('reminderGroup')}
-        </button>
-        <button onClick={onDelete} disabled={singleChild}
-          style={{ ...ins, height: 24, fontSize: 10, cursor: singleChild ? 'not-allowed' : 'pointer', opacity: singleChild ? 0.3 : 1, display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--color-error)' }}>
+      {/* Actions */}
+      <div style={{ display:'flex', gap:4, marginTop:6 }}>
+        {node.type==='leaf' ? (
+          <button onClick={onConvert} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}><Shuffle size={10} />Group</button>
+        ) : (
+          <button onClick={onConvert} style={{ ...tinyBtn }}><FileText size={10} />{t('reminderRemoveCondition')}</button>
+        )}
+        <button onClick={onDelete} disabled={isOnly}
+          style={{ ...tinyBtn, color:'var(--color-error)', opacity:isOnly?0.3:1, cursor:isOnly?'not-allowed':'pointer' }}>
           <Trash2 size={10} />{t('reminderDelete')}
         </button>
       </div>
@@ -105,77 +80,73 @@ function TreeNode({ node, onChange, onDelete, onAddSibling, singleChild }: {
   );
 }
 
-/** Renders a group: logic toggle + children with connectors */
-function GroupEditor({ node, onChange }: { node: ConditionNode; onChange: (n: ConditionNode) => void }) {
-  const t = useT();
-  if (node.type !== 'group') return null;
+/** Binary tree: up to 2 children, AND/OR between them */
+function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:ConditionNode)=>void }) {
+  const t = useT(); if (node.type!=='group') return null;
+  const nc = node.nodes.length;
+  const safe = (nc<1) ? [leaf()] : (nc>2 ? node.nodes.slice(0,2) : node.nodes);
+  if (safe.length!==node.nodes.length) onChange({...node, nodes:safe});
 
-  const updateChild = (i: number, n: ConditionNode) => {
-    const nodes = [...node.nodes]; nodes[i] = n;
-    onChange({ ...node, nodes });
-  };
-  const deleteChild = (i: number) => {
-    let nodes = node.nodes.filter((_, idx) => idx !== i);
-    if (nodes.length === 0) nodes = [makeLeaf()];
-    onChange({ ...node, nodes });
-  };
-  const addSibling = (i: number, isGroup: boolean) => {
-    const nodes = [...node.nodes];
-    nodes.splice(i + 1, 0, isGroup ? { type: 'group' as const, logic: 'and', nodes: [makeLeaf()] } : makeLeaf());
-    onChange({ ...node, nodes });
-  };
+  const L = safe[0]; const R = safe.length>1 ? safe[1] : null;
+  const setL = (n:ConditionNode) => onChange({...node, nodes:[n, ...(R ? [R] : [])]});
+  const setR = R ? (n:ConditionNode) => onChange({...node, nodes:[L, n]}) : undefined;
+
+  /** Wrap leaf in group / extract leaf from group — preserves content */
+  const convert = (item:ConditionNode): ConditionNode =>
+    item.type==='leaf' ? {type:'group', logic:'and', nodes:[item]} : item.nodes[0];
+
+  const addChild = (isGroup:boolean) => onChange({...node, nodes:[L, isGroup ? grp() : leaf()]});
 
   return (
-    <div style={{ paddingLeft: 16, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
-      {/* AND/OR toggle — only show when >1 child */}
-      {node.nodes.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6, marginLeft: -16, paddingLeft: 16 }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-          <button onClick={() => onChange({ ...node, logic: 'and' })} style={btnStyle(node.logic === 'and')}>AND</button>
-          <button onClick={() => onChange({ ...node, logic: 'or' })} style={btnStyle(node.logic === 'or')}>OR</button>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      <BinNode node={L} onChange={setL}
+        onDelete={() => onChange({...node, nodes:[convert(R||leaf())]})}
+        onConvert={() => onChange({...node, nodes:[convert(L), ...(R ? [R] : [])]})}
+        isOnly={!R} />
+
+      {R && <>
+        <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0' }}>
+          <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.08)' }} />
+          <div style={{ display:'flex', gap:2 }}>
+            <button onClick={()=>onChange({...node, logic:'and'})}
+              style={{ padding:'2px 14px', borderRadius:4, fontSize:11, cursor:'pointer', height:24,
+                border:node.logic==='and'?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                background:node.logic==='and'?'rgba(93,184,166,0.15)':'transparent',
+                color:node.logic==='and'?'var(--color-accent-teal)':'#faf9f5', fontWeight:node.logic==='and'?600:400 }}>AND</button>
+            <button onClick={()=>onChange({...node, logic:'or'})}
+              style={{ padding:'2px 14px', borderRadius:4, fontSize:11, cursor:'pointer', height:24,
+                border:node.logic==='or'?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                background:node.logic==='or'?'rgba(93,184,166,0.15)':'transparent',
+                color:node.logic==='or'?'var(--color-accent-teal)':'#faf9f5', fontWeight:node.logic==='or'?600:400 }}>OR</button>
+          </div>
+          <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.08)' }} />
         </div>
+      </>}
+
+      {R && setR && (
+        <BinNode node={R} onChange={setR}
+          onDelete={() => onChange({...node, nodes:[L]})}
+          onConvert={() => onChange({...node, nodes:[L, convert(R)]})}
+          isOnly={false} />
       )}
 
-      {/* Children */}
-      {node.nodes.map((child, i) => (
-        <div key={i}>
-          {/* AND/OR connector line above each child (except first) */}
-          {i > 0 && (
-            <div style={{ position: 'relative', height: 20, marginLeft: -16, paddingLeft: 16 }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.08)' }} />
-              <div style={{ position: 'absolute', left: 0, top: '50%', width: 8, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-            </div>
-          )}
-
-          {/* Vertical tree line + node */}
-          <div style={{ position: 'relative', marginLeft: -16, paddingLeft: 16 }}>
-            {/* Vertical line extending from above */}
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.06)' }} />
-            {/* Horizontal connector */}
-            <div style={{ position: 'absolute', left: 0, top: 14, width: 8, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-
-            <TreeNode
-              node={child}
-              onChange={n => updateChild(i, n)}
-              onDelete={() => deleteChild(i)}
-              onAddSibling={(isGroup) => addSibling(i, isGroup)}
-              singleChild={node.nodes.length <= 1}
-            />
-          </div>
+      {!R && (
+        <div style={{ display:'flex', gap:4, justifyContent:'center' }}>
+          <button onClick={()=>addChild(false)} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>
+          <button onClick={()=>addChild(true)} style={{ ...tinyBtn }}><GitBranch size={10} />{t('reminderGroup')}</button>
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-function displayTree(node: ConditionNode, t: ReturnType<typeof useT>, wrap = false): string {
-  if (node.type === 'leaf') {
+function displayTree(node:ConditionNode, t:ReturnType<typeof useT>, wrap=false): string {
+  if (node.type==='leaf') {
     const mk = `reminderMetric${node.metric.charAt(0).toUpperCase()}${node.metric.slice(1)}` as any;
     const ok = `reminderOper${node.operator.charAt(0).toUpperCase()}${node.operator.slice(1)}` as any;
     return `${t(mk)} ${t(ok)} ${node.value}${t('reminderSeconds')}`;
   }
-  const inner = node.nodes.map(n => displayTree(n, t, true)).join(` ${t(node.logic === 'and' ? 'reminderAnd' : 'reminderOr')} `);
+  const inner = node.nodes.map(n => displayTree(n, t, true)).join(` ${t(node.logic==='and'?'reminderAnd':'reminderOr')} `);
   return wrap ? `(${inner})` : inner;
 }
 
@@ -183,121 +154,88 @@ export function ReminderPage() {
   const { state, dispatch } = useAppStore();
   const { reminderRules } = state;
   const t = useT();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<ReminderRule>(emptyRule);
+  const [editingId, setEditingId] = useState<string|null>(null);
+  const [form, setForm] = useState<ReminderRule>({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'reminder',enabled:true});
 
-  const startAdd = () => { setForm(emptyRule()); setEditingId('__new__'); };
-  const startEdit = (rule: ReminderRule) => { setForm(cloneNode(rule) as ReminderRule); setEditingId(rule.id); };
+  const startAdd = () => { setForm({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'reminder',enabled:true}); setEditingId('__new__'); };
+  const startEdit = (rule:ReminderRule) => { setForm(JSON.parse(JSON.stringify(rule))); setEditingId(rule.id); };
   const cancelEdit = () => setEditingId(null);
-
   const saveRule = () => {
     if (!form.title.trim()) return;
-    if (editingId === '__new__') {
-      const newRule = { ...form, id: genId() };
-      dispatch({ type: 'REMINDER_ADD_RULE', payload: newRule });
-      window.electronAPI.remindersSave([...reminderRules, newRule]);
-    } else if (editingId) {
-      dispatch({ type: 'REMINDER_UPDATE_RULE', payload: form });
-      window.electronAPI.remindersSave(reminderRules.map(r => r.id === form.id ? form : r));
-    }
+    if (editingId==='__new__') { const nr={...form,id:genId()}; dispatch({type:'REMINDER_ADD_RULE',payload:nr}); window.electronAPI.remindersSave([...reminderRules,nr]); }
+    else if (editingId) { dispatch({type:'REMINDER_UPDATE_RULE',payload:form}); window.electronAPI.remindersSave(reminderRules.map(r=>r.id===form.id?form:r)); }
     setEditingId(null);
   };
-
-  const deleteRule = (id: string) => {
+  const deleteRule = (id:string) => {
     if (!window.confirm(t('reminderDeleteConfirm'))) return;
-    dispatch({ type: 'REMINDER_DELETE_RULE', payload: id });
-    window.electronAPI.remindersSave(reminderRules.filter(r => r.id !== id));
-    if (editingId === id) setEditingId(null);
+    dispatch({type:'REMINDER_DELETE_RULE',payload:id}); window.electronAPI.remindersSave(reminderRules.filter(r=>r.id!==id));
+    if (editingId===id) setEditingId(null);
   };
-
-  const toggleEnabled = (rule: ReminderRule) => {
-    const updated = { ...rule, enabled: !rule.enabled };
-    dispatch({ type: 'REMINDER_UPDATE_RULE', payload: updated });
-    window.electronAPI.remindersSave(reminderRules.map(r => r.id === rule.id ? updated : r));
+  const toggleEnabled = (rule:ReminderRule) => {
+    const upd={...rule,enabled:!rule.enabled}; dispatch({type:'REMINDER_UPDATE_RULE',payload:upd}); window.electronAPI.remindersSave(reminderRules.map(r=>r.id===rule.id?upd:r));
   };
 
   return (
     <>
-      <h1 className="page-title"><span className="title-icon"><Bell size={24} /></span> {t('reminderPageTitle')}</h1>
+      <h1 className="page-title"><span className="title-icon"><Bell size={24}/></span> {t('reminderPageTitle')}</h1>
+      {editingId!=='__new__' && <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>}
 
-      {editingId !== '__new__' && (
-        <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
-      )}
-
-      {editingId && (
-        <div className="card" style={{ padding: 16, marginTop: 12 }}>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderTitleLabel')}</label>
-            <input style={{ ...ins, width: '100%' }} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={t('reminderTitleLabel')} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderContentLabel')}</label>
-            <textarea style={{ ...ins, width: '100%', height: 64, resize: 'vertical' }} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder={t('reminderContentLabel')} />
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderConditionLabel')}</label>
-            <GroupEditor node={form.conditionTree} onChange={n => setForm({ ...form, conditionTree: n })} />
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderNotifTypeLabel')}</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {NOTIF_TYPES.map(nt => (
-                <button key={nt} onClick={() => setForm({ ...form, urgency: nt })}
-                  style={{
-                    flex: 1, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 12,
-                    border: form.urgency === nt ? `2px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
-                    background: form.urgency === nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
-                    color: form.urgency === nt ? NOTIF_COLORS[nt] : '#faf9f5',
-                  }}>
-                  {React.createElement(NOTIF_LU[nt] || Bell, { size: 14, style: { marginRight: 4 } })}
-                  {t(`reminderNotifType${nt.charAt(0).toUpperCase()}${nt.slice(1)}` as any)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-primary" onClick={saveRule}>
-              {editingId === '__new__' ? t('reminderAdd') : t('reminderEdit')}
-            </button>
-            <button className="btn btn-secondary" onClick={cancelEdit}>{t('reminderCancel')}</button>
-          </div>
+      {editingId && <div className="card" style={{padding:16,marginTop:12}}>
+        <div style={{marginBottom:12}}>
+          <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderTitleLabel')}</label>
+          <input style={{...ipt,width:'100%'}} value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder={t('reminderTitleLabel')}/>
         </div>
-      )}
+        <div style={{marginBottom:12}}>
+          <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderContentLabel')}</label>
+          <textarea style={{...ipt,width:'100%',height:64,resize:'vertical'}} value={form.content} onChange={e=>setForm({...form,content:e.target.value})} placeholder={t('reminderContentLabel')}/>
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderConditionLabel')}</label>
+          <BinTree node={form.conditionTree} onChange={n=>setForm({...form,conditionTree:n})}/>
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderNotifTypeLabel')}</label>
+          <div style={{display:'flex',gap:6}}>{NOTIF_TYPES.map(nt=>(
+            <button key={nt} onClick={()=>setForm({...form,urgency:nt})}
+              style={{flex:1,padding:'6px 8px',borderRadius:6,cursor:'pointer',fontSize:12,
+                border:form.urgency===nt?`2px solid ${NOTIF_COLORS[nt]}`:'1px solid rgba(255,255,255,0.12)',
+                background:form.urgency===nt?`${NOTIF_COLORS[nt]}22`:'transparent',
+                color:form.urgency===nt?NOTIF_COLORS[nt]:'#faf9f5'}}>
+              {React.createElement(NOTIF_LU[nt]||Bell,{size:14,style:{marginRight:4}})}
+              {t(`reminderNotifType${nt.charAt(0).toUpperCase()+nt.slice(1)}` as any)}
+            </button>
+          ))}</div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-primary" onClick={saveRule}>{editingId==='__new__'?t('reminderAdd'):t('reminderEdit')}</button>
+          <button className="btn btn-secondary" onClick={cancelEdit}>{t('reminderCancel')}</button>
+        </div>
+      </div>}
 
-      {reminderRules.length === 0 && editingId !== '__new__' ? (
-        <div className="empty-hint" style={{ marginTop: 32 }}>{t('reminderNoRules')}</div>
-      ) : (
-        <div style={{ marginTop: 16 }}>
-          {reminderRules.map(rule => (
-            <div key={rule.id} className="card" style={{ padding: '12px 16px', marginBottom: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: rule.content ? 4 : 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 3, height: 24, borderRadius: 2, background: NOTIF_COLORS[rule.urgency] || '#e8a55a', flexShrink: 0 }} />
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{rule.title}</span>
-                  <span style={{ fontSize: 10, color: NOTIF_COLORS[rule.urgency] || '#888', background: (NOTIF_COLORS[rule.urgency] || '#888') + '22', padding: '1px 6px', borderRadius: 4 }}>
-                    {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()}${rule.urgency.slice(1)}` as any) || rule.urgency}
+      {reminderRules.length===0 && editingId!=='__new__'
+        ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
+        : <div style={{marginTop:16}}>{reminderRules.map(rule=>(
+            <div key={rule.id} className="card" style={{padding:'12px 16px',marginBottom:8}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:rule.content?4:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{width:3,height:24,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
+                  <span style={{fontWeight:600,fontSize:14}}>{rule.title}</span>
+                  <span style={{fontSize:10,color:NOTIF_COLORS[rule.urgency]||'#888',background:(NOTIF_COLORS[rule.urgency]||'#888')+'22',padding:'1px 6px',borderRadius:4}}>
+                    {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()+rule.urgency.slice(1)}` as any)||rule.urgency}
                   </span>
                 </div>
-                <label className="toggle" onClick={e => e.stopPropagation()}>
-                  <input type="checkbox" checked={rule.enabled} onChange={() => toggleEnabled(rule)} />
-                  <span className="toggle-slider" />
+                <label className="toggle" onClick={e=>e.stopPropagation()}>
+                  <input type="checkbox" checked={rule.enabled} onChange={()=>toggleEnabled(rule)}/><span className="toggle-slider"/>
                 </label>
               </div>
-              {rule.content && <div style={{ fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{rule.content}</div>}
-              <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', lineHeight: 1.5 }}>
-                {displayTree(rule.conditionTree, t)}
-              </div>
-              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary" style={{ padding: '4px 12px', height: 28, fontSize: 12 }} onClick={() => startEdit(rule)}>{t('reminderEdit')}</button>
-                <button className="btn-text-link" onClick={() => deleteRule(rule.id)}>{t('reminderDelete')}</button>
+              {rule.content && <div style={{fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{rule.content}</div>}
+              <div style={{fontSize:11,color:'var(--color-on-dark-soft)',lineHeight:1.5}}>{displayTree(rule.conditionTree,t)}</div>
+              <div style={{marginTop:8,display:'flex',gap:8}}>
+                <button className="btn btn-secondary" style={{padding:'4px 12px',height:28,fontSize:12}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
+                <button className="btn-text-link" onClick={()=>deleteRule(rule.id)}>{t('reminderDelete')}</button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+        ))}</div>}
     </>
   );
 }
