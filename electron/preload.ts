@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Logs
   getTodayLogs: () => ipcRenderer.invoke('logs:getToday'),
+  getLogsForDate: (dateStr: string) => ipcRenderer.invoke('logs:getForDate', dateStr),
   writeLogEntry: (entry: any) => ipcRenderer.invoke('logs:write', entry),
 
   // Notifications
@@ -45,6 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   reminderShowToast: (rule: any) => ipcRenderer.invoke('reminder:showToast', rule),
   reminderToastDismiss: () => ipcRenderer.invoke('reminder:toastDismiss'),
   reminderToastSnooze: (minutes: number) => ipcRenderer.invoke('reminder:toastSnooze', minutes),
+  reminderResize: (height: number) => ipcRenderer.invoke('reminder:resize', height),
   onReminderToastAction: (callback: (action: any) => void) => {
     ipcRenderer.on('reminder:toastAction', (_event, action) => callback(action));
   },
@@ -52,4 +54,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Minimize-to-tray sync
   setMinimizeToTray: (value: boolean) => ipcRenderer.invoke('settings:setMinimizeToTray', value),
 
+  // Session notifications
+  notificationShow: (data: any) => ipcRenderer.invoke('notification:show', data),
+  notificationDismiss: (id: string) => ipcRenderer.invoke('notification:dismiss', id),
+
+  // ─── Tray IPC ─────────────────────────────────────
+  sessionUpdateState: (state: any) => ipcRenderer.invoke('session:stateUpdate', state),
+  onTrayAction: (callback: (action: any) => void) => {
+    ipcRenderer.on('tray:startSession', (_event, type) => callback({ action: 'startSession', type }));
+    ipcRenderer.on('tray:stopSession', () => callback({ action: 'stopSession' }));
+    ipcRenderer.on('tray:navSettings', () => callback({ action: 'navigate', page: 'Settings' }));
+  },
+});
+
+// ─── Notification container bridge ──────────────────────
+contextBridge.exposeInMainWorld('containerBridge', {
+  onAdd: (callback: (data: { id: string; title: string; body: string; color: string }) => void) => {
+    ipcRenderer.on('container:add', (_event, data) => callback(data));
+  },
+  onRemove: (callback: (id: string) => void) => {
+    ipcRenderer.on('container:remove', (_event, id) => callback(id));
+  },
 });

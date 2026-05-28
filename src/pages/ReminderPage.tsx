@@ -1,94 +1,121 @@
 import { useState } from 'react';
 import { useAppStore } from '../hooks/useAppStore';
-import { useT, navKeyMap } from '../hooks/useI18n';
-import type { ReminderRule, ReminderCondition, ReminderMetric, ReminderOperator, ReminderUrgency } from '../types';
+import { useT } from '../hooks/useI18n';
+import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator } from '../types';
 
-function genId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
-function emptyCondition(): ReminderCondition {
-  return { metric: 'totalAvailableBalance', operator: 'lt', value: 600 };
+const NOTIF_TYPES = ['reminder', 'urgent', 'notification', 'info'] as const;
+const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c64545', notification: '#5db872', info: '#a09d96' };
+const NOTIF_ICONS: Record<string, string> = { reminder: '▸', urgent: '▲', notification: '●', info: '·', low: '·', medium: '●', high: '▲', critical: '▲' };
+
+const metricKeys: ReminderMetric[] = [
+  'entertainmentBalance', 'dailyGiftedBalance', 'earnedBalance',
+  'studyDuration', 'hobbyDuration', 'entertainmentDuration',
+  'continuousEntertainment', 'totalAvailableBalance', 'debtAmount',
+];
+const operatorKeys: ReminderOperator[] = ['lt', 'gt', 'gte', 'lte', 'eq'];
+
+function makeLeaf(): ConditionNode {
+  return { type: 'leaf', metric: 'totalAvailableBalance', operator: 'lt', value: 600 };
 }
 
 function emptyRule(): ReminderRule {
   return {
-    id: '',
-    title: '',
-    content: '',
-    condition: emptyCondition(),
-    urgency: 'medium',
+    id: '', title: '', content: '',
+    conditionTree: { type: 'group', logic: 'and', nodes: [makeLeaf(), makeLeaf()] },
+    urgency: 'reminder',
     enabled: true,
   };
 }
 
-const metricKeys: ReminderMetric[] = [
-  'entertainmentBalance',
-  'dailyGiftedBalance',
-  'earnedBalance',
-  'studyDuration',
-  'hobbyDuration',
-  'entertainmentDuration',
-  'continuousEntertainment',
-  'totalAvailableBalance',
-  'debtAmount',
-];
-
-const operatorKeys: ReminderOperator[] = ['lt', 'gt', 'gte', 'lte', 'eq'];
-
-const urgencyKeys: ReminderUrgency[] = ['low', 'medium', 'high', 'critical'];
-
-const urgencyColors: Record<ReminderUrgency, string> = {
-  low: 'var(--color-on-dark-soft)',
-  medium: 'var(--color-accent-teal)',
-  high: 'var(--color-accent-amber)',
-  critical: 'var(--color-error)',
+const s: React.CSSProperties = {
+  padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 13, height: 32,
+  boxSizing: 'border-box',
 };
 
-function ConditionRow({ condition, onChange }: {
-  condition: ReminderCondition;
-  onChange: (c: ReminderCondition) => void;
-}) {
+function LeafEditor({ node, onChange }: { node: ConditionNode; onChange: (n: ConditionNode) => void }) {
   const t = useT();
+  if (node.type !== 'leaf') return null;
   return (
-    <div className="condition-group">
-      <select
-        className="form-select"
-        value={condition.metric}
-        onChange={e => onChange({ ...condition, metric: e.target.value as ReminderMetric })}
-      >
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <select value={node.metric} onChange={e => onChange({ ...node, metric: e.target.value as ReminderMetric })} style={{ ...s, width: 140 }}>
         {metricKeys.map(m => (
           <option key={m} value={m}>{t(`reminderMetric${m.charAt(0).toUpperCase()}${m.slice(1)}` as any)}</option>
         ))}
       </select>
-      <select
-        className="form-select"
-        value={condition.operator}
-        onChange={e => onChange({ ...condition, operator: e.target.value as ReminderOperator })}
-      >
+      <select value={node.operator} onChange={e => onChange({ ...node, operator: e.target.value as ReminderOperator })} style={{ ...s, width: 70 }}>
         {operatorKeys.map(op => (
           <option key={op} value={op}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>
         ))}
       </select>
-      <input
-        className="form-input"
-        type="number"
-        value={condition.value}
-        onChange={e => {
-          const v = Number(e.target.value);
-          onChange({ ...condition, value: v });
-        }}
-        style={{ width: 80 }}
-      />
-      <span className="hint-text" style={{ margin: 0 }}>{t('reminderSeconds')}</span>
+      <input type="number" value={node.value} onChange={e => onChange({ ...node, value: Number(e.target.value) })} style={{ ...s, width: 80 }} />
+      <span style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>{t('reminderSeconds')}</span>
     </div>
   );
 }
 
-function displayCondition(c: ReminderCondition, t: ReturnType<typeof useT>): string {
-  const metricKey = `reminderMetric${c.metric.charAt(0).toUpperCase()}${c.metric.slice(1)}` as any;
-  const opKey = `reminderOper${c.operator.charAt(0).toUpperCase()}${c.operator.slice(1)}` as any;
-  return `${t(metricKey)} ${t(opKey)} ${c.value}${t('reminderSeconds')}`;
+function NodeSlot({ node, onChange, depth }: { node: ConditionNode; onChange: (n: ConditionNode) => void; depth: number }) {
+  const t = useT();
+  const isGroup = node.type === 'group';
+
+  return (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      {isGroup ? (
+        <BinaryTreeEditor node={node} onChange={onChange} depth={depth} />
+      ) : (
+        <LeafEditor node={node} onChange={onChange} />
+      )}
+      <button onClick={() => onChange(isGroup ? makeLeaf() : { type: 'group', logic: 'and', nodes: [makeLeaf(), makeLeaf()] })}
+        style={{ ...s, height: 24, fontSize: 10, cursor: 'pointer', marginTop: 4, width: '100%', textAlign: 'center', color: 'var(--color-on-dark-soft)' }}>
+        {t(isGroup ? 'reminderRemoveCondition' : 'reminderGroup')}
+      </button>
+    </div>
+  );
+}
+
+function BinaryTreeEditor({ node, onChange, depth = 0 }: { node: ConditionNode; onChange: (n: ConditionNode) => void; depth?: number }) {
+  const t = useT();
+  if (node.type !== 'group') return null;
+  const left = node.nodes[0] || makeLeaf();
+  const right = node.nodes[1] || makeLeaf();
+
+  const updateLeft = (n: ConditionNode) => onChange({ ...node, nodes: [n, right] });
+  const updateRight = (n: ConditionNode) => onChange({ ...node, nodes: [left, n] });
+
+  return (
+    <div style={{ border: depth > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none', borderRadius: 8, padding: depth > 0 ? 8 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <NodeSlot node={left} onChange={updateLeft} depth={depth + 1} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+          <button onClick={() => onChange({ ...node, logic: 'and' })}
+            style={{ padding: '1px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
+              border: node.logic === 'and' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
+              background: node.logic === 'and' ? 'rgba(93,184,166,0.15)' : 'transparent',
+              color: node.logic === 'and' ? 'var(--color-accent-teal)' : '#faf9f5' }}>{t('reminderAnd')}</button>
+          <button onClick={() => onChange({ ...node, logic: 'or' })}
+            style={{ padding: '1px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
+              border: node.logic === 'or' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
+              background: node.logic === 'or' ? 'rgba(93,184,166,0.15)' : 'transparent',
+              color: node.logic === 'or' ? 'var(--color-accent-teal)' : '#faf9f5' }}>{t('reminderOr')}</button>
+        </div>
+        <NodeSlot node={right} onChange={updateRight} depth={depth + 1} />
+      </div>
+    </div>
+  );
+}
+
+function displayTree(node: ConditionNode, t: ReturnType<typeof useT>, wrap = false): string {
+  if (node.type === 'leaf') {
+    const mk = `reminderMetric${node.metric.charAt(0).toUpperCase()}${node.metric.slice(1)}` as any;
+    const ok = `reminderOper${node.operator.charAt(0).toUpperCase()}${node.operator.slice(1)}` as any;
+    return `${t(mk)} ${t(ok)} ${node.value}${t('reminderSeconds')}`;
+  }
+  const left = displayTree(node.nodes[0] || makeLeaf(), t, true);
+  const right = displayTree(node.nodes[1] || makeLeaf(), t, true);
+  const inner = `${left} ${t(node.logic === 'and' ? 'reminderAnd' : 'reminderOr')} ${right}`;
+  return wrap ? `(${inner})` : inner;
 }
 
 export function ReminderPage() {
@@ -97,42 +124,20 @@ export function ReminderPage() {
   const t = useT();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ReminderRule>(emptyRule);
-  const [showCondition2, setShowCondition2] = useState(false);
 
-  const startAdd = () => {
-    setForm(emptyRule());
-    setEditingId('__new__');
-    setShowCondition2(false);
-  };
-
-  const startEdit = (rule: ReminderRule) => {
-    setForm({ ...rule });
-    setEditingId(rule.id);
-    setShowCondition2(!!rule.condition2);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-  };
+  const startAdd = () => { setForm(emptyRule()); setEditingId('__new__'); };
+  const startEdit = (rule: ReminderRule) => { setForm({ ...rule }); setEditingId(rule.id); };
+  const cancelEdit = () => setEditingId(null);
 
   const saveRule = () => {
     if (!form.title.trim()) return;
-    const toSave: ReminderRule = { ...form };
-    if (!showCondition2) {
-      delete toSave.condition2;
-      delete toSave.logic;
-    } else if (!toSave.condition2) {
-      toSave.condition2 = emptyCondition();
-    }
     if (editingId === '__new__') {
-      const newRule = { ...toSave, id: genId() };
+      const newRule = { ...form, id: genId() };
       dispatch({ type: 'REMINDER_ADD_RULE', payload: newRule });
       window.electronAPI.remindersSave([...reminderRules, newRule]);
     } else if (editingId) {
-      dispatch({ type: 'REMINDER_UPDATE_RULE', payload: toSave });
-      window.electronAPI.remindersSave(
-        reminderRules.map(r => (r.id === toSave.id ? toSave : r))
-      );
+      dispatch({ type: 'REMINDER_UPDATE_RULE', payload: form });
+      window.electronAPI.remindersSave(reminderRules.map(r => r.id === form.id ? form : r));
     }
     setEditingId(null);
   };
@@ -147,219 +152,91 @@ export function ReminderPage() {
   const toggleEnabled = (rule: ReminderRule) => {
     const updated = { ...rule, enabled: !rule.enabled };
     dispatch({ type: 'REMINDER_UPDATE_RULE', payload: updated });
-    window.electronAPI.remindersSave(
-      reminderRules.map(r => (r.id === rule.id ? updated : r))
-    );
+    window.electronAPI.remindersSave(reminderRules.map(r => r.id === rule.id ? updated : r));
   };
 
   return (
     <>
-      <h1 className="page-title">
-        <span className="title-icon">⏰</span> {t('reminderPageTitle')}
-      </h1>
+      <h1 className="page-title"><span className="title-icon">⏰</span> {t('reminderPageTitle')}</h1>
 
-      {/* Add button */}
       {editingId !== '__new__' && (
-        <button className="btn btn-primary btn-full" onClick={startAdd}>
-          + {t('reminderAdd')}
-        </button>
+        <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
       )}
 
-      {/* Inline form */}
       {editingId && (
-        <div className="card reminder-form">
-          <div className="form-row">
-            <label>{t('reminderTitleLabel')}</label>
-            <input
-              className="form-input"
-              value={form.title}
-              onChange={e => setForm({ ...form, title: e.target.value })}
-              placeholder={t('reminderTitleLabel')}
-            />
+        <div className="card" style={{ padding: 16, marginTop: 12 }}>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderTitleLabel')}</label>
+            <input style={{ ...s, width: '100%' }} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={t('reminderTitleLabel')} />
           </div>
-          <div className="form-row">
-            <label>{t('reminderContentLabel')}</label>
-            <textarea
-              className="form-input form-textarea"
-              value={form.content}
-              onChange={e => setForm({ ...form, content: e.target.value })}
-              placeholder={t('reminderContentLabel')}
-              rows={3}
-            />
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderContentLabel')}</label>
+            <textarea style={{ ...s, width: '100%', height: 64, resize: 'vertical' }} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder={t('reminderContentLabel')} />
           </div>
 
-          {/* Condition 1 */}
-          <div className="form-row">
-            <label>{t('reminderConditionLabel')} 1</label>
-            <ConditionRow
-              condition={form.condition}
-              onChange={c => setForm({ ...form, condition: c })}
-            />
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderConditionLabel')}</label>
+            <BinaryTreeEditor node={form.conditionTree} onChange={n => setForm({ ...form, conditionTree: n })} />
           </div>
 
-          {/* AND/OR toggle + condition 2 */}
-          {showCondition2 && (
-            <div className="form-row">
-              <div className="logic-group">
-                <button
-                  className={`logic-btn ${form.logic !== 'or' ? 'active' : ''}`}
-                  onClick={() => setForm({ ...form, logic: 'and' })}
-                >
-                  {t('reminderAnd')}
-                </button>
-                <button
-                  className={`logic-btn ${form.logic === 'or' ? 'active' : ''}`}
-                  onClick={() => setForm({ ...form, logic: 'or' })}
-                >
-                  {t('reminderOr')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showCondition2 && (
-            <div className="form-row">
-              <label>{t('reminderConditionLabel')} 2</label>
-              <ConditionRow
-                condition={form.condition2 || emptyCondition()}
-                onChange={c => setForm({ ...form, condition2: c })}
-              />
-            </div>
-          )}
-
-          <div className="form-row">
-            <button
-              className="btn btn-secondary"
-              style={{ fontSize: 12, padding: '4px 12px', height: 28 }}
-              onClick={() => {
-                if (showCondition2) {
-                  const f = { ...form };
-                  delete f.condition2;
-                  delete f.logic;
-                  setForm(f);
-                }
-                setShowCondition2(!showCondition2);
-              }}
-            >
-              {showCondition2 ? t('reminderRemoveCondition') : t('reminderAddCondition')}
-            </button>
-          </div>
-
-          <div className="form-row">
-            <label>{t('reminderUrgencyLabel')}</label>
-            <div className="urgency-group">
-              {urgencyKeys.map(u => (
-                <button
-                  key={u}
-                  className={`urgency-btn ${form.urgency === u ? 'active' : ''}`}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderNotifTypeLabel')}</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {NOTIF_TYPES.map(nt => (
+                <button key={nt} onClick={() => setForm({ ...form, urgency: nt })}
                   style={{
-                    '--urgency-color': urgencyColors[u],
-                    borderColor: form.urgency === u ? urgencyColors[u] : undefined,
-                    color: form.urgency === u ? urgencyColors[u] : undefined,
-                  } as React.CSSProperties}
-                  onClick={() => setForm({ ...form, urgency: u })}
-                >
-                  {t(`reminderUrgency${u.charAt(0).toUpperCase()}${u.slice(1)}` as any)}
+                    flex: 1, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 12,
+                    border: form.urgency === nt ? `2px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
+                    background: form.urgency === nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
+                    color: form.urgency === nt ? NOTIF_COLORS[nt] : '#faf9f5',
+                  }}>
+                  <span style={{ fontSize: 16, marginRight: 4 }}>{NOTIF_ICONS[nt]}</span>
+                  {t(`reminderNotifType${nt.charAt(0).toUpperCase()}${nt.slice(1)}` as any)}
                 </button>
               ))}
             </div>
           </div>
-          <div className="form-actions">
+
+          <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary" onClick={saveRule}>
               {editingId === '__new__' ? t('reminderAdd') : t('reminderEdit')}
             </button>
-            <button className="btn btn-secondary" onClick={cancelEdit}>
-              Cancel
-            </button>
+            <button className="btn btn-secondary" onClick={cancelEdit}>{t('reminderCancel')}</button>
           </div>
         </div>
       )}
 
-      {/* Rules list */}
       {reminderRules.length === 0 && editingId !== '__new__' ? (
-        <div className="empty-hint" style={{ marginTop: 32 }}>
-          {t('reminderNoRules')}
-        </div>
+        <div className="empty-hint" style={{ marginTop: 32 }}>{t('reminderNoRules')}</div>
       ) : (
         <div style={{ marginTop: 16 }}>
           {reminderRules.map(rule => (
-            <div key={rule.id} className="reminder-rule-card">
-              <div className="rule-header">
-                <div className="rule-title-row">
-                  <span
-                    className="rule-urgency-dot"
-                    style={{ background: urgencyColors[rule.urgency] }}
-                  />
-                  <span className="rule-title">{rule.title}</span>
-                  <span
-                    className="rule-badge"
-                    style={{
-                      background: urgencyColors[rule.urgency] + '22',
-                      color: urgencyColors[rule.urgency],
-                    }}
-                  >
-                    {t(`reminderUrgency${rule.urgency.charAt(0).toUpperCase()}${rule.urgency.slice(1)}` as any)}
+            <div key={rule.id} className="card" style={{ padding: '12px 16px', marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: rule.content ? 4 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: NOTIF_COLORS[rule.urgency] || '#e8a55a', fontSize: 14 }}>{NOTIF_ICONS[rule.urgency] || '▸'}</span>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{rule.title}</span>
+                  <span style={{ fontSize: 10, color: NOTIF_COLORS[rule.urgency] || '#888', background: (NOTIF_COLORS[rule.urgency] || '#888') + '22', padding: '1px 6px', borderRadius: 4 }}>
+                    {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()}${rule.urgency.slice(1)}` as any) || rule.urgency}
                   </span>
                 </div>
                 <label className="toggle" onClick={e => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={rule.enabled}
-                    onChange={() => toggleEnabled(rule)}
-                  />
+                  <input type="checkbox" checked={rule.enabled} onChange={() => toggleEnabled(rule)} />
                   <span className="toggle-slider" />
                 </label>
               </div>
-              {rule.content && (
-                <div className="rule-content">{rule.content}</div>
-              )}
-              <div className="rule-condition">
-                {displayCondition(rule.condition, t)}
+              {rule.content && <div style={{ fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{rule.content}</div>}
+              <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', lineHeight: 1.5 }}>
+                {displayTree(rule.conditionTree, t)}
               </div>
-              {rule.condition2 && (
-                <div className="rule-condition" style={{ marginTop: 2 }}>
-                  <span style={{ color: 'var(--color-accent-teal)', fontWeight: 600 }}>
-                    {rule.logic === 'or' ? t('reminderOr') : t('reminderAnd')}
-                  </span>{' '}
-                  {displayCondition(rule.condition2, t)}
-                </div>
-              )}
-              <div className="rule-actions">
-                <button
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 12px', height: 28, fontSize: 12 }}
-                  onClick={() => startEdit(rule)}
-                >
-                  {t('reminderEdit')}
-                </button>
-                <button
-                  className="btn-text-link"
-                  onClick={() => deleteRule(rule.id)}
-                >
-                  {t('reminderDelete')}
-                </button>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                <button className="btn btn-secondary" style={{ padding: '4px 12px', height: 28, fontSize: 12 }} onClick={() => startEdit(rule)}>{t('reminderEdit')}</button>
+                <button className="btn-text-link" onClick={() => deleteRule(rule.id)}>{t('reminderDelete')}</button>
               </div>
             </div>
           ))}
         </div>
       )}
-
-      {/* Hotkey reference */}
-      <div className="card" style={{ marginTop: 32, padding: '12px 16px' }}>
-        <h3 className="card-title" style={{ fontSize: 13, marginBottom: 8 }}>快捷键</h3>
-        <div className="hotkey-grid">
-          <div className="hotkey-item"><kbd>Ctrl+1</kbd><span>学习页面</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+2</kbd><span>爱好页面</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+3</kbd><span>娱乐页面</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+4</kbd><span>记录页面</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+5</kbd><span>提醒页面</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+6</kbd><span>设置页面</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+Shift+S</kbd><span>开始学习</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+Shift+H</kbd><span>开始爱好</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+Shift+E</kbd><span>开始娱乐</span></div>
-          <div className="hotkey-item"><kbd>Ctrl+Shift+X</kbd><span>停止计时</span></div>
-        </div>
-      </div>
     </>
   );
 }

@@ -96,8 +96,26 @@ export interface Translations {
   reminderCustom: string;
   reminderMetricDailyGiftedBalance: string;
   reminderMetricEarnedBalance: string;
+  reminderNotifTypeLabel: string;
+  reminderNotifTypeReminder: string;
+  reminderNotifTypeUrgent: string;
+  reminderNotifTypeNotification: string;
+  reminderNotifTypeInfo: string;
+  reminderGroup: string;
   reminderAnd: string;
   reminderOr: string;
   reminderAddCondition: string;
+  reminderAddGroup: string;
   reminderRemoveCondition: string;
+  reminderBackToList: string;
+  reminderCancel: string;
+
+  // Hotkey settings
+  navHotkey: string;
+
+  // Notification settings
+  notifTitle: string;
+  notifEnabled: string;
+  notifDuration: string;
+  notifDurationUnit: string;
 }

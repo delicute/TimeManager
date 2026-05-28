@@ -1,26 +1,34 @@
+import { BookOpen, Palette, Gamepad2, BarChart3, Bell, Keyboard, Settings } from 'lucide-react';
 import type { SessionType } from '../types';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, statusKeyMap, navKeyMap } from '../hooks/useI18n';
-import { formatDuration, activityIcon, activityColor } from '../utils/formatting';
+import { formatDuration, activityColor } from '../utils/formatting';
 
 interface SidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
 }
 
+const navItems = [
+  { id: 'Study', icon: BookOpen },
+  { id: 'Hobby', icon: Palette },
+  { id: 'Entertainment', icon: Gamepad2 },
+  { id: 'Record', icon: BarChart3 },
+  { id: 'Reminder', icon: Bell },
+  { id: 'Hotkey', icon: Keyboard },
+  { id: 'Settings', icon: Settings },
+];
+
+const ACTIVITY_ICONS: Record<string, typeof BookOpen> = {
+  Study: BookOpen,
+  Hobby: Palette,
+  Entertainment: Gamepad2,
+};
+
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const { state } = useAppStore();
   const { balance, session, todayLogs } = state;
   const t = useT();
-
-  const navItems = [
-    { id: 'Study', icon: '📚' },
-    { id: 'Hobby', icon: '🎨' },
-    { id: 'Entertainment', icon: '🎮' },
-    { id: 'Record', icon: '📊' },
-    { id: 'Reminder', icon: '⏰' },
-    { id: 'Settings', icon: '⚙' },
-  ];
 
   // Compute today's total per type
   const todaySeconds: Record<string, number> = { Study: 0, Hobby: 0, Entertainment: 0 };
@@ -43,6 +51,8 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const statusColor = session.isActive
     ? activityColor(session.currentType as string)
     : 'var(--color-on-dark-soft)';
+
+  const ActivityIcon = session.isActive ? ACTIVITY_ICONS[session.currentType as string] : null;
 
   return (
     <aside className="sidebar">
@@ -78,38 +88,50 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           fontWeight: 500,
           color: statusColor,
           marginTop: 4,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
         }}>
-          {session.isActive && <span style={{ marginRight: 6 }}>{activityIcon(session.currentType as string)}</span>}
+          {ActivityIcon && <ActivityIcon size={18} />}
           {statusLabel}
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            className={`nav-btn ${currentPage === item.id ? 'active' : ''}`}
-            onClick={() => onNavigate(item.id)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            {t(navKeyMap[item.id])}
-          </button>
-        ))}
+        {navItems.map(item => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              className={`nav-btn ${currentPage === item.id ? 'active' : ''}`}
+              onClick={() => onNavigate(item.id)}
+            >
+              <span className="nav-icon"><Icon size={18} /></span>
+              {t(navKeyMap[item.id])}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Daily Summary */}
       <div className="sidebar-summary">
         <div className="summary-title">{t('todayOverview')}</div>
-        {['Study', 'Hobby', 'Entertainment'].map(type => (
-          <div
-            key={type}
-            className="summary-item"
-            style={{ color: activityColor(type) }}
-          >
-            {activityIcon(type)} {formatDuration(Math.floor(todaySeconds[type] || 0))}
-          </div>
-        ))}
+        <div className="today-row">
+          {(['Study', 'Hobby', 'Entertainment'] as const).map(type => {
+            const TypeIcon = ACTIVITY_ICONS[type];
+            return (
+              <div
+                key={type}
+                className="today-item"
+                style={{ color: activityColor(type) }}
+              >
+                <TypeIcon size={14} />
+                <span>{formatDuration(Math.floor(todaySeconds[type] || 0))}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </aside>
   );

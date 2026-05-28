@@ -13,7 +13,25 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let reminderToastWindow: BrowserWindow | null = null;
 let startSilent = process.argv.includes('--silent');
-let minimizeToTrayEnabled = true; // tracked in-memory, synced from renderer
+
+let currentSessionState: { isActive: boolean; type: string } = { isActive: false, type: 'None' };
+let minimizeToTrayEnabled = true;
+let isQuitting = false;
+
+// ─── Notification Container (single BrowserWindow) ──────────
+const NOTIF_CONTAINER_WIDTH = 320;
+const NOTIF_RIGHT = 20;
+const NOTIF_CARD_WIDTH = 280;
+const NOTIF_BOTTOM = 25;
+const NOTIF_GAP = 15;
+const NOTIF_FADE_MS = 350;
+const NOTIF_SLIDE_MS = 200;
+
+let notifContainer: BrowserWindow | null = null;
+let containerReady = false;
+let notifQueue: { id: string; title: string; body: string; color: string }[] = [];
+interface ContainerNotif { id: string; expireTimer: ReturnType<typeof setTimeout>; }
+let containerNotifs: ContainerNotif[] = [];
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -44,7 +62,7 @@ function setupIPC() {
         return JSON.parse(fs.readFileSync(p, 'utf-8'));
       }
     } catch { /* ignore */ }
-    return { earnedBalance: 0, dailyGiftedRemaining: 1800, lastDate: '' };
+    return { earnedBalance: 0, dailyGiftedRemaining: 1800, lastDate: '', milestones: { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0 } };
   });
 
   ipcMain.handle('balance:save', (_, data) => {
@@ -66,9 +84,6 @@ function setupIPC() {
   ipcMain.handle('settings:save', (_, data) => {
     ensureDir(BASE_PATH);
     fs.writeFileSync(getSettingsPath(), JSON.stringify(data, null, 2));
-    if (typeof data.minimizeToTray === 'boolean') {
-      minimizeToTrayEnabled = data.minimizeToTray;
-    }
     if (data.dataPath && data.dataPath !== BASE_PATH) {
       BASE_PATH = data.dataPath;
     }
@@ -90,6 +105,16 @@ function setupIPC() {
   ipcMain.handle('logs:getToday', () => {
     const today = new Date();
     const filePath = path.join(getLogsPath(), `${fmtDate(today)}.json`);
+    try {
+      if (fs.existsSync(filePath)) {
+        return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
+
+  ipcMain.handle('logs:getForDate', (_, dateStr: string) => {
+    const filePath = path.join(getLogsPath(), `${dateStr}.json`);
     try {
       if (fs.existsSync(filePath)) {
         return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -190,7 +215,6 @@ function setupIPC() {
     }
   });
 
-  // Sync minimizeToTray flag from renderer (on settings load)
   ipcMain.handle('settings:setMinimizeToTray', (_, value: boolean) => {
     minimizeToTrayEnabled = value;
   });
@@ -212,6 +236,17 @@ function setupIPC() {
     showReminderToast(rule);
   });
 
+  ipcMain.handle('reminder:resize', (_, height: number) => {
+    try {
+      const clamped = Math.min(200, height);
+      if (reminderToastWindow && !reminderToastWindow.isDestroyed()) {
+        const [w] = reminderToastWindow.getSize();
+        reminderToastWindow.setSize(w, clamped);
+        positionReminderToast();
+      }
+    } catch { /* ignore */ }
+  });
+
   ipcMain.handle('reminder:toastDismiss', () => {
     closeReminderToast();
     mainWindow?.webContents.send('reminder:toastAction', { action: 'dismiss' });
@@ -220,6 +255,32 @@ function setupIPC() {
   ipcMain.handle('reminder:toastSnooze', (_, minutes) => {
     closeReminderToast();
     mainWindow?.webContents.send('reminder:toastAction', { action: 'snooze', minutes });
+  });
+
+  // ─── Session Notification (single container window) ──
+  ipcMain.handle('notification:show', (_, data: { type: string; title: string; body: string; color: string; duration: number }) => {
+    showContainerNotification(data);
+  });
+
+  ipcMain.handle('notification:dismiss', (_, id: string) => {
+    dismissContainerNotification(id);
+  });
+
+  // ─── Tray Session IPC ────────────────────────────
+  ipcMain.handle('session:stateUpdate', (_, state) => {
+    currentSessionState = state;
+    rebuildTrayMenu();
+  });
+
+  // Forward tray actions to renderer
+  ipcMain.handle('tray:startSession', (_, type) => {
+    mainWindow?.webContents.send('tray:startSession', type);
+  });
+  ipcMain.handle('tray:stopSession', () => {
+    mainWindow?.webContents.send('tray:stopSession');
+  });
+  ipcMain.handle('tray:navSettings', () => {
+    mainWindow?.webContents.send('tray:navSettings');
   });
 
 }
@@ -245,14 +306,14 @@ function showReminderToast(rule: any) {
   } catch { /* ignore */ }
 
   reminderToastWindow = new BrowserWindow({
-    width: 360,
-    height: 240,
+    width: 335,
+    height: 120,
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
     show: false,
-    focusable: false,
+    backgroundColor: '#252320',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -263,15 +324,20 @@ function showReminderToast(rule: any) {
   const html = generateToastHtml(rule, beepDataUrl);
   reminderToastWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-  reminderToastWindow.once('ready-to-show', () => {
-    positionReminderToast();
-    reminderToastWindow?.show();
-    // Enable focus after showing to allow button clicks (no focus steal)
-    setTimeout(() => {
-      if (reminderToastWindow && !reminderToastWindow.isDestroyed()) {
-        reminderToastWindow.setFocusable(true);
-      }
-    }, 150);
+  // Measure content height after load, resize to fit, then show
+  reminderToastWindow.webContents.on('did-finish-load', () => {
+    if (!reminderToastWindow || reminderToastWindow.isDestroyed()) return;
+    reminderToastWindow.webContents.executeJavaScript('document.documentElement.scrollHeight').then(h => {
+      if (!reminderToastWindow || reminderToastWindow.isDestroyed()) return;
+      const clamped = Math.max(120, Math.min(200, h));
+      reminderToastWindow.setSize(335, clamped);
+      positionReminderToast();
+      reminderToastWindow.showInactive();
+    }).catch(() => {
+      if (!reminderToastWindow || reminderToastWindow.isDestroyed()) return;
+      positionReminderToast();
+      reminderToastWindow.showInactive();
+    });
   });
 
   reminderToastWindow.on('closed', () => {
@@ -287,19 +353,74 @@ function positionReminderToast() {
   reminderToastWindow.setPosition(width - winWidth - 20, height - winHeight - 20);
 }
 
+// Metric label maps for toast display (no i18n available in main process)
+const METRIC_LABELS_EN: Record<string, string> = {
+  entertainmentBalance: 'Entertainment Balance',
+  dailyGiftedBalance: 'Gifted Balance',
+  earnedBalance: 'Earned Balance',
+  studyDuration: "Today's Study",
+  hobbyDuration: "Today's Hobby",
+  entertainmentDuration: "Today's Entertainment",
+  continuousEntertainment: 'Continuous Entertainment',
+  totalAvailableBalance: 'Total Available',
+  debtAmount: 'Debt Amount',
+};
+
+const METRIC_LABELS_ZH: Record<string, string> = {
+  entertainmentBalance: '娱乐余额',
+  dailyGiftedBalance: '赠送余额',
+  earnedBalance: '赚取余额',
+  studyDuration: '今日学习',
+  hobbyDuration: '今日爱好',
+  entertainmentDuration: '今日娱乐',
+  continuousEntertainment: '连续娱乐',
+  totalAvailableBalance: '可用总额',
+  debtAmount: '债务金额',
+};
+
+function metricLabel(metric: string, locale: string): string {
+  const map = locale === 'zh' ? METRIC_LABELS_ZH : METRIC_LABELS_EN;
+  return map[metric] || metric;
+}
+
+function renderTreeHtml(node: any, values: Record<string, number>, path: string, barColor: string, locale: string): string {
+  if (!node) return '';
+  if (node.type === 'leaf') {
+    const metric = node?.metric || '';
+    const op = node?.operator || '';
+    const thresh = node?.value != null ? node.value : '';
+    const val = values ? (values[path] ?? values['_first'] ?? 0) : 0;
+    return `<div class="cv-row">
+  <span class="cv-label">${escapeHtml(metricLabel(metric, locale))}</span>
+  <span><span class="cv-val">${Math.round(val)}</span><span class="cv-op"> ${operatorSymbol(op)} </span><span class="cv-thresh">${thresh}</span></span>
+</div>`;
+  }
+  if (node.type === 'group') {
+    let html = '';
+    for (let i = 0; i < node.nodes.length; i++) {
+      if (i > 0) {
+        const logicLabel = node.logic === 'or' ? 'OR' : 'AND';
+        html += `<div class="cv-logic" style="color:${barColor}">${logicLabel}</div>`;
+      }
+      const child = node.nodes[i];
+      const childPath = `${path || ''}n${i}`;
+      if (child.type === 'leaf') {
+        html += renderTreeHtml(child, values, childPath, barColor, locale);
+      } else {
+        // Sub-group: render children with indentation
+        html += `<div class="cv-subgroup">${renderTreeHtml(child, values, childPath, barColor, locale)}</div>`;
+      }
+    }
+    return html;
+  }
+  return '';
+}
+
 function generateToastHtml(rule: any, beepDataUrl: string): string {
   const urgencyColors: Record<string, string> = {
     low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
   };
   const barColor = urgencyColors[rule.urgency] || '#e8a55a';
-  const bgTint = barColor + '15';
-
-  const cond = rule.condition || {};
-  const threshold = cond.value != null ? cond.value : '';
-  const currentVal = rule._currentValue != null ? Math.round(rule._currentValue) : '';
-  const cond2 = rule.condition2;
-  const currentVal2 = rule._currentValue2 != null ? Math.round(rule._currentValue2) : '';
-
   const animClass = rule.urgency === 'critical' ? 'toast-alert' : rule.urgency === 'high' ? 'toast-pulse' : '';
 
   return `<!DOCTYPE html>
@@ -308,28 +429,22 @@ function generateToastHtml(rule: any, beepDataUrl: string): string {
 <meta charset="utf-8">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#faf9f5;background:#252320;overflow:hidden;user-select:none}
+*:focus{outline:none}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#faf9f5;background:#252320;user-select:none}
 .ub{height:4px;background:${barColor}}
-.bd{padding:14px 16px 12px;display:flex;flex-direction:column;height:236px}
+.bd{padding:14px 16px 6px;display:flex;flex-direction:column;min-height:0;position:relative}
 .ul{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .ul-badge{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:${barColor};background:${barColor}25;padding:1px 6px;border-radius:3px}
 .ul-time{font-size:10px;color:#888}
-.tt{font-size:15px;font-weight:600;color:#faf9f5;margin-bottom:3px;line-height:1.3}
-.ct{font-size:12px;color:#b0ada6;line-height:1.35;margin-bottom:6px;flex-shrink:0}
-.cv{margin-top:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:3px;padding:8px 10px;background:${bgTint};border-radius:6px;flex-shrink:0}
-.cv-row{display:flex;justify-content:space-between;align-items:center;font-size:11px}
-.cv-label{color:#aaa}
-.cv-val{font-weight:600;color:#faf9f5;font-variant-numeric:tabular-nums}
-.cv-op{color:${barColor};font-weight:600;margin:0 2px}
-.cv-thresh{color:#faf9f5}
-.cv-sep{height:1px;background:${barColor}20;margin:2px 0}
-.ac{display:flex;gap:8px;flex-shrink:0}
+.tt{font-size:15px;font-weight:600;color:#faf9f5;margin-bottom:3px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct{font-size:12px;color:#b0ada6;line-height:1.35;margin-bottom:6px;min-height:17px}
+.ac{display:flex;gap:8px}
 .ac .btn{flex:1;padding:6px 12px;height:30px;border-radius:6px;font:inherit;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .12s;text-align:center}
 .bdismiss{background:#cc785c;color:#fff}
 .bdismiss:hover{background:#a9583e}
 .bsnooze{background:rgba(255,255,255,.06);color:#faf9f5;border:1px solid rgba(255,255,255,.12)}
 .bsnooze:hover{background:rgba(255,255,255,.1)}
-.sp{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);display:none;flex-direction:column;gap:6px;flex-shrink:0}
+.sp{position:absolute;left:0;right:0;bottom:0;padding:8px 16px 12px;background:#252320;border-top:1px solid rgba(255,255,255,.08);border-radius:0 0 10px 10px;display:none;flex-direction:column;gap:6px;z-index:10}
 .spr{display:flex;gap:5px}
 .spr .btn{flex:1;padding:4px 2px;height:26px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#faf9f5;transition:all .12s;text-align:center;min-width:0}
 .spr .btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)}
@@ -339,37 +454,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;f
 .scu .lbl{font-size:11px;color:#a09d96}
 .scu .bcn{padding:3px 14px;height:24px;border-radius:5px;font:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:#cc785c;color:#fff;transition:all .12s}
 .scu .bcn:hover{background:#a9583e}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,165,90,.4)}50%{box-shadow:0 0 0 8px rgba(232,165,90,0)}}
-@keyframes alert{0%,100%{box-shadow:inset 0 0 0 0 rgba(198,69,69,.3)}50%{box-shadow:inset 0 0 0 2px rgba(198,69,69,.3)}}
-.toast-alert{animation:alert 1.5s ease-in-out infinite}
-.toast-pulse{animation:pulse 2.5s ease-in-out infinite}
+.toast-glow{position:absolute;inset:0;border-radius:10px;pointer-events:none;will-change:opacity}
+.toast-pulse .toast-glow{box-shadow:0 0 24px rgba(232,165,90,.25);animation:glowPulse 2.5s ease-in-out infinite}
+.toast-alert .toast-glow{box-shadow:inset 0 0 16px rgba(198,69,69,.25);animation:glowAlert 1.5s ease-in-out infinite}
+@keyframes glowPulse{0%,100%{opacity:.35}50%{opacity:.9}}
+@keyframes glowAlert{0%,100%{opacity:.3}50%{opacity:.8}}
 </style>
 </head>
 <body>
 ${beepDataUrl ? `<audio autoplay src="${beepDataUrl}"></audio>` : ''}
 <div class="ub"></div>
-<div class="bd ${animClass}">
+<div class="bd${animClass ? ' ' + animClass : ''}">
+${animClass ? '<div class="toast-glow"></div>' : ''}
 <div class="ul">
 <span class="ul-badge">${(rule.urgency || '').toUpperCase()}</span>
 <span class="ul-time">${new Date().toLocaleTimeString()}</span>
 </div>
 <div class="tt">${escapeHtml(rule.title || '')}</div>
-${rule.content ? `<div class="ct">${escapeHtml(rule.content)}</div>` : ''}
-<div class="cv">
-<div class="cv-row">
-<span class="cv-label">${escapeHtml(cond.metric || '')}</span>
-<span><span class="cv-val">${currentVal}</span><span class="cv-op"> ${operatorSymbol(cond.operator)} </span><span class="cv-thresh">${threshold}</span></span>
-</div>
-${cond2 ? `
-<div class="cv-sep"></div>
-<div class="cv-row">
-<span class="cv-label" style="color:${barColor}">${rule.logic === 'or' ? 'OR' : 'AND'}</span>
-</div>
-<div class="cv-row">
-<span class="cv-label">${escapeHtml(cond2.metric)}</span>
-<span><span class="cv-val">${currentVal2}</span><span class="cv-op"> ${operatorSymbol(cond2.operator)} </span><span class="cv-thresh">${cond2.value}</span></span>
-</div>` : ''}
-</div>
+<div class="ct">${rule.content ? escapeHtml(rule.content) : ''}</div>
 <div class="ac">
 <button class="btn bdismiss" onclick="dismiss()">确定</button>
 <button class="btn bsnooze" onclick="ts()">等等</button>
@@ -389,10 +491,170 @@ ${cond2 ? `
 </div>
 </div>
 <script>
+function resize(){var h=document.documentElement.scrollHeight;var MAX=200;var ct=document.querySelector('.ct');if(h<=MAX){if(ct){ct.style.overflow='';ct.style.display='';ct.style.webkitBoxOrient='';ct.style.webkitLineClamp=''}window.electronAPI.reminderResize(h)}else{if(ct){var sp=document.getElementById('sp');var ml=sp&&sp.style.display==='flex'?2:5;ct.style.overflow='hidden';ct.style.display='-webkit-box';ct.style.webkitBoxOrient='vertical';ct.style.webkitLineClamp=String(ml)}window.electronAPI.reminderResize(Math.min(MAX,document.documentElement.scrollHeight))}}
+resize();
 function dismiss(){window.electronAPI.reminderToastDismiss()}
-function ts(){var p=document.getElementById('sp');p.style.display=p.style.display==='none'?'flex':'none'}
+function ts(){var p=document.getElementById('sp');p.style.display=p.style.display==='none'?'flex':'none';setTimeout(resize,50)}
 function s(m){window.electronAPI.reminderToastSnooze(m)}
 function sc(){var v=parseInt(document.getElementById('cm').value)||15;window.electronAPI.reminderToastSnooze(v)}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var p=document.getElementById('sp');if(p&&p.style.display!=='none'){p.style.display='none';setTimeout(resize,50)}}})
+</script>
+</body>
+</html>`;
+}
+
+// ─── Session Notification Container ─────────────────────────
+
+function createNotificationContainer() {
+  const display = screen.getPrimaryDisplay();
+  const { width: sw, height: sh } = display.workAreaSize;
+
+  const win = new BrowserWindow({
+    width: NOTIF_CONTAINER_WIDTH,
+    height: sh,
+    x: sw - NOTIF_CONTAINER_WIDTH,
+    y: 0,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    show: false,
+    focusable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  // Let all mouse events pass through to windows behind (requires layered window)
+  win.setIgnoreMouseEvents(true);
+
+  const html = generateContainerHtml();
+  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  win.once('ready-to-show', () => {
+    containerReady = true;
+    // Flush queued notifications
+    for (const item of notifQueue) {
+      win.webContents.send('container:add', item);
+    }
+    notifQueue = [];
+    // Only show if there are already notifications
+    if (containerNotifs.length > 0) {
+      win.showInactive();
+    }
+  });
+  notifContainer = win;
+}
+
+function showContainerNotification(data: { type: string; title: string; body: string; color: string; duration: number }) {
+  if (!notifContainer || notifContainer.isDestroyed()) return;
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+  const expireTimer = setTimeout(() => dismissContainerNotification(id), data.duration * 1000);
+  containerNotifs.push({ id, expireTimer });
+
+  const payload = { id, title: data.title, body: data.body, color: data.color };
+  if (containerReady) {
+    notifContainer.webContents.send('container:add', payload);
+    // Show window if hidden (only on first notification)
+    if (!notifContainer.isVisible()) {
+      notifContainer.showInactive();
+      notifContainer.setIgnoreMouseEvents(true);
+    }
+  } else {
+    notifQueue.push(payload);
+  }
+}
+
+function dismissContainerNotification(id: string) {
+  const idx = containerNotifs.findIndex(n => n.id === id);
+  if (idx === -1) {
+    // Also check if still queued (dismiss before container ready)
+    const qIdx = notifQueue.findIndex(n => n.id === id);
+    if (qIdx !== -1) notifQueue.splice(qIdx, 1);
+    return;
+  }
+  clearTimeout(containerNotifs[idx].expireTimer);
+  containerNotifs.splice(idx, 1);
+
+  if (notifContainer && !notifContainer.isDestroyed()) {
+    notifContainer.webContents.send('container:remove', id);
+    // Hide window when empty
+    if (containerNotifs.length === 0 && notifQueue.length === 0) {
+      notifContainer.hide();
+    }
+  }
+}
+
+function generateContainerHtml(): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+#stack{position:fixed;right:${NOTIF_RIGHT}px;bottom:${NOTIF_BOTTOM}px;display:flex;flex-direction:column-reverse;gap:${NOTIF_GAP}px;pointer-events:none}
+.notif{width:${NOTIF_CARD_WIDTH}px;background:#252320;border-radius:6px;padding:8px 12px;color:#faf9f5;font-size:13px;opacity:0;transform:translate(40px,0);transition:opacity 220ms ease-out,transform ${NOTIF_SLIDE_MS}ms ease-out;pointer-events:none}
+.notif.show{opacity:1;transform:translate(0,0)}
+.notif.leaving{opacity:0;transition:opacity ${NOTIF_FADE_MS}ms ease-in}
+.nwrap{display:flex;align-items:flex-start;gap:6px}
+.nc{font-size:13px;line-height:1.3;flex-shrink:0}
+.nh{font-size:13px;font-weight:600;color:#faf9f5;line-height:1.3}
+.nb{font-size:13px;color:#b0ada6;line-height:1.3}
+</style>
+</head>
+<body>
+<div id="stack"></div>
+<script>
+var st=document.getElementById('stack');
+var ndb={};var nficon={'session':'●','reminder':'▸','urgent':'▲','warning':'▲','notification':'●','info':'·','milestone':'◆','low':'·','medium':'●','high':'▲','critical':'▲'};
+function addNotif(d){
+  var ic=nficon[d.notifType]||'●';
+  var e=document.createElement('div');
+  e.className='notif';
+  e.id='n'+d.id;
+  e.innerHTML='<div class="nwrap"><span class="nc" style="color:'+d.color+'">'+ic+'</span><div><div class="nh">'+_e(d.title)+'</div>'+(d.body?'<div class="nb">'+_e(d.body)+'</div>':'')+'</div></div>';
+  st.appendChild(e);
+  ndb[d.id]=e;
+  // Double rAF: first frame paints initial state (translate(40px,0) + opacity 0),
+  // second frame adds .show to trigger CSS transition for slide-in + fade-in
+  requestAnimationFrame(function(){requestAnimationFrame(function(){e.classList.add('show')})});
+}
+function removeNotif(id){
+  var e=ndb[id];
+  if(!e)return;
+  delete ndb[id];
+  // FLIP: snapshot positions before DOM removal
+  var sib=[];for(var i=0;i<st.children.length;i++){var c=st.children[i];if(c!==e)sib.push(c);}
+  var oldTops=sib.map(function(s){return s.getBoundingClientRect().top});
+  e.classList.add('leaving');
+  setTimeout(function(){
+    e.remove();
+    // FLIP: filter for elements still in DOM, matching oldTops per-element
+    var valid=[],validOld=[];
+    for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
+    var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
+    valid.forEach(function(s,i){
+      var dy=newTops[i]-validOld[i];
+      if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
+    });
+    requestAnimationFrame(function(){requestAnimationFrame(function(){
+      valid.forEach(function(s,i){
+        var dy=newTops[i]-validOld[i];
+        if(dy!==0){s.style.transition='';s.style.transform='';}
+      });
+    })});
+  },${NOTIF_FADE_MS});
+}
+function _e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+if(window.containerBridge){
+  window.containerBridge.onAdd(function(d){addNotif(d)});
+  window.containerBridge.onRemove(function(id){removeNotif(id)});
+}
 </script>
 </body>
 </html>`;
@@ -451,7 +713,10 @@ function createWindow() {
   }
 
   mainWindow.on('close', (e) => {
-    if (minimizeToTrayEnabled) {
+    if (isQuitting || !minimizeToTrayEnabled) {
+      tray?.destroy();
+      app.quit();
+    } else {
       e.preventDefault();
       mainWindow?.hide();
       mainWindow?.setSkipTaskbar(true);
@@ -509,6 +774,35 @@ function createFallbackIcon(size: number): Electron.NativeImage {
   );
 }
 
+function rebuildTrayMenu() {
+  if (!tray) return;
+  const { isActive, type: currentType } = currentSessionState;
+
+  function showWindow() {
+    mainWindow?.show();
+    mainWindow?.setSkipTaskbar(false);
+    mainWindow?.focus();
+  }
+
+  const sessionItems: Electron.MenuItemConstructorOptions[] = [
+    { label: '学习模式', enabled: !(isActive && currentType === 'Study'), click: () => { showWindow(); mainWindow?.webContents.send('tray:startSession', 'Study'); } },
+    { label: '爱好模式', enabled: !(isActive && currentType === 'Hobby'), click: () => { showWindow(); mainWindow?.webContents.send('tray:startSession', 'Hobby'); } },
+    { label: '娱乐模式', enabled: !(isActive && currentType === 'Entertainment'), click: () => { showWindow(); mainWindow?.webContents.send('tray:startSession', 'Entertainment'); } },
+    { label: '退出当前状态', enabled: isActive, click: () => { showWindow(); mainWindow?.webContents.send('tray:stopSession'); } },
+  ];
+
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '显示', click: showWindow },
+    { type: 'separator' },
+    ...sessionItems,
+    { type: 'separator' },
+    { label: '设置', click: () => { showWindow(); mainWindow?.webContents.send('tray:navSettings'); } },
+    { type: 'separator' },
+    { label: '重启', click: () => { isQuitting = true; app.relaunch(); app.quit(); } },
+    { label: '退出', click: () => { isQuitting = true; tray?.destroy(); app.quit(); } },
+  ]));
+}
+
 function createTray() {
   const trayIconPath = getAssetPath('assets/ico/ico_16x16.ico');
   const iconExists = fs.existsSync(trayIconPath);
@@ -526,13 +820,7 @@ function createTray() {
   tray = new Tray(icon);
   tray.setToolTip('TimeManager');
 
-  const contextMenu = Menu.buildFromTemplate([
-    { label: '显示', click: () => { mainWindow?.show(); mainWindow?.setSkipTaskbar(false); mainWindow?.focus(); } },
-    { type: 'separator' },
-    { label: '退出', click: () => { tray?.destroy(); app.quit(); } },
-  ]);
-
-  tray.setContextMenu(contextMenu);
+  rebuildTrayMenu();
   tray.on('click', () => {
     mainWindow?.show();
     mainWindow?.setSkipTaskbar(false);
@@ -568,6 +856,7 @@ if (!gotTheLock) {
     ensureDir(getLogsPath());
     setupIPC();
     createWindow();
+    createNotificationContainer();
     createTray();
   });
 

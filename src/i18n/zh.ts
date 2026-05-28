@@ -30,8 +30,8 @@ export const zh: Translations = {
   earnPerSecond: '每 {time} 获得 1 娱乐余额',
 
   // Timer
-  start: '▶ 开始{name}',
-  stop: '■ 停止{name}',
+  start: '开始{name}',
+  stop: '停止{name}',
   timerStudy: '学习',
   timerHobby: '爱好',
   timerEntertainment: '娱乐',
@@ -40,7 +40,7 @@ export const zh: Translations = {
   todayEntertainment: '今日娱乐',
 
   // Record
-  recordTitle: '今日记录',
+  recordTitle: '记录',
   recordTimeline: '时间线',
   recordEmpty: '今天还没有记录',
   recordInProgress: '进行中',
@@ -115,8 +115,26 @@ export const zh: Translations = {
   reminderCustom: '自定义',
   reminderMetricDailyGiftedBalance: '赠送余额',
   reminderMetricEarnedBalance: '赚取余额',
+  reminderNotifTypeLabel: '通知类型',
+  reminderNotifTypeReminder: '提醒',
+  reminderNotifTypeUrgent: '紧急',
+  reminderNotifTypeNotification: '通知',
+  reminderNotifTypeInfo: '信息',
+  reminderGroup: '组',
   reminderAnd: '且',
   reminderOr: '或',
   reminderAddCondition: '添加条件',
+  reminderAddGroup: '添加组',
   reminderRemoveCondition: '移除条件',
+  reminderBackToList: '返回列表',
+  reminderCancel: '取消',
+
+  // Hotkey settings
+  navHotkey: '快捷键',
+
+  // Notification settings
+  notifTitle: '会话通知',
+  notifEnabled: '启用通知',
+  notifDuration: '停留时间',
+  notifDurationUnit: '秒',
 };

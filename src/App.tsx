@@ -7,10 +7,32 @@ import { EntertainmentPage } from './pages/EntertainmentPage';
 import { RecordPage } from './pages/RecordPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReminderPage } from './pages/ReminderPage';
+import { HotkeySettingsPage } from './pages/HotkeySettingsPage';
+import { DEFAULT_HOTKEYS, type SessionType } from './types';
 
 export function App() {
   const [currentPage, setCurrentPage] = useState('Study');
-  const { loadInitialData, startSession, stopSession } = useAppStore();
+  const { state, loadInitialData, startSession, stopSession } = useAppStore();
+  const hotkeys = state.settings.hotkeys;
+  const session = state.session;
+
+  // Sync session state to main process for tray menu
+  useEffect(() => {
+    window.electronAPI.sessionUpdateState({ isActive: session.isActive, type: session.currentType });
+  }, [session.isActive, session.currentType]);
+
+  // Listen for tray actions
+  useEffect(() => {
+    window.electronAPI.onTrayAction((action) => {
+      if (action.action === 'startSession' && action.type) {
+        startSession(action.type as SessionType);
+      } else if (action.action === 'stopSession') {
+        stopSession();
+      } else if (action.action === 'navigate' && action.page) {
+        setCurrentPage(action.page);
+      }
+    });
+  }, [startSession, stopSession]);
 
   useEffect(() => {
     loadInitialData();
@@ -18,30 +40,51 @@ export function App() {
 
   // ─── Hotkeys ──────────────────────────────────────────
   useEffect(() => {
+    const currentHotkeys = { ...DEFAULT_HOTKEYS, ...hotkeys };
+
+    // Build reverse map: normalized key -> action id
+    const keyMap = new Map<string, string>();
+    for (const [actionId, combo] of Object.entries(currentHotkeys)) {
+      const parts = combo.split('+').map(p => p.toLowerCase());
+      const normParts: string[] = [];
+      if (parts.includes('ctrl')) normParts.push('ctrl');
+      if (parts.includes('shift')) normParts.push('shift');
+      if (parts.includes('alt')) normParts.push('alt');
+      if (parts.includes('win') || parts.includes('meta')) normParts.push('meta');
+      const keyPart = parts.find(p => p !== 'ctrl' && p !== 'shift' && p !== 'alt' && p !== 'win' && p !== 'meta');
+      if (keyPart) normParts.push(keyPart);
+      keyMap.set(normParts.join('+'), actionId);
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && !e.shiftKey) {
-        switch (e.key) {
-          case '1': setCurrentPage('Study'); e.preventDefault(); return;
-          case '2': setCurrentPage('Hobby'); e.preventDefault(); return;
-          case '3': setCurrentPage('Entertainment'); e.preventDefault(); return;
-          case '4': setCurrentPage('Record'); e.preventDefault(); return;
-          case '5': setCurrentPage('Reminder'); e.preventDefault(); return;
-          case '6': setCurrentPage('Settings'); e.preventDefault(); return;
-        }
-      }
-      if (e.ctrlKey && e.shiftKey) {
-        switch (e.key.toUpperCase()) {
-          case 'S': startSession('Study'); e.preventDefault(); return;
-          case 'H': startSession('Hobby'); e.preventDefault(); return;
-          case 'E': startSession('Entertainment'); e.preventDefault(); return;
-          case 'X': stopSession(); e.preventDefault(); return;
-        }
+      const normParts: string[] = [];
+      if (e.ctrlKey) normParts.push('ctrl');
+      if (e.shiftKey) normParts.push('shift');
+      if (e.altKey) normParts.push('alt');
+      if (e.metaKey) normParts.push('meta');
+      normParts.push(e.key.toLowerCase());
+      const lookupKey = normParts.join('+');
+      const action = keyMap.get(lookupKey);
+      if (!action) return;
+
+      e.preventDefault();
+      switch (action) {
+        case 'navStudy': setCurrentPage('Study'); return;
+        case 'navHobby': setCurrentPage('Hobby'); return;
+        case 'navEntertainment': setCurrentPage('Entertainment'); return;
+        case 'navRecord': setCurrentPage('Record'); return;
+        case 'navReminder': setCurrentPage('Reminder'); return;
+        case 'navSettings': setCurrentPage('Settings'); return;
+        case 'sessionStudy': startSession('Study'); return;
+        case 'sessionHobby': startSession('Hobby'); return;
+        case 'sessionEntertainment': startSession('Entertainment'); return;
+        case 'sessionStop': stopSession(); return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [startSession, stopSession]);
+  }, [hotkeys, startSession, stopSession]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -50,6 +93,7 @@ export function App() {
       case 'Entertainment': return <EntertainmentPage />;
       case 'Record': return <RecordPage />;
       case 'Reminder': return <ReminderPage />;
+      case 'Hotkey': return <HotkeySettingsPage />;
       case 'Settings': return <SettingsPage />;
       default: return <StudyPage />;
     }

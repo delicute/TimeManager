@@ -4,6 +4,12 @@ export interface BalanceState {
   earnedBalance: number;
   dailyGiftedRemaining: number;
   lastDate: string;
+  milestones?: {
+    studyContinuous: number;
+    hobbyContinuous: number;
+    studyClaimed: number;
+    hobbyClaimed: number;
+  };
 }
 
 export interface AppSettings {
@@ -20,7 +26,25 @@ export interface AppSettings {
   hobbyWeightStep: number;
   dataPath?: string;
   locale?: 'zh' | 'en';
+  hotkeys?: Record<string, string>;
+  notificationEnabled: boolean;
+  notificationDuration: number;
 }
+
+export const DEFAULT_HOTKEYS: Record<string, string> = {
+  navStudy: 'Ctrl+1',
+  navHobby: 'Ctrl+2',
+  navEntertainment: 'Ctrl+3',
+  navRecord: 'Ctrl+4',
+  navReminder: 'Ctrl+5',
+  navSettings: 'Ctrl+6',
+  sessionStudy: 'Ctrl+Shift+S',
+  sessionHobby: 'Ctrl+Shift+H',
+  sessionEntertainment: 'Ctrl+Shift+E',
+  sessionStop: 'Ctrl+Shift+X',
+  recordingConfirm: 'Enter',
+  recordingCancel: 'Escape',
+};
 
 export interface TimeLogEntry {
   startTime: string;
@@ -61,16 +85,39 @@ export interface ReminderCondition {
   value: number;
 }
 
+// ─── Condition Tree Types (for complex AND/OR nesting) ──────
+
+export interface LeafCondition {
+  type: 'leaf';
+  metric: ReminderMetric;
+  operator: ReminderOperator;
+  value: number;
+}
+
+export interface ConditionGroup {
+  type: 'group';
+  logic: 'and' | 'or';
+  nodes: ConditionNode[];
+}
+
+export type ConditionNode = LeafCondition | ConditionGroup;
+
 export interface ReminderRule {
   id: string;
   title: string;
   content: string;
-  condition: ReminderCondition;
-  condition2?: ReminderCondition;
-  logic?: 'and' | 'or';
+  conditionTree: ConditionNode;
   urgency: ReminderUrgency;
   enabled: boolean;
-  // Internal: current metric values set by engine when enqueuing
+  // Internal: current metric values set by engine when enqueuing (path → value)
+  _currentValues?: Record<string, number>;
+  _locale?: string;
+
+  // Deprecated — kept for migration from flat format
+  conditions?: ReminderCondition[];
+  logic?: 'and' | 'or';
+  condition?: ReminderCondition;
+  condition2?: ReminderCondition;
   _currentValue?: number;
   _currentValue2?: number;
 }
@@ -133,6 +180,7 @@ declare global {
       loadSettings: () => Promise<AppSettings | null>;
       saveSettings: (data: AppSettings) => Promise<void>;
       getTodayLogs: () => Promise<TimeLogEntry[]>;
+      getLogsForDate: (dateStr: string) => Promise<TimeLogEntry[]>;
       writeLogEntry: (entry: TimeLogEntry) => Promise<void>;
       showNotification: (title: string, body: string) => Promise<void>;
       minimizeToTray: () => Promise<void>;
@@ -148,8 +196,13 @@ declare global {
       reminderShowToast: (rule: ReminderRule) => Promise<void>;
       reminderToastDismiss: () => Promise<void>;
       reminderToastSnooze: (minutes: number) => Promise<void>;
+      reminderResize: (height: number) => Promise<void>;
       onReminderToastAction: (callback: (action: { action: string; minutes?: number }) => void) => void;
       setMinimizeToTray: (value: boolean) => Promise<void>;
+      notificationShow: (data: { type: string; title: string; body: string; color: string; duration: number }) => Promise<void>;
+      notificationDismiss: (id: string) => Promise<void>;
+      sessionUpdateState: (state: { isActive: boolean; type: string }) => Promise<void>;
+      onTrayAction: (callback: (action: { action: string; type?: string; page?: string }) => void) => void;
     };
   }
 }

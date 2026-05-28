@@ -30,8 +30,8 @@ export const en: Translations = {
   earnPerSecond: 'Earn 1 balance per {time}',
 
   // Timer
-  start: '▶ Start {name}',
-  stop: '■ Stop {name}',
+  start: 'Start {name}',
+  stop: 'Stop {name}',
   timerStudy: 'Study',
   timerHobby: 'Hobby',
   timerEntertainment: 'Entertainment',
@@ -40,7 +40,7 @@ export const en: Translations = {
   todayEntertainment: "Today's Entertainment",
 
   // Record
-  recordTitle: "Today's Records",
+  recordTitle: 'Records',
   recordTimeline: 'Timeline',
   recordEmpty: 'No records yet today',
   recordInProgress: 'In Progress',
@@ -115,8 +115,26 @@ export const en: Translations = {
   reminderCustom: 'Custom',
   reminderMetricDailyGiftedBalance: 'Gifted Balance',
   reminderMetricEarnedBalance: 'Earned Balance',
+  reminderNotifTypeLabel: 'Notification Type',
+  reminderNotifTypeReminder: 'Reminder',
+  reminderNotifTypeUrgent: 'Urgent',
+  reminderNotifTypeNotification: 'Notification',
+  reminderNotifTypeInfo: 'Info',
+  reminderGroup: 'Group',
   reminderAnd: 'AND',
   reminderOr: 'OR',
   reminderAddCondition: 'Add Condition',
+  reminderAddGroup: 'Add Group',
   reminderRemoveCondition: 'Remove Condition',
+  reminderBackToList: 'Back to list',
+  reminderCancel: 'Cancel',
+
+  // Hotkey settings
+  navHotkey: 'Hotkeys',
+
+  // Notification settings
+  notifTitle: 'Session Notifications',
+  notifEnabled: 'Show notifications',
+  notifDuration: 'Duration',
+  notifDurationUnit: 's',
 };
