@@ -215,7 +215,7 @@ export function ReminderPage() {
 
   return (
     <>
-      <h1 className="page-title"><span className="title-icon"><Bell size={24}/></span> {t('reminderPageTitle')}</h1>
+      <h1 className="page-title" style={{color:'#ffffff', fontWeight:700}}><span className="title-icon"><Bell size={24}/></span> {t('reminderPageTitle')}</h1>
 
       {editingId ? (
         <div className="card" style={{padding:16,marginTop:12}}>
@@ -259,7 +259,7 @@ export function ReminderPage() {
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <div style={{width:3,height:24,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
-                      <span style={{fontWeight:600,fontSize:14}}>{rule.title}</span>
+                      <span style={{fontWeight:700,fontSize:15,color:'#ffffff'}}>{rule.title}</span>
                       <span style={{fontSize:10,color:NOTIF_COLORS[rule.urgency]||'#888',background:(NOTIF_COLORS[rule.urgency]||'#888')+'22',padding:'1px 6px',borderRadius:4}}>
                         {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()+rule.urgency.slice(1)}` as any)||rule.urgency}
                       </span>
@@ -269,7 +269,6 @@ export function ReminderPage() {
                     </label>
                   </div>
                   {rule.content && <div style={{fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{rule.content}</div>}
-                  <div style={{fontSize:11,color:'var(--color-on-dark-soft)',lineHeight:1.5}}>{displayTree(rule.conditionTree,t)}</div>
                   <div style={{marginTop:8,display:'flex',gap:8}}>
                     <button className="btn btn-secondary" style={{padding:'4px 12px',height:28,fontSize:12}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
                     <button className="btn-text-link" onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>
