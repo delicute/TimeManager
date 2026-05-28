@@ -466,12 +466,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const cfg = settingsRef.current;
       if (!cfg.notificationEnabled) return;
-      const colors: Record<string, string> = { Study: '#5db872', Hobby: '#5db8a6', Entertainment: '#e8a55a' };
-      const color = colors[type] || '#6c6a64';
       const locale = cfg.locale || 'zh';
       if (action === 'start') {
         const title = locale === 'zh' ? `已进入${type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐'}状态` : `Entered ${type}`;
-        window.electronAPI.notificationShow({ type, title, body: '', color, duration: cfg.notificationDuration ?? 5 });
+        window.electronAPI.notificationShow({ type, notifType: 'session', title, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
       } else if (action === 'stop' && elapsed != null) {
         const hrs = Math.floor(elapsed / 3600);
         const mins = Math.floor((elapsed % 3600) / 60);
@@ -487,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : type;
         const title = locale === 'zh' ? `已退出${typeLabel}` : `Exited ${type}`;
         const body = locale === 'zh' ? `你这次${typeLabel}了${durationStr}` : `You spent ${durationStr}`;
-        window.electronAPI.notificationShow({ type, title, body, color, duration: cfg.notificationDuration ?? 5 });
+        window.electronAPI.notificationShow({ type, notifType: 'session', title, body, color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
       }
     } catch { /* ignore */ }
   }
