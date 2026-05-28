@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, GitBranch, FileText, Shuffle, ToggleLeft } from 'lucide-react';
+import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, FileText, Shuffle, ToggleLeft } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator, SessionType } from '../types';
@@ -72,11 +72,10 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
 }
 
 /** Tree node: shows leaf or group editor, with child-level actions */
-function BinNode({ node, onChange, onDelete, onConvert, onToggleType, onAddLeaf, onAddGroup }: {
+function BinNode({ node, onChange, onDelete, onConvert, onToggleType, onAddLeaf }: {
   node:ConditionNode; onChange:(n:ConditionNode)=>void;
   onDelete:()=>void; onConvert:()=>void;
-  onToggleType?:()=>void;
-  onAddLeaf?:()=>void; onAddGroup?:()=>void;
+  onToggleType?:()=>void; onAddLeaf?:()=>void;
 }) {
   const t = useT();
   const isVar = node.type==='leaf' || node.type==='bool';
@@ -93,7 +92,6 @@ function BinNode({ node, onChange, onDelete, onConvert, onToggleType, onAddLeaf,
           <button onClick={onConvert} style={{ ...tinyBtn }}><FileText size={10} />{t('reminderRemoveCondition')}</button>
         )}
         {onAddLeaf && <button onClick={onAddLeaf} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>}
-        {onAddGroup && <button onClick={onAddGroup} style={{ ...tinyBtn }}><GitBranch size={10} />{t('reminderGroup')}</button>}
         <button onClick={onDelete} style={{ ...tinyBtn, color:'var(--color-error)' }}><Trash2 size={10} />{t('reminderDelete')}</button>
       </div>
     </div>
@@ -114,10 +112,9 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
   const convert = (item:ConditionNode): ConditionNode =>
     (item.type==='leaf'||item.type==='bool') ? {type:'group', logic:'and', nodes:[item]} : item.nodes[0];
 
-  const addSibling = (item:ConditionNode, side:'L'|'R', isGroup:boolean) => {
-    const nn = isGroup ? grp() : leaf();
-    if (!R) onChange({...node, nodes: side==='L' ? [L, nn] : [nn, L]});
-    else { const sub: ConditionNode = {type:'group', logic:'and', nodes:[item, nn]};
+  const addSibling = (item:ConditionNode, side:'L'|'R') => {
+    if (!R) onChange({...node, nodes: side==='L' ? [L, leaf()] : [leaf(), L]});
+    else { const sub: ConditionNode = {type:'group', logic:'and', nodes:[item, leaf()]};
       onChange({...node, nodes: side==='L' ? [sub, R] : [L, sub]}); }
   };
 
@@ -127,8 +124,7 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
         onDelete={() => onChange({...node, nodes: R ? [R] : [leaf()]})}
         onConvert={() => onChange({...node, nodes:[convert(L), ...(R ? [R] : [])]})}
         onToggleType={() => onChange({...node, nodes:[L.type==='bool'?leaf():boolNode(), ...(R ? [R] : [])]})}
-        onAddLeaf={() => addSibling(L, 'L', false)}
-        onAddGroup={() => addSibling(L, 'L', true)} />
+        onAddLeaf={() => addSibling(L, 'L')} />
 
       {R && <>
         <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0' }}>
@@ -154,8 +150,7 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
           onDelete={() => onChange({...node, nodes:[L]})}
           onConvert={() => onChange({...node, nodes:[L, convert(R)]})}
           onToggleType={() => onChange({...node, nodes:[L, R.type==='bool'?leaf():boolNode()]})}
-          onAddLeaf={() => addSibling(R, 'R', false)}
-          onAddGroup={() => addSibling(R, 'R', true)} />
+          onAddLeaf={() => addSibling(R, 'R')} />
       )}
     </div>
   );
