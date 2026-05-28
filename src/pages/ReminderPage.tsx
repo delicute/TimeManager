@@ -183,11 +183,11 @@ export function ReminderPage() {
         <div className="card" style={{ padding: 16, marginTop: 12 }}>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderTitleLabel')}</label>
-            <input style={{ ...s, width: '100%' }} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={t('reminderTitleLabel')} />
+            <input style={{ ...inputS, width: '100%' }} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={t('reminderTitleLabel')} />
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderContentLabel')}</label>
-            <textarea style={{ ...s, width: '100%', height: 64, resize: 'vertical' }} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder={t('reminderContentLabel')} />
+            <textarea style={{ ...inputS, width: '100%', height: 64, resize: 'vertical' }} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder={t('reminderContentLabel')} />
           </div>
 
           <div style={{ marginBottom: 12 }}>
