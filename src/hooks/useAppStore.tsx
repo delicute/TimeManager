@@ -6,7 +6,7 @@ import type { Locale } from '../i18n';
 
 // ─── Constants ──────────────────────────────────────────────
 const DAILY_GIFT = 1800; // 30 minutes
-const REMINDER_INTERVAL = 10000; // 10 seconds
+const REMINDER_INTERVAL = 1000; // 1 second (continuous polling)
 const CONTINUITY_GAP = 300; // 5 minutes max gap to maintain continuity
 
 const STUDY_MILESTONES = [
