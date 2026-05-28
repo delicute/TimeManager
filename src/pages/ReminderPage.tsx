@@ -72,30 +72,29 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
 }
 
 /** Tree node: shows leaf or group editor, with child-level actions */
-function BinNode({ node, onChange, onDelete, onConvert, onToggleType, isOnly, label }: {
+function BinNode({ node, onChange, onDelete, onConvert, onToggleType, onAddLeaf, onAddGroup }: {
   node:ConditionNode; onChange:(n:ConditionNode)=>void;
-  onDelete:()=>void; onConvert:()=>void; onToggleType?:()=>void;
-  isOnly:boolean; label?:string;
+  onDelete:()=>void; onConvert:()=>void;
+  onToggleType?:()=>void;
+  onAddLeaf?:()=>void; onAddGroup?:()=>void;
 }) {
   const t = useT();
   const isVar = node.type==='leaf' || node.type==='bool';
   return (
     <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', background:'rgba(255,255,255,0.02)' }}>
-      {label && <div style={{ fontSize:10, color:'var(--color-on-dark-soft)', marginBottom:6, fontWeight:600 }}>{label}</div>}
       {isVar ? <LeafView node={node} onChange={onChange} /> : <BinTree node={node} onChange={onChange} />}
-      <div style={{ display:'flex', gap:4, marginTop:6 }}>
+      <div style={{ display:'flex', gap:4, marginTop:6, flexWrap:'wrap' }}>
         {isVar && onToggleType && (
           <button onClick={onToggleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
             <Shuffle size={10} />{node.type==='bool' ? '变量' : 'Boolean'}
           </button>
         )}
-        {!isVar && (
+        {!isVar && onConvert && (
           <button onClick={onConvert} style={{ ...tinyBtn }}><FileText size={10} />{t('reminderRemoveCondition')}</button>
         )}
-        <button onClick={onDelete} disabled={isOnly}
-          style={{ ...tinyBtn, color:'var(--color-error)', opacity:isOnly?0.3:1, cursor:isOnly?'not-allowed':'pointer' }}>
-          <Trash2 size={10} />{t('reminderDelete')}
-        </button>
+        {onAddLeaf && <button onClick={onAddLeaf} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>}
+        {onAddGroup && <button onClick={onAddGroup} style={{ ...tinyBtn }}><GitBranch size={10} />{t('reminderGroup')}</button>}
+        <button onClick={onDelete} style={{ ...tinyBtn, color:'var(--color-error)' }}><Trash2 size={10} />{t('reminderDelete')}</button>
       </div>
     </div>
   );
@@ -112,19 +111,24 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
   const setL = (n:ConditionNode) => onChange({...node, nodes:[n, ...(R ? [R] : [])]});
   const setR = R ? (n:ConditionNode) => onChange({...node, nodes:[L, n]}) : undefined;
 
-  /** Wrap leaf/bool in group / extract first child — preserves content */
   const convert = (item:ConditionNode): ConditionNode =>
     (item.type==='leaf'||item.type==='bool') ? {type:'group', logic:'and', nodes:[item]} : item.nodes[0];
 
-  const addChild = (isGroup:boolean) => onChange({...node, nodes:[L, isGroup ? grp() : leaf()]});
+  const addSibling = (item:ConditionNode, side:'L'|'R', isGroup:boolean) => {
+    const nn = isGroup ? grp() : leaf();
+    if (!R) onChange({...node, nodes: side==='L' ? [L, nn] : [nn, L]});
+    else { const sub: ConditionNode = {type:'group', logic:'and', nodes:[item, nn]};
+      onChange({...node, nodes: side==='L' ? [sub, R] : [L, sub]}); }
+  };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
       <BinNode node={L} onChange={setL}
-        onDelete={() => onChange({...node, nodes:[convert(R||leaf())]})}
+        onDelete={() => onChange({...node, nodes: R ? [R] : [leaf()]})}
         onConvert={() => onChange({...node, nodes:[convert(L), ...(R ? [R] : [])]})}
         onToggleType={() => onChange({...node, nodes:[L.type==='bool'?leaf():boolNode(), ...(R ? [R] : [])]})}
-        isOnly={!R} />
+        onAddLeaf={() => addSibling(L, 'L', false)}
+        onAddGroup={() => addSibling(L, 'L', true)} />
 
       {R && <>
         <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0' }}>
@@ -150,14 +154,8 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
           onDelete={() => onChange({...node, nodes:[L]})}
           onConvert={() => onChange({...node, nodes:[L, convert(R)]})}
           onToggleType={() => onChange({...node, nodes:[L, R.type==='bool'?leaf():boolNode()]})}
-          isOnly={false} />
-      )}
-
-      {!R && (
-        <div style={{ display:'flex', gap:4, justifyContent:'center' }}>
-          <button onClick={()=>addChild(false)} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>
-          <button onClick={()=>addChild(true)} style={{ ...tinyBtn }}><GitBranch size={10} />{t('reminderGroup')}</button>
-        </div>
+          onAddLeaf={() => addSibling(R, 'R', false)}
+          onAddGroup={() => addSibling(R, 'R', true)} />
       )}
     </div>
   );
