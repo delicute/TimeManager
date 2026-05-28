@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, GitBranch, FileText } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator } from '../types';
@@ -7,7 +8,7 @@ function genId() { return Date.now().toString(36) + Math.random().toString(36).s
 
 const NOTIF_TYPES = ['reminder', 'urgent', 'notification', 'info'] as const;
 const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c64545', notification: '#5db872', info: '#a09d96' };
-const NOTIF_ICONS: Record<string, string> = { reminder: '▸', urgent: '▲', notification: '●', info: '·', low: '·', medium: '●', high: '▲', critical: '▲' };
+const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: Info, info: Circle };
 
 const metricKeys: ReminderMetric[] = [
   'entertainmentBalance', 'dailyGiftedBalance', 'earnedBalance',
@@ -19,88 +20,103 @@ const operatorKeys: ReminderOperator[] = ['lt', 'gt', 'gte', 'lte', 'eq'];
 function makeLeaf(): ConditionNode {
   return { type: 'leaf', metric: 'totalAvailableBalance', operator: 'lt', value: 600 };
 }
-
+function makeGroup(): ConditionNode {
+  return { type: 'group', logic: 'and', nodes: [makeLeaf(), makeLeaf()] };
+}
 function emptyRule(): ReminderRule {
-  return {
-    id: '', title: '', content: '',
-    conditionTree: { type: 'group', logic: 'and', nodes: [makeLeaf(), makeLeaf()] },
-    urgency: 'reminder',
-    enabled: true,
-  };
+  return { id: '', title: '', content: '', conditionTree: makeGroup(), urgency: 'reminder', enabled: true };
 }
 
-const s: React.CSSProperties = {
-  padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)',
-  background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 13, height: 32,
+const inputS: React.CSSProperties = {
+  padding: '3px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 12, height: 28,
   boxSizing: 'border-box',
 };
 
-function LeafEditor({ node, onChange }: { node: ConditionNode; onChange: (n: ConditionNode) => void }) {
+function LeafNode({ node, onChange }: { node: ConditionNode; onChange: (n: ConditionNode) => void }) {
   const t = useT();
   if (node.type !== 'leaf') return null;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      <select value={node.metric} onChange={e => onChange({ ...node, metric: e.target.value as ReminderMetric })} style={{ ...s, width: 140 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+      <FileText size={12} style={{ color: 'var(--color-on-dark-soft)', flexShrink: 0 }} />
+      <select value={node.metric} onChange={e => onChange({ ...node, metric: e.target.value as ReminderMetric })} style={{ ...inputS, width: 130 }}>
         {metricKeys.map(m => (
           <option key={m} value={m}>{t(`reminderMetric${m.charAt(0).toUpperCase()}${m.slice(1)}` as any)}</option>
         ))}
       </select>
-      <select value={node.operator} onChange={e => onChange({ ...node, operator: e.target.value as ReminderOperator })} style={{ ...s, width: 70 }}>
+      <select value={node.operator} onChange={e => onChange({ ...node, operator: e.target.value as ReminderOperator })} style={{ ...inputS, width: 60 }}>
         {operatorKeys.map(op => (
           <option key={op} value={op}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>
         ))}
       </select>
-      <input type="number" value={node.value} onChange={e => onChange({ ...node, value: Number(e.target.value) })} style={{ ...s, width: 80 }} />
-      <span style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>{t('reminderSeconds')}</span>
+      <input type="number" value={node.value} onChange={e => onChange({ ...node, value: Number(e.target.value) })} style={{ ...inputS, width: 70 }} />
+      <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>{t('reminderSeconds')}</span>
     </div>
   );
 }
 
-function NodeSlot({ node, onChange, depth }: { node: ConditionNode; onChange: (n: ConditionNode) => void; depth: number }) {
+function TreeNode({ node, onChange, depth = 0 }: { node: ConditionNode; onChange: (n: ConditionNode) => void; depth?: number }) {
   const t = useT();
-  const isGroup = node.type === 'group';
-
-  return (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      {isGroup ? (
-        <BinaryTreeEditor node={node} onChange={onChange} depth={depth} />
-      ) : (
-        <LeafEditor node={node} onChange={onChange} />
-      )}
-      <button onClick={() => onChange(isGroup ? makeLeaf() : { type: 'group', logic: 'and', nodes: [makeLeaf(), makeLeaf()] })}
-        style={{ ...s, height: 24, fontSize: 10, cursor: 'pointer', marginTop: 4, width: '100%', textAlign: 'center', color: 'var(--color-on-dark-soft)' }}>
-        {t(isGroup ? 'reminderRemoveCondition' : 'reminderGroup')}
-      </button>
-    </div>
-  );
-}
-
-function BinaryTreeEditor({ node, onChange, depth = 0 }: { node: ConditionNode; onChange: (n: ConditionNode) => void; depth?: number }) {
-  const t = useT();
-  if (node.type !== 'group') return null;
+  if (node.type === 'leaf') {
+    return <LeafNode node={node} onChange={onChange} />;
+  }
   const left = node.nodes[0] || makeLeaf();
   const right = node.nodes[1] || makeLeaf();
-
-  const updateLeft = (n: ConditionNode) => onChange({ ...node, nodes: [n, right] });
-  const updateRight = (n: ConditionNode) => onChange({ ...node, nodes: [left, n] });
+  const setLeft = (n: ConditionNode) => onChange({ ...node, nodes: [n, right] });
+  const setRight = (n: ConditionNode) => onChange({ ...node, nodes: [left, n] });
 
   return (
-    <div style={{ border: depth > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none', borderRadius: 8, padding: depth > 0 ? 8 : 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <NodeSlot node={left} onChange={updateLeft} depth={depth + 1} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
-          <button onClick={() => onChange({ ...node, logic: 'and' })}
-            style={{ padding: '1px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
-              border: node.logic === 'and' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
-              background: node.logic === 'and' ? 'rgba(93,184,166,0.15)' : 'transparent',
-              color: node.logic === 'and' ? 'var(--color-accent-teal)' : '#faf9f5' }}>{t('reminderAnd')}</button>
-          <button onClick={() => onChange({ ...node, logic: 'or' })}
-            style={{ padding: '1px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
-              border: node.logic === 'or' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
-              background: node.logic === 'or' ? 'rgba(93,184,166,0.15)' : 'transparent',
-              color: node.logic === 'or' ? 'var(--color-accent-teal)' : '#faf9f5' }}>{t('reminderOr')}</button>
+    <div style={{ position: 'relative' }}>
+      {/* Logic toggle row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+        <GitBranch size={12} style={{ color: 'var(--color-accent-teal)' }} />
+        <button onClick={() => onChange({ ...node, logic: 'and' })}
+          style={{ padding: '1px 10px', borderRadius: 3, fontSize: 10, cursor: 'pointer', height: 22,
+            border: node.logic === 'and' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
+            background: node.logic === 'and' ? 'rgba(93,184,166,0.15)' : 'transparent',
+            color: node.logic === 'and' ? 'var(--color-accent-teal)' : '#faf9f5' }}>AND</button>
+        <button onClick={() => onChange({ ...node, logic: 'or' })}
+          style={{ padding: '1px 10px', borderRadius: 3, fontSize: 10, cursor: 'pointer', height: 22,
+            border: node.logic === 'or' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
+            background: node.logic === 'or' ? 'rgba(93,184,166,0.15)' : 'transparent',
+            color: node.logic === 'or' ? 'var(--color-accent-teal)' : '#faf9f5' }}>OR</button>
+      </div>
+
+      {/* Children with tree lines */}
+      <div style={{ position: 'relative', paddingLeft: 16 }}>
+        {/* Vertical line for the whole subtree */}
+        <div style={{ position: 'absolute', left: 6, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.1)' }} />
+
+        {/* Left child */}
+        <div style={{ position: 'relative', marginBottom: 4 }}>
+          {/* Horizontal connector */}
+          <div style={{ position: 'absolute', left: -10, top: 14, width: 10, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <TreeNode node={left} onChange={setLeft} depth={depth + 1} />
+            </div>
+            <button onClick={() => { const l = left.type === 'group' ? makeLeaf() : makeGroup(); setLeft(l); }}
+              style={{ background: 'none', border: 'none', color: 'var(--color-on-dark-soft)', cursor: 'pointer', padding: '2px', fontSize: 10, flexShrink: 0 }}
+              title={left.type === 'group' ? t('reminderRemoveCondition') : t('reminderGroup')}>
+              {left.type === 'group' ? <Trash2 size={12} /> : <Plus size={12} />}
+            </button>
+          </div>
         </div>
-        <NodeSlot node={right} onChange={updateRight} depth={depth + 1} />
+
+        {/* Right child */}
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', left: -10, top: 14, width: 10, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <TreeNode node={right} onChange={setRight} depth={depth + 1} />
+            </div>
+            <button onClick={() => { const r = right.type === 'group' ? makeLeaf() : makeGroup(); setRight(r); }}
+              style={{ background: 'none', border: 'none', color: 'var(--color-on-dark-soft)', cursor: 'pointer', padding: '2px', fontSize: 10, flexShrink: 0 }}
+              title={right.type === 'group' ? t('reminderRemoveCondition') : t('reminderGroup')}>
+              {right.type === 'group' ? <Trash2 size={12} /> : <Plus size={12} />}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -157,7 +173,7 @@ export function ReminderPage() {
 
   return (
     <>
-      <h1 className="page-title"><span className="title-icon">⏰</span> {t('reminderPageTitle')}</h1>
+      <h1 className="page-title"><span className="title-icon"><Bell size={24} /></span> {t('reminderPageTitle')}</h1>
 
       {editingId !== '__new__' && (
         <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
@@ -176,7 +192,7 @@ export function ReminderPage() {
 
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderConditionLabel')}</label>
-            <BinaryTreeEditor node={form.conditionTree} onChange={n => setForm({ ...form, conditionTree: n })} />
+            <TreeNode node={form.conditionTree} onChange={n => setForm({ ...form, conditionTree: n })} />
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -190,7 +206,7 @@ export function ReminderPage() {
                     background: form.urgency === nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
                     color: form.urgency === nt ? NOTIF_COLORS[nt] : '#faf9f5',
                   }}>
-                  <span style={{ fontSize: 16, marginRight: 4 }}>{NOTIF_ICONS[nt]}</span>
+                  {React.createElement(NOTIF_LU[nt] || Bell, { size: 14, style: { marginRight: 4 } })}
                   {t(`reminderNotifType${nt.charAt(0).toUpperCase()}${nt.slice(1)}` as any)}
                 </button>
               ))}
@@ -213,8 +229,8 @@ export function ReminderPage() {
           {reminderRules.map(rule => (
             <div key={rule.id} className="card" style={{ padding: '12px 16px', marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: rule.content ? 4 : 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: NOTIF_COLORS[rule.urgency] || '#e8a55a', fontSize: 14 }}>{NOTIF_ICONS[rule.urgency] || '▸'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 3, height: 24, borderRadius: 2, background: NOTIF_COLORS[rule.urgency] || '#e8a55a', flexShrink: 0 }} />
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{rule.title}</span>
                   <span style={{ fontSize: 10, color: NOTIF_COLORS[rule.urgency] || '#888', background: (NOTIF_COLORS[rule.urgency] || '#888') + '22', padding: '1px 6px', borderRadius: 4 }}>
                     {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()}${rule.urgency.slice(1)}` as any) || rule.urgency}

@@ -598,26 +598,25 @@ function generateContainerHtml(): string {
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
 #stack{position:fixed;right:${NOTIF_RIGHT}px;bottom:${NOTIF_BOTTOM}px;display:flex;flex-direction:column-reverse;gap:${NOTIF_GAP}px;pointer-events:none}
-.notif{width:${NOTIF_CARD_WIDTH}px;background:#252320;border-radius:6px;padding:8px 12px;color:#faf9f5;font-size:13px;opacity:0;transform:translate(40px,0);transition:opacity 220ms ease-out,transform ${NOTIF_SLIDE_MS}ms ease-out;pointer-events:none}
+.notif{width:${NOTIF_CARD_WIDTH}px;background:#252320;border-radius:6px;padding:0 0 0 0;color:#faf9f5;font-size:13px;opacity:0;transform:translate(40px,0);transition:opacity 220ms ease-out,transform ${NOTIF_SLIDE_MS}ms ease-out;pointer-events:none;overflow:hidden}
 .notif.show{opacity:1;transform:translate(0,0)}
 .notif.leaving{opacity:0;transition:opacity ${NOTIF_FADE_MS}ms ease-in}
-.nwrap{display:flex;align-items:flex-start;gap:6px}
-.nc{font-size:13px;line-height:1.3;flex-shrink:0}
-.nh{font-size:13px;font-weight:600;color:#faf9f5;line-height:1.3}
-.nb{font-size:13px;color:#b0ada6;line-height:1.3}
+.ninner{display:flex;align-items:flex-start;gap:8px;padding:8px 12px}
+.nbar{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch}
+.nh{font-size:13px;font-weight:600;color:#faf9f5;line-height:1.4}
+.nb{font-size:12px;color:#b0ada6;line-height:1.4;margin-top:1px}
 </style>
 </head>
 <body>
 <div id="stack"></div>
 <script>
 var st=document.getElementById('stack');
-var ndb={};var nficon={'session':'●','reminder':'▸','urgent':'▲','warning':'▲','notification':'●','info':'·','milestone':'◆','low':'·','medium':'●','high':'▲','critical':'▲'};
+var ndb={};
 function addNotif(d){
-  var ic=nficon[d.notifType]||'●';
   var e=document.createElement('div');
   e.className='notif';
   e.id='n'+d.id;
-  e.innerHTML='<div class="nwrap"><span class="nc" style="color:'+d.color+'">'+ic+'</span><div><div class="nh">'+_e(d.title)+'</div>'+(d.body?'<div class="nb">'+_e(d.body)+'</div>':'')+'</div></div>';
+  e.innerHTML='<div class="ninner"><div class="nbar" style="background:'+d.color+'"></div><div><div class="nh">'+_e(d.title)+'</div>'+(d.body?'<div class="nb">'+_e(d.body)+'</div>':'')+'</div></div>';
   st.appendChild(e);
   ndb[d.id]=e;
   // Double rAF: first frame paints initial state (translate(40px,0) + opacity 0),
