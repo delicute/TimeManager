@@ -172,7 +172,7 @@ interface AppStore {
 
 const AppContext = createContext<AppStore | null>(null);
 
-function evalNode(node: ConditionNode, metrics: Record<string, number>): boolean {
+function evalNode(node: ConditionNode, metrics: Record<string, number>, session?: { isActive: boolean; currentType: string }): boolean {
   if (node.type === 'leaf') {
     const val = metrics[node.metric] ?? 0;
     switch (node.operator) {
@@ -181,9 +181,16 @@ function evalNode(node: ConditionNode, metrics: Record<string, number>): boolean
       case 'gte': return val >= node.value;
       case 'lte': return val <= node.value;
       case 'eq': return val === node.value;
+      default: return false;
     }
+  } else if (node.type === 'bool') {
+    if (!session) return false;
+    if (node.boolType === 'currentState') {
+      return node.expected === (session.isActive && session.currentType === node.boolValue);
+    }
+    return false;
   } else {
-    const results = node.nodes.map(n => evalNode(n, metrics));
+    const results = node.nodes.map(n => evalNode(n, metrics, session));
     return node.logic === 'and' ? results.every(Boolean) : results.some(Boolean);
   }
 }
@@ -195,16 +202,22 @@ function renderLeafSummary(node: ConditionNode, metrics: Record<string, number>,
     entertainmentBalance: '娱乐余额', dailyGiftedBalance: '赠送余额', earnedBalance: '赚取余额',
     studyDuration: '今日学习', hobbyDuration: '今日爱好', entertainmentDuration: '今日娱乐',
     continuousEntertainment: '连续娱乐', totalAvailableBalance: '可用总额', debtAmount: '债务金额',
+    Study: '学习', Hobby: '爱好', Entertainment: '娱乐',
   } : {
     entertainmentBalance: 'Entertainment', dailyGiftedBalance: 'Gifted', earnedBalance: 'Earned',
     studyDuration: 'Study', hobbyDuration: 'Hobby', entertainmentDuration: 'Entertainment',
     continuousEntertainment: 'Continuous', totalAvailableBalance: 'Available', debtAmount: 'Debt',
+    Study: 'Study', Hobby: 'Hobby', Entertainment: 'Entertainment',
   };
   function walk(n: ConditionNode) {
     if (n.type === 'leaf') {
       const val = Math.round(metrics[n.metric] ?? 0);
       const opMap: Record<string, string> = { lt: '<', gt: '>', gte: '>=', lte: '<=', eq: '=' };
       parts.push(`${labels[n.metric] || n.metric} ${opMap[n.operator] || n.operator} ${n.value} (${val})`);
+    } else if (n.type === 'bool') {
+      const stateLabel = labels[n.boolValue] || n.boolValue;
+      const expLabel = n.expected ? (locale === 'zh' ? 'True' : 'True') : (locale === 'zh' ? 'False' : 'False');
+      parts.push(`${locale === 'zh' ? '当前状态' : 'State'} = ${stateLabel} (${expLabel})`);
     } else {
       n.nodes.forEach(walk);
     }
@@ -417,7 +430,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Evaluate condition tree
           const tree = rule.conditionTree;
           if (!tree) continue;
-          const met = evalNode(tree, metrics);
+          const met = evalNode(tree, metrics, { isActive: s.isActive, currentType: s.currentType });
 
           if (!met) {
             // Condition cleared — allow re-trigger

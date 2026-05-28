@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, GitBranch, FileText, Shuffle } from 'lucide-react';
+import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, GitBranch, FileText, Shuffle, ToggleLeft } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
-import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator } from '../types';
+import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator, SessionType } from '../types';
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
@@ -20,9 +20,14 @@ const operatorKeys: ReminderOperator[] = ['lt','gt','gte','lte','eq'];
 function leaf(v?: number): ConditionNode {
   return { type: 'leaf', metric: 'totalAvailableBalance', operator: 'lt', value: v ?? 600 };
 }
+function boolNode(): ConditionNode {
+  return { type: 'bool', boolType: 'currentState', boolValue: 'Study' as SessionType, expected: true };
+}
 function grp(logic: 'and'|'or' = 'and'): ConditionNode {
   return { type: 'group', logic, nodes: [leaf()] };
 }
+
+const sessionTypes: SessionType[] = ['Study','Hobby','Entertainment'];
 
 const ipt: React.CSSProperties = {
   padding:'3px 6px', borderRadius:4, border:'1px solid rgba(255,255,255,0.12)',
@@ -33,7 +38,24 @@ const tinyBtn: React.CSSProperties = {
 };
 
 function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:ConditionNode)=>void }) {
-  const t = useT(); if (node.type!=='leaf') return null;
+  const t = useT();
+  if (node.type==='bool') {
+    return (
+      <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' }}>
+        <ToggleLeft size={13} style={{ color:'var(--color-accent-teal)', flexShrink:0 }} />
+        <select value={node.boolValue} onChange={e=>onChange({...node, boolValue:e.target.value as SessionType})} style={{ ...ipt, width:110 }}>
+          {sessionTypes.map(st => <option key={st} value={st} style={{background:'#252320',color:'#faf9f5'}}>
+            {st==='Study'?t('navStudy'):st==='Hobby'?t('navHobby'):t('navEntertainment')}
+          </option>)}
+        </select>
+        <span style={{ fontSize:12, color:'var(--color-on-dark-soft)' }}>=</span>
+        <select value={node.expected?'true':'false'} onChange={e=>onChange({...node, expected:e.target.value==='true'})} style={{ ...ipt, width:80 }}>
+          <option value="true" style={{background:'#252320',color:'#faf9f5'}}>True</option>
+          <option value="false" style={{background:'#252320',color:'#faf9f5'}}>False</option>
+        </select>
+      </div>
+    );
+  }
   return (
     <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' }}>
       <FileText size={13} style={{ color:'var(--color-accent-teal)', flexShrink:0 }} />
@@ -50,25 +72,24 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
 }
 
 /** Tree node: shows leaf or group editor, with child-level actions */
-function BinNode({ node, onChange, onDelete, onConvert, isOnly, label }: {
+function BinNode({ node, onChange, onDelete, onConvert, onToggleType, isOnly, label }: {
   node:ConditionNode; onChange:(n:ConditionNode)=>void;
-  onDelete:()=>void; onConvert:()=>void;
+  onDelete:()=>void; onConvert:()=>void; onToggleType?:()=>void;
   isOnly:boolean; label?:string;
 }) {
   const t = useT();
+  const isVar = node.type==='leaf' || node.type==='bool';
   return (
     <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', background:'rgba(255,255,255,0.02)' }}>
       {label && <div style={{ fontSize:10, color:'var(--color-on-dark-soft)', marginBottom:6, fontWeight:600 }}>{label}</div>}
-      {node.type==='leaf' ? (
-        <LeafView node={node} onChange={onChange} />
-      ) : (
-        <BinTree node={node} onChange={onChange} />
-      )}
-      {/* Actions */}
+      {isVar ? <LeafView node={node} onChange={onChange} /> : <BinTree node={node} onChange={onChange} />}
       <div style={{ display:'flex', gap:4, marginTop:6 }}>
-        {node.type==='leaf' ? (
-          <button onClick={onConvert} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}><Shuffle size={10} />Group</button>
-        ) : (
+        {isVar && onToggleType && (
+          <button onClick={onToggleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
+            <Shuffle size={10} />{node.type==='bool' ? '变量' : 'Boolean'}
+          </button>
+        )}
+        {!isVar && (
           <button onClick={onConvert} style={{ ...tinyBtn }}><FileText size={10} />{t('reminderRemoveCondition')}</button>
         )}
         <button onClick={onDelete} disabled={isOnly}
@@ -91,9 +112,9 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
   const setL = (n:ConditionNode) => onChange({...node, nodes:[n, ...(R ? [R] : [])]});
   const setR = R ? (n:ConditionNode) => onChange({...node, nodes:[L, n]}) : undefined;
 
-  /** Wrap leaf in group / extract leaf from group — preserves content */
+  /** Wrap leaf/bool in group / extract first child — preserves content */
   const convert = (item:ConditionNode): ConditionNode =>
-    item.type==='leaf' ? {type:'group', logic:'and', nodes:[item]} : item.nodes[0];
+    (item.type==='leaf'||item.type==='bool') ? {type:'group', logic:'and', nodes:[item]} : item.nodes[0];
 
   const addChild = (isGroup:boolean) => onChange({...node, nodes:[L, isGroup ? grp() : leaf()]});
 
@@ -102,6 +123,7 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
       <BinNode node={L} onChange={setL}
         onDelete={() => onChange({...node, nodes:[convert(R||leaf())]})}
         onConvert={() => onChange({...node, nodes:[convert(L), ...(R ? [R] : [])]})}
+        onToggleType={() => onChange({...node, nodes:[L.type==='bool'?leaf():boolNode(), ...(R ? [R] : [])]})}
         isOnly={!R} />
 
       {R && <>
@@ -127,6 +149,7 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
         <BinNode node={R} onChange={setR}
           onDelete={() => onChange({...node, nodes:[L]})}
           onConvert={() => onChange({...node, nodes:[L, convert(R)]})}
+          onToggleType={() => onChange({...node, nodes:[L, R.type==='bool'?leaf():boolNode()]})}
           isOnly={false} />
       )}
 
@@ -145,6 +168,10 @@ function displayTree(node:ConditionNode, t:ReturnType<typeof useT>, wrap=false):
     const mk = `reminderMetric${node.metric.charAt(0).toUpperCase()}${node.metric.slice(1)}` as any;
     const ok = `reminderOper${node.operator.charAt(0).toUpperCase()}${node.operator.slice(1)}` as any;
     return `${t(mk)} ${t(ok)} ${node.value}${t('reminderSeconds')}`;
+  }
+  if (node.type==='bool') {
+    const label = node.boolValue==='Study'?t('navStudy'):node.boolValue==='Hobby'?t('navHobby'):t('navEntertainment');
+    return `${t('navReminder')} = ${label} (${node.expected?'True':'False'})`;
   }
   const inner = node.nodes.map(n => displayTree(n, t, true)).join(` ${t(node.logic==='and'?'reminderAnd':'reminderOr')} `);
   return wrap ? `(${inner})` : inner;

@@ -94,13 +94,20 @@ export interface LeafCondition {
   value: number;
 }
 
+export interface BoolCondition {
+  type: 'bool';
+  boolType: 'currentState';
+  boolValue: SessionType;
+  expected: boolean;
+}
+
 export interface ConditionGroup {
   type: 'group';
   logic: 'and' | 'or';
   nodes: ConditionNode[];
 }
 
-export type ConditionNode = LeafCondition | ConditionGroup;
+export type ConditionNode = LeafCondition | BoolCondition | ConditionGroup;
 
 export interface ReminderRule {
   id: string;
