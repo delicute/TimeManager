@@ -78,7 +78,7 @@ export const en: Translations = {
 
   // Reminder system
   navReminder: 'Reminders',
-  reminderPageTitle: 'Reminder Rules',
+  reminderPageTitle: 'Reminders',
   reminderAdd: 'Add Rule',
   reminderNoRules: 'No reminder rules yet',
   reminderTitleLabel: 'Title',
@@ -121,6 +121,12 @@ export const en: Translations = {
   reminderNotifTypeNotification: 'Notification',
   reminderNotifTypeInfo: 'Info',
   reminderGroup: 'Group',
+  reminderBoolVar: 'Variable',
+  reminderBool: 'Boolean',
+  reminderUnitS: 's',
+  reminderUnitM: 'm',
+  reminderUnitH: 'h',
+  reminderConfirm: 'OK',
   reminderAnd: 'AND',
   reminderOr: 'OR',
   reminderAddCondition: 'Add Condition',

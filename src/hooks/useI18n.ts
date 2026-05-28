@@ -49,5 +49,6 @@ export const navKeyMap: Record<string, keyof import('../i18n/types').Translation
   Entertainment: 'navEntertainment',
   Record: 'navRecord',
   Reminder: 'navReminder',
+  Hotkey: 'navHotkey',
   Settings: 'navSettings',
 };

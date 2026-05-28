@@ -78,7 +78,7 @@ export const zh: Translations = {
 
   // Reminder system
   navReminder: '提醒',
-  reminderPageTitle: '提醒规则',
+  reminderPageTitle: '提醒',
   reminderAdd: '添加规则',
   reminderNoRules: '还没有提醒规则',
   reminderTitleLabel: '标题',
@@ -121,6 +121,12 @@ export const zh: Translations = {
   reminderNotifTypeNotification: '通知',
   reminderNotifTypeInfo: '信息',
   reminderGroup: '组',
+  reminderBoolVar: '变量',
+  reminderBool: 'Boolean',
+  reminderUnitS: '秒',
+  reminderUnitM: '分',
+  reminderUnitH: '时',
+  reminderConfirm: '确定',
   reminderAnd: '且',
   reminderOr: '或',
   reminderAddCondition: '添加条件',

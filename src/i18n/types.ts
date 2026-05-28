@@ -102,6 +102,12 @@ export interface Translations {
   reminderNotifTypeNotification: string;
   reminderNotifTypeInfo: string;
   reminderGroup: string;
+  reminderBoolVar: string;
+  reminderBool: string;
+  reminderUnitS: string;
+  reminderUnitM: string;
+  reminderUnitH: string;
+  reminderConfirm: string;
   reminderAnd: string;
   reminderOr: string;
   reminderAddCondition: string;

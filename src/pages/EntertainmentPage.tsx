@@ -1,3 +1,4 @@
+import { Gamepad2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { TimerCard } from '../components/TimerCard';
 import { useT } from '../hooks/useI18n';
@@ -9,11 +10,11 @@ export function EntertainmentPage() {
   return (
     <>
       <h1 className="page-title">
-        <span className="title-icon">🎮</span> {t('navEntertainment')}
+        <span className="title-icon"><Gamepad2 size={24} /></span> {t('navEntertainment')}
       </h1>
       <TimerCard
         type="Entertainment"
-        icon="🎮"
+        icon={<Gamepad2 size={18} />}
         intervalSeconds={1}
         accentColor="var(--color-entertainment)"
         showConsumption

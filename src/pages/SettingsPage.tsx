@@ -1,7 +1,26 @@
 import { useState } from 'react';
+import { Settings, RotateCcw } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, useLocale } from '../hooks/useI18n';
 import { formatWeight } from '../utils/formatting';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import type { AppSettings } from '../types';
+
+const DEFAULTS: AppSettings = {
+  autoStart: false,
+  silentStart: false,
+  minimizeToTray: true,
+  studyWeight: 2,
+  studyWeightMin: 0.5,
+  studyWeightMax: 60,
+  studyWeightStep: 0.5,
+  hobbyWeight: 4,
+  hobbyWeightMin: 0.5,
+  hobbyWeightMax: 120,
+  hobbyWeightStep: 0.5,
+  notificationEnabled: true,
+  notificationDuration: 5,
+};
 
 export function SettingsPage() {
   const { state, dispatch } = useAppStore();
@@ -16,6 +35,7 @@ export function SettingsPage() {
   const [hobbyMax, setHobbyMax] = useState(String(s.hobbyWeightMax));
   const [hobbyStep, setHobbyStep] = useState(String(s.hobbyWeightStep));
   const [basePath, setBasePath] = useState('');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Load base path on mount
   useState(() => {
@@ -28,10 +48,23 @@ export function SettingsPage() {
     window.electronAPI.saveSettings(updated);
   };
 
+  const handleResetConfirm = () => {
+    const reset = { ...DEFAULTS, dataPath: s.dataPath };
+    dispatch({ type: 'SET_SETTINGS', payload: reset });
+    window.electronAPI.saveSettings(reset);
+    setStudyMin(String(DEFAULTS.studyWeightMin));
+    setStudyMax(String(DEFAULTS.studyWeightMax));
+    setStudyStep(String(DEFAULTS.studyWeightStep));
+    setHobbyMin(String(DEFAULTS.hobbyWeightMin));
+    setHobbyMax(String(DEFAULTS.hobbyWeightMax));
+    setHobbyStep(String(DEFAULTS.hobbyWeightStep));
+    setShowResetConfirm(false);
+  };
+
   return (
     <>
       <h1 className="page-title">
-        <span className="title-icon">⚙</span> {t('settingsTitle')}
+        <span className="title-icon"><Settings size={24} /></span> {t('settingsTitle')}
       </h1>
 
       {/* Language */}
@@ -97,6 +130,36 @@ export function SettingsPage() {
             />
             <span className="toggle-slider" />
           </label>
+        </div>
+      </div>
+
+      {/* Notification Settings */}
+      <div className="card">
+        <div className="settings-section-title">{t('notifTitle')}</div>
+        <div className="setting-row">
+          <span className="setting-label">{t('notifEnabled')}</span>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={s.notificationEnabled}
+              onChange={e => updateSetting({ notificationEnabled: e.target.checked })}
+            />
+            <span className="toggle-slider" />
+          </label>
+        </div>
+        <div className="setting-row">
+          <span className="setting-label">{t('notifDuration')}</span>
+          <div className="slider-group">
+            <input
+              type="range"
+              min={2}
+              max={20}
+              step={1}
+              value={s.notificationDuration}
+              onChange={e => updateSetting({ notificationDuration: parseInt(e.target.value) })}
+            />
+            <span className="slider-value">{s.notificationDuration}{t('notifDurationUnit')}</span>
+          </div>
         </div>
       </div>
 
@@ -253,9 +316,29 @@ export function SettingsPage() {
         </button>
       </div>
 
+      {/* Reset */}
+      <div className="card">
+        <button
+          className="btn btn-secondary"
+          style={{ width: '100%', gap: 6 }}
+          onClick={() => setShowResetConfirm(true)}
+        >
+          <RotateCcw size={16} /> {locale === 'zh' ? '重置为默认' : 'Reset to Defaults'}
+        </button>
+      </div>
+
       <div className="hint-text">
         {t('hintMinimize')}
       </div>
+      <ConfirmDialog
+        open={showResetConfirm}
+        title={locale === 'zh' ? '重置设置' : 'Reset Settings'}
+        message={locale === 'zh' ? '确定将所有设置重置为默认值吗？' : 'Reset all settings to defaults?'}
+        confirmLabel={locale === 'zh' ? '重置' : 'Reset'}
+        onConfirm={handleResetConfirm}
+        onCancel={() => setShowResetConfirm(false)}
+        danger
+      />
     </>
   );
 }

@@ -2,8 +2,8 @@ export function formatDuration(seconds: number): string {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  if (hrs > 0) return `${hrs}h${mins}m`;
-  if (mins > 0) return `${mins}m${secs}s`;
+  if (hrs > 0) return mins > 0 ? `${hrs}h${mins}m` : `${hrs}h`;
+  if (mins > 0) return secs > 0 ? `${mins}m${secs}s` : `${mins}m`;
   return `${secs}s`;
 }
 
@@ -22,15 +22,6 @@ export function formatBalance(balance: number): string {
 
 export function formatWeight(val: number): string {
   return val % 1 === 0 ? `${val.toFixed(0)}s` : `${val.toFixed(1)}s`;
-}
-
-export function activityIcon(type: string): string {
-  switch (type) {
-    case 'Study': return '📚';
-    case 'Hobby': return '🎨';
-    case 'Entertainment': return '🎮';
-    default: return '❓';
-  }
 }
 
 export function activityName(type: string): string {
