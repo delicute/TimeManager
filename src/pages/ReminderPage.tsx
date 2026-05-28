@@ -20,14 +20,18 @@ const operatorKeys: ReminderOperator[] = ['lt', 'gt', 'gte', 'lte', 'eq'];
 function makeLeaf(): ConditionNode {
   return { type: 'leaf', metric: 'totalAvailableBalance', operator: 'lt', value: 600 };
 }
-function makeGroup(): ConditionNode {
-  return { type: 'group', logic: 'and', nodes: [makeLeaf(), makeLeaf()] };
+function cloneNode(n: ConditionNode): ConditionNode {
+  return JSON.parse(JSON.stringify(n));
 }
 function emptyRule(): ReminderRule {
-  return { id: '', title: '', content: '', conditionTree: makeGroup(), urgency: 'reminder', enabled: true };
+  return {
+    id: '', title: '', content: '',
+    conditionTree: { type: 'group', logic: 'and', nodes: [makeLeaf()] },
+    urgency: 'reminder', enabled: true,
+  };
 }
 
-const inputS: React.CSSProperties = {
+const ins: React.CSSProperties = {
   padding: '3px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)',
   background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 12, height: 28,
   boxSizing: 'border-box',
@@ -39,85 +43,128 @@ function LeafNode({ node, onChange }: { node: ConditionNode; onChange: (n: Condi
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
       <FileText size={12} style={{ color: 'var(--color-on-dark-soft)', flexShrink: 0 }} />
-      <select value={node.metric} onChange={e => onChange({ ...node, metric: e.target.value as ReminderMetric })} style={{ ...inputS, width: 130 }}>
+      <select value={node.metric} onChange={e => onChange({ ...node, metric: e.target.value as ReminderMetric })} style={{ ...ins, width: 130 }}>
         {metricKeys.map(m => (
           <option key={m} value={m}>{t(`reminderMetric${m.charAt(0).toUpperCase()}${m.slice(1)}` as any)}</option>
         ))}
       </select>
-      <select value={node.operator} onChange={e => onChange({ ...node, operator: e.target.value as ReminderOperator })} style={{ ...inputS, width: 60 }}>
+      <select value={node.operator} onChange={e => onChange({ ...node, operator: e.target.value as ReminderOperator })} style={{ ...ins, width: 60 }}>
         {operatorKeys.map(op => (
           <option key={op} value={op}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>
         ))}
       </select>
-      <input type="number" value={node.value} onChange={e => onChange({ ...node, value: Number(e.target.value) })} style={{ ...inputS, width: 70 }} />
+      <input type="number" value={node.value} onChange={e => onChange({ ...node, value: Number(e.target.value) })} style={{ ...ins, width: 70 }} />
       <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>{t('reminderSeconds')}</span>
     </div>
   );
 }
 
-function TreeNode({ node, onChange, depth = 0 }: { node: ConditionNode; onChange: (n: ConditionNode) => void; depth?: number }) {
+function btnStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '2px 10px', borderRadius: 3, fontSize: 10, cursor: 'pointer', height: 22,
+    border: active ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
+    background: active ? 'rgba(93,184,166,0.15)' : 'transparent',
+    color: active ? 'var(--color-accent-teal)' : '#faf9f5',
+  };
+}
+
+/** Renders a single condition node (leaf or group) with action buttons below */
+function TreeNode({ node, onChange, onDelete, onAddSibling, singleChild }: {
+  node: ConditionNode;
+  onChange: (n: ConditionNode) => void;
+  onDelete: () => void;
+  onAddSibling: (isGroup: boolean) => void;
+  singleChild: boolean;
+}) {
   const t = useT();
-  if (node.type === 'leaf') {
-    return <LeafNode node={node} onChange={onChange} />;
-  }
-  const left = node.nodes[0] || makeLeaf();
-  const right = node.nodes[1] || makeLeaf();
-  const setLeft = (n: ConditionNode) => onChange({ ...node, nodes: [n, right] });
-  const setRight = (n: ConditionNode) => onChange({ ...node, nodes: [left, n] });
+  return (
+    <div>
+      {/* The node content: leaf editor or recursive GroupEditor */}
+      {node.type === 'leaf' ? (
+        <LeafNode node={node} onChange={onChange} />
+      ) : (
+        <GroupEditor node={node} onChange={onChange} />
+      )}
+
+      {/* Action buttons row */}
+      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+        <button onClick={() => onAddSibling(false)}
+          style={{ ...ins, height: 24, fontSize: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+          <Plus size={10} />{t('reminderAddCondition')}
+        </button>
+        <button onClick={() => onAddSibling(true)}
+          style={{ ...ins, height: 24, fontSize: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+          <GitBranch size={10} />{t('reminderGroup')}
+        </button>
+        <button onClick={onDelete} disabled={singleChild}
+          style={{ ...ins, height: 24, fontSize: 10, cursor: singleChild ? 'not-allowed' : 'pointer', opacity: singleChild ? 0.3 : 1, display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--color-error)' }}>
+          <Trash2 size={10} />{t('reminderDelete')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Renders a group: logic toggle + children with connectors */
+function GroupEditor({ node, onChange }: { node: ConditionNode; onChange: (n: ConditionNode) => void }) {
+  const t = useT();
+  if (node.type !== 'group') return null;
+
+  const updateChild = (i: number, n: ConditionNode) => {
+    const nodes = [...node.nodes]; nodes[i] = n;
+    onChange({ ...node, nodes });
+  };
+  const deleteChild = (i: number) => {
+    let nodes = node.nodes.filter((_, idx) => idx !== i);
+    if (nodes.length === 0) nodes = [makeLeaf()];
+    onChange({ ...node, nodes });
+  };
+  const addSibling = (i: number, isGroup: boolean) => {
+    const nodes = [...node.nodes];
+    nodes.splice(i + 1, 0, isGroup ? { type: 'group' as const, logic: 'and', nodes: [makeLeaf()] } : makeLeaf());
+    onChange({ ...node, nodes });
+  };
 
   return (
-    <div style={{ position: 'relative' }}>
-      {/* Logic toggle row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-        <GitBranch size={12} style={{ color: 'var(--color-accent-teal)' }} />
-        <button onClick={() => onChange({ ...node, logic: 'and' })}
-          style={{ padding: '1px 10px', borderRadius: 3, fontSize: 10, cursor: 'pointer', height: 22,
-            border: node.logic === 'and' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
-            background: node.logic === 'and' ? 'rgba(93,184,166,0.15)' : 'transparent',
-            color: node.logic === 'and' ? 'var(--color-accent-teal)' : '#faf9f5' }}>AND</button>
-        <button onClick={() => onChange({ ...node, logic: 'or' })}
-          style={{ padding: '1px 10px', borderRadius: 3, fontSize: 10, cursor: 'pointer', height: 22,
-            border: node.logic === 'or' ? '1px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
-            background: node.logic === 'or' ? 'rgba(93,184,166,0.15)' : 'transparent',
-            color: node.logic === 'or' ? 'var(--color-accent-teal)' : '#faf9f5' }}>OR</button>
-      </div>
+    <div style={{ paddingLeft: 16, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* AND/OR toggle — only show when >1 child */}
+      {node.nodes.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6, marginLeft: -16, paddingLeft: 16 }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+          <button onClick={() => onChange({ ...node, logic: 'and' })} style={btnStyle(node.logic === 'and')}>AND</button>
+          <button onClick={() => onChange({ ...node, logic: 'or' })} style={btnStyle(node.logic === 'or')}>OR</button>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+        </div>
+      )}
 
-      {/* Children with tree lines */}
-      <div style={{ position: 'relative', paddingLeft: 16 }}>
-        {/* Vertical line for the whole subtree */}
-        <div style={{ position: 'absolute', left: 6, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.1)' }} />
-
-        {/* Left child */}
-        <div style={{ position: 'relative', marginBottom: 4 }}>
-          {/* Horizontal connector */}
-          <div style={{ position: 'absolute', left: -10, top: 14, width: 10, height: 1, background: 'rgba(255,255,255,0.1)' }} />
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <TreeNode node={left} onChange={setLeft} depth={depth + 1} />
+      {/* Children */}
+      {node.nodes.map((child, i) => (
+        <div key={i}>
+          {/* AND/OR connector line above each child (except first) */}
+          {i > 0 && (
+            <div style={{ position: 'relative', height: 20, marginLeft: -16, paddingLeft: 16 }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'absolute', left: 0, top: '50%', width: 8, height: 1, background: 'rgba(255,255,255,0.08)' }} />
             </div>
-            <button onClick={() => { const l = left.type === 'group' ? makeLeaf() : makeGroup(); setLeft(l); }}
-              style={{ background: 'none', border: 'none', color: 'var(--color-on-dark-soft)', cursor: 'pointer', padding: '2px', fontSize: 10, flexShrink: 0 }}
-              title={left.type === 'group' ? t('reminderRemoveCondition') : t('reminderGroup')}>
-              {left.type === 'group' ? <Trash2 size={12} /> : <Plus size={12} />}
-            </button>
+          )}
+
+          {/* Vertical tree line + node */}
+          <div style={{ position: 'relative', marginLeft: -16, paddingLeft: 16 }}>
+            {/* Vertical line extending from above */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.06)' }} />
+            {/* Horizontal connector */}
+            <div style={{ position: 'absolute', left: 0, top: 14, width: 8, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+
+            <TreeNode
+              node={child}
+              onChange={n => updateChild(i, n)}
+              onDelete={() => deleteChild(i)}
+              onAddSibling={(isGroup) => addSibling(i, isGroup)}
+              singleChild={node.nodes.length <= 1}
+            />
           </div>
         </div>
-
-        {/* Right child */}
-        <div style={{ position: 'relative' }}>
-          <div style={{ position: 'absolute', left: -10, top: 14, width: 10, height: 1, background: 'rgba(255,255,255,0.1)' }} />
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <TreeNode node={right} onChange={setRight} depth={depth + 1} />
-            </div>
-            <button onClick={() => { const r = right.type === 'group' ? makeLeaf() : makeGroup(); setRight(r); }}
-              style={{ background: 'none', border: 'none', color: 'var(--color-on-dark-soft)', cursor: 'pointer', padding: '2px', fontSize: 10, flexShrink: 0 }}
-              title={right.type === 'group' ? t('reminderRemoveCondition') : t('reminderGroup')}>
-              {right.type === 'group' ? <Trash2 size={12} /> : <Plus size={12} />}
-            </button>
-          </div>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -128,9 +175,7 @@ function displayTree(node: ConditionNode, t: ReturnType<typeof useT>, wrap = fal
     const ok = `reminderOper${node.operator.charAt(0).toUpperCase()}${node.operator.slice(1)}` as any;
     return `${t(mk)} ${t(ok)} ${node.value}${t('reminderSeconds')}`;
   }
-  const left = displayTree(node.nodes[0] || makeLeaf(), t, true);
-  const right = displayTree(node.nodes[1] || makeLeaf(), t, true);
-  const inner = `${left} ${t(node.logic === 'and' ? 'reminderAnd' : 'reminderOr')} ${right}`;
+  const inner = node.nodes.map(n => displayTree(n, t, true)).join(` ${t(node.logic === 'and' ? 'reminderAnd' : 'reminderOr')} `);
   return wrap ? `(${inner})` : inner;
 }
 
@@ -142,7 +187,7 @@ export function ReminderPage() {
   const [form, setForm] = useState<ReminderRule>(emptyRule);
 
   const startAdd = () => { setForm(emptyRule()); setEditingId('__new__'); };
-  const startEdit = (rule: ReminderRule) => { setForm({ ...rule }); setEditingId(rule.id); };
+  const startEdit = (rule: ReminderRule) => { setForm(cloneNode(rule) as ReminderRule); setEditingId(rule.id); };
   const cancelEdit = () => setEditingId(null);
 
   const saveRule = () => {
@@ -183,16 +228,16 @@ export function ReminderPage() {
         <div className="card" style={{ padding: 16, marginTop: 12 }}>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderTitleLabel')}</label>
-            <input style={{ ...inputS, width: '100%' }} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={t('reminderTitleLabel')} />
+            <input style={{ ...ins, width: '100%' }} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={t('reminderTitleLabel')} />
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderContentLabel')}</label>
-            <textarea style={{ ...inputS, width: '100%', height: 64, resize: 'vertical' }} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder={t('reminderContentLabel')} />
+            <textarea style={{ ...ins, width: '100%', height: 64, resize: 'vertical' }} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder={t('reminderContentLabel')} />
           </div>
 
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-on-dark-soft)', marginBottom: 4 }}>{t('reminderConditionLabel')}</label>
-            <TreeNode node={form.conditionTree} onChange={n => setForm({ ...form, conditionTree: n })} />
+            <GroupEditor node={form.conditionTree} onChange={n => setForm({ ...form, conditionTree: n })} />
           </div>
 
           <div style={{ marginBottom: 12 }}>
