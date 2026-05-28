@@ -630,7 +630,7 @@ function addNotif(d){
   var e=document.createElement('div');
   e.className='notif';
   e.id='n'+d.id;
-  e.innerHTML='<div class="ninner"><div class="nbar" style="background:'+d.color+'"></div><span style="color:'+d.color+';flex-shrink:0;display:flex;align-items:center">'+svg+'</span><div><div class="nh">'+_e(d.title)+'</div>'+(d.body?'<div class="nb">'+_e(d.body)+'</div>':'')+'</div></div>';
+  e.innerHTML='<div class="ninner"><div class="nbar" style="background:'+d.color+'"></div><div><div style="display:flex;align-items:center;gap:6px"><span style="color:'+d.color+';flex-shrink:0;display:flex">'+svg+'</span><div class="nh">'+_e(d.title)+'</div></div>'+(d.body?'<div class="nb">'+_e(d.body)+'</div>':'')+'</div></div>';
   st.appendChild(e);
   ndb[d.id]=e;
   requestAnimationFrame(function(){requestAnimationFrame(function(){e.classList.add('show')})});
