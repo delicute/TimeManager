@@ -106,14 +106,11 @@ export function TimerCard({
       {/* Milestone Progress Bar (Study & Hobby only) */}
       {(type === 'Study' || type === 'Hobby') && (() => {
         const milestones = type === 'Study' ? STUDY_MILESTONES : HOBBY_MILESTONES;
-        const contKey = type === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
         const claimKey = type === 'Study' ? 'studyClaimed' : 'hobbyClaimed';
         const mData = state.balance.milestones;
-        const savedCont = mData?.[contKey as keyof typeof mData] as number || 0;
-        const continuous = savedCont + (isActive ? elapsedSeconds : 0);
         const claimed = mData?.[claimKey as keyof typeof mData] as number || 0;
-
-        let nextThreshold = milestones[milestones.length - 1].threshold;
+        const continuous = computeTodayTotal();
+        const nextThreshold = (() => {
         for (const m of milestones) {
           if (!(claimed & (1 << milestones.indexOf(m)))) {
             nextThreshold = m.threshold;

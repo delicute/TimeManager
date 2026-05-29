@@ -191,10 +191,10 @@ export function ReminderPage() {
   const { reminderRules } = state;
   const t = useT();
   const [editingId, setEditingId] = useState<string|null>(null);
-  const [form, setForm] = useState<ReminderRule>({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'reminder',enabled:true});
+  const [form, setForm] = useState<ReminderRule>({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true});
   const [deleteId, setDeleteId] = useState<string|null>(null);
 
-  const startAdd = () => { setForm({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'reminder',enabled:true}); setEditingId('__new__'); };
+  const startAdd = () => { setForm({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true}); setEditingId('__new__'); };
   const startEdit = (rule:ReminderRule) => { setForm(JSON.parse(JSON.stringify(rule))); setEditingId(rule.id); };
   const cancelEdit = () => setEditingId(null);
   const saveRule = () => {
