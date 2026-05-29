@@ -69,7 +69,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 // ─── Notification container bridge ──────────────────────
 contextBridge.exposeInMainWorld('containerBridge', {
-  onAdd: (callback: (data: { id: string; title: string; body: string; color: string }) => void) => {
+  onAdd: (callback: (data: { id: string; iconSvg: string; title: string; body: string; color: string }) => void) => {
     ipcRenderer.on('container:add', (_event, data) => callback(data));
   },
   onRemove: (callback: (id: string) => void) => {
