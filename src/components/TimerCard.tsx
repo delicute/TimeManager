@@ -110,7 +110,7 @@ export function TimerCard({
         const mData = state.balance.milestones;
         const claimed = mData?.[claimKey as keyof typeof mData] as number || 0;
         const continuous = computeTodayTotal();
-        const nextThreshold = (() => {
+        let nextThreshold = milestones[milestones.length - 1].threshold;
         for (const m of milestones) {
           if (!(claimed & (1 << milestones.indexOf(m)))) {
             nextThreshold = m.threshold;
