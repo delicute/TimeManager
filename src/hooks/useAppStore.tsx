@@ -462,14 +462,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── Session Notification Helper ───────────────────────
-  function notifySessionAction(type: SessionType, action: 'start' | 'stop', elapsed?: number) {
+  function notifySessionAction(type: SessionType, action: 'start' | 'stop', elapsed?: number, balanceChange?: number) {
     try {
       const cfg = settingsRef.current;
       if (!cfg.notificationEnabled) return;
       const locale = cfg.locale || 'zh';
       if (action === 'start') {
         const title = locale === 'zh' ? `已进入${type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐'}状态` : `Entered ${type}`;
-        window.electronAPI.notificationShow({ type, notifType: 'session', title, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        window.electronAPI.notificationShow({ type, notifType: 'notification', title, body: '', color: '#5db872', duration: cfg.notificationDuration ?? 5 });
       } else if (action === 'stop' && elapsed != null) {
         const hrs = Math.floor(elapsed / 3600);
         const mins = Math.floor((elapsed % 3600) / 60);
@@ -484,8 +484,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ? (type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐')
           : type;
         const title = locale === 'zh' ? `已退出${typeLabel}` : `Exited ${type}`;
-        const body = locale === 'zh' ? `你这次${typeLabel}了${durationStr}` : `You spent ${durationStr}`;
-        window.electronAPI.notificationShow({ type, notifType: 'session', title, body, color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        let body = locale === 'zh' ? `你这次${typeLabel}了${durationStr}` : `You spent ${durationStr}`;
+        if (balanceChange != null) {
+          body += locale === 'zh' ? `，${balanceChange >= 0 ? '赚取' : '消耗'}${Math.abs(balanceChange)}s余额` : `, ${balanceChange >= 0 ? 'earned' : 'consumed'} ${Math.abs(balanceChange)}s balance`;
+        }
+        window.electronAPI.notificationShow({ type, notifType: 'info', title, body, color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
       }
     } catch { /* ignore */ }
   }
@@ -586,7 +589,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
       dispatch({ type: 'SESSION_STOP' });
-      notifySessionAction(activeType, 'stop', elapsed);
+      notifySessionAction(activeType, 'stop', elapsed, balanceChange);
     } else {
       dispatch({ type: 'SESSION_STOP' });
     }
