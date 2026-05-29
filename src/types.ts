@@ -206,7 +206,7 @@ declare global {
       reminderResize: (height: number) => Promise<void>;
       onReminderToastAction: (callback: (action: { action: string; minutes?: number }) => void) => void;
       setMinimizeToTray: (value: boolean) => Promise<void>;
-      notificationShow: (data: { type: string; title: string; body: string; color: string; duration: number }) => Promise<void>;
+      notificationShow: (data: { type: string; notifType: string; title: string; body: string; color: string; duration: number }) => Promise<void>;
       notificationDismiss: (id: string) => Promise<void>;
       sessionUpdateState: (state: { isActive: boolean; type: string }) => Promise<void>;
       onTrayAction: (callback: (action: { action: string; type?: string; page?: string }) => void) => void;
