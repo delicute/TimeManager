@@ -469,7 +469,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const locale = cfg.locale || 'zh';
       if (action === 'start') {
         const title = locale === 'zh' ? `已进入${type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐'}状态` : `Entered ${type}`;
-        window.electronAPI.notificationShow({ type, notifType: 'info', title, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        window.electronAPI.notificationShow({ type, notifType: 'notification', title, body: '', color: '#5db872', duration: cfg.notificationDuration ?? 5 });
       } else if (action === 'stop' && elapsed != null) {
         const hrs = Math.floor(elapsed / 3600);
         const mins = Math.floor((elapsed % 3600) / 60);
@@ -485,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : type;
         const title = locale === 'zh' ? `已退出${typeLabel}` : `Exited ${type}`;
         const body = locale === 'zh' ? `你这次${typeLabel}了${durationStr}` : `You spent ${durationStr}`;
-        window.electronAPI.notificationShow({ type, notifType: 'info', title, body, color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        window.electronAPI.notificationShow({ type, notifType: 'notification', title, body, color: '#5db872', duration: cfg.notificationDuration ?? 5 });
       }
     } catch { /* ignore */ }
   }
@@ -594,8 +594,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (activeType === 'Study' || activeType === 'Hobby') {
           const w = activeType === 'Study' ? bc.studyWeight : bc.hobbyWeight;
           const earned = Math.floor(elapsed / w);
-          window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#a09d96', duration: bc.notificationDuration ?? 5 });
-        } else window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${ticks} 余额` : `Consumed ${ticks}`, body: '', color: '#a09d96', duration: bc.notificationDuration ?? 5 });
+          window.electronAPI.notificationShow({ type: activeType, notifType: 'notification', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#5db872', duration: bc.notificationDuration ?? 5 });
+        } else window.electronAPI.notificationShow({ type: activeType, notifType: 'notification', title: bl === 'zh' ? `消耗 ${ticks} 余额` : `Consumed ${ticks}`, body: '', color: '#5db872', duration: bc.notificationDuration ?? 5 });
       } catch { /* ignore */ }
     } else {
       dispatch({ type: 'SESSION_STOP' });
