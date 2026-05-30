@@ -26,7 +26,7 @@ export const en: Translations = {
   statusInsufficient: 'Insufficient balance',
 
   // Balance
-  balanceLabel: 'Entertainment Balance',
+  balanceLabel: 'Balance',
   balanceGifted: 'Gifted',
   balanceEarned: 'Earned',
   sessionEarned: 'Session Earned',
@@ -99,7 +99,7 @@ export const en: Translations = {
   reminderEnabled: 'Enabled',
   reminderDismiss: 'OK',
   reminderSnooze: 'Wait',
-  reminderMetricEntertainmentBalance: 'Entertainment Balance',
+  reminderMetricEntertainmentBalance: 'Balance',
   reminderMetricStudyDuration: "Today's Study",
   reminderMetricHobbyDuration: "Today's Hobby",
   reminderMetricEntertainmentDuration: "Today's Entertainment",

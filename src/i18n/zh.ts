@@ -26,14 +26,14 @@ export const zh: Translations = {
   statusInsufficient: '余额不足',
 
   // Balance
-  balanceLabel: '娱乐余额',
+  balanceLabel: '余额',
   balanceGifted: '赠送',
   balanceEarned: '赚取',
   sessionEarned: '本场赚取',
   sessionConsumed: '本场消耗',
   giftedRemain: '赠送剩余',
   earnedRemain: '赚取剩余',
-  earnPerSecond: '每 {time} 获得 1 娱乐余额',
+  earnPerSecond: '每 {time} 获得 1 余额',
 
   // Timer
   start: '开始{name}',
@@ -77,7 +77,7 @@ export const zh: Translations = {
 
   // Reminder
   lowBalanceTitle: '余额提醒',
-  lowBalanceBody: '娱乐余额不足10分钟，剩余 {time}',
+  lowBalanceBody: '余额不足10分钟，剩余 {time}',
   longSessionTitle: '娱乐提醒',
   longSessionBody: '你已经连续娱乐2小时了，建议休息一下',
 
@@ -99,7 +99,7 @@ export const zh: Translations = {
   reminderEnabled: '启用',
   reminderDismiss: '确定',
   reminderSnooze: '等等',
-  reminderMetricEntertainmentBalance: '娱乐余额',
+  reminderMetricEntertainmentBalance: '余额',
   reminderMetricStudyDuration: '今日学习',
   reminderMetricHobbyDuration: '今日爱好',
   reminderMetricEntertainmentDuration: '今日娱乐',

@@ -160,7 +160,7 @@ export function TimerCard({
       })()}
 
       {/* Action Buttons */}
-      <div style={{ marginTop: 32 }}>
+      <div style={{ marginTop: 22 }}>
         {isActive ? (
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="btn btn-stop" onClick={handleClick}

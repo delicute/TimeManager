@@ -205,12 +205,12 @@ function evalNode(node: ConditionNode, metrics: Record<string, number>, session?
 function renderLeafSummary(node: ConditionNode, metrics: Record<string, number>, locale: string): string {
   const parts: string[] = [];
   const labels: Record<string, string> = locale === 'zh' ? {
-    entertainmentBalance: '娱乐余额', dailyGiftedBalance: '赠送余额', earnedBalance: '赚取余额',
+    entertainmentBalance: '余额', dailyGiftedBalance: '赠送余额', earnedBalance: '赚取余额',
     studyDuration: '今日学习', hobbyDuration: '今日爱好', entertainmentDuration: '今日娱乐',
     continuousEntertainment: '连续娱乐', totalAvailableBalance: '可用总额', debtAmount: '债务金额',
     Study: '学习', Hobby: '爱好', Entertainment: '娱乐',
   } : {
-    entertainmentBalance: 'Entertainment', dailyGiftedBalance: 'Gifted', earnedBalance: 'Earned',
+    entertainmentBalance: 'Balance', dailyGiftedBalance: 'Gifted', earnedBalance: 'Earned',
     studyDuration: 'Study', hobbyDuration: 'Hobby', entertainmentDuration: 'Entertainment',
     continuousEntertainment: 'Continuous', totalAvailableBalance: 'Available', debtAmount: 'Debt',
     Study: 'Study', Hobby: 'Hobby', Entertainment: 'Entertainment',

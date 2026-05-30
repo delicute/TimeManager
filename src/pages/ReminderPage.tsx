@@ -254,8 +254,8 @@ export function ReminderPage() {
           <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
           {reminderRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
-            : <div style={{marginTop:16}}>{reminderRules.map(rule=>(
-                <div key={rule.id} className="card" style={{padding:'12px 16px',marginBottom:8}}>
+            : <div style={{marginTop:16,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>{reminderRules.map(rule=>(
+                <div key={rule.id} className="card" style={{padding:'10px 12px',margin:0}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <div style={{width:3,height:24,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
