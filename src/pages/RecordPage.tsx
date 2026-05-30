@@ -334,38 +334,26 @@ export function RecordPage() {
       {/* Pie chart with hover detail + legend */}
       {pieData.length > 0 && (
         <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+            {/* Legend - vertical on left */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexWrap: 'wrap', maxHeight: 160 }}>
+              {pieData.map(d => (
+                <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', padding: '2px 6px', borderRadius: 4, background: hoverSeg === d.label ? 'rgba(255,255,255,0.06)' : 'transparent' }}
+                  onMouseEnter={() => setHoverSeg(d.label)} onMouseLeave={() => setHoverSeg(null)}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                  <span style={{ color: hoverSeg === d.label ? '#faf9f5' : 'var(--color-on-dark-soft)' }}>{TYPE_LABELS[d.label] || d.label}</span>
+                  {hoverSeg === d.label && hoverItem && (
+                    <span style={{ color: 'var(--color-on-dark-soft)', fontSize: 10, marginLeft: 2 }}>
+                      {formatDuration(hoverItem.value)} {hoverPct}%
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
             {/* Pie */}
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', marginLeft: 'auto' }}>
               <PieSVG data={pieData} size={160} hovered={hoverSeg} onHover={setHoverSeg} />
             </div>
-            {/* Hover detail panel */}
-            <div style={{ minWidth: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              {hoverItem ? (
-                <div style={{ fontSize: 12, color: '#faf9f5', lineHeight: 1.6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 3, background: hoverItem.color }} />
-                    <span style={{ fontWeight: 600 }}>{TYPE_LABELS[hoverItem.label] || hoverItem.label}</span>
-                  </div>
-                  <div style={{ color: 'var(--color-on-dark-soft)' }}>
-                    <div>时长：{formatDuration(hoverItem.value)}</div>
-                    <div>占比：{hoverPct}%</div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', fontStyle: 'italic' }}>悬停查看详情</div>
-              )}
-            </div>
-          </div>
-          {/* Legend */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, justifyContent: 'center' }}>
-            {pieData.map(d => (
-              <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', padding: '2px 4px', borderRadius: 4, background: hoverSeg === d.label ? 'rgba(255,255,255,0.06)' : 'transparent' }}
-                onMouseEnter={() => setHoverSeg(d.label)} onMouseLeave={() => setHoverSeg(null)}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                <span style={{ color: hoverSeg === d.label ? '#faf9f5' : 'var(--color-on-dark-soft)' }}>{TYPE_LABELS[d.label] || d.label}</span>
-              </div>
-            ))}
           </div>
         </div>
       )}

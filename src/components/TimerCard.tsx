@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Play, Square, Gift } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Play, Square, Gift, Pause } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
-import { useT, statusKeyMap, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
+import { useT, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
 import { formatDurationFull, formatDuration } from '../utils/formatting';
 import type { SessionType } from '../types';
 
@@ -42,25 +43,50 @@ export function TimerCard({
 
   const isActive = session.isActive && session.currentType === type;
 
-  const elapsedSeconds = isActive && session.startTime
-    ? Math.floor((Date.now() - session.startTime) / 1000)
+  // Pause tracking
+  const [paused, setPaused] = useState(false);
+  const totalPausedMs = useRef(0);
+  const pauseStartMs = useRef(0);
+
+  const effectiveElapsed = isActive && session.startTime
+    ? Math.floor((Date.now() - session.startTime - totalPausedMs.current) / 1000)
+    : paused ? Math.floor((pauseStartMs.current - session.startTime! - totalPausedMs.current) / 1000)
     : 0;
 
-  const sessionEarned = isActive && type !== 'Entertainment'
-    ? Math.floor(elapsedSeconds / intervalSeconds)
+  // Display frozen time when paused
+  const [frozenDisplay, setFrozenDisplay] = useState(0);
+  const elapsedSeconds = paused ? frozenDisplay : effectiveElapsed;
+
+  const sessionEarned = isActive && type !== 'Entertainment' && !paused
+    ? Math.floor(effectiveElapsed / intervalSeconds)
+    : paused ? Math.floor(frozenDisplay / intervalSeconds)
     : 0;
 
   const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
-  const sessionConsumed = isActive && type === 'Entertainment'
-    ? elapsedSeconds * debtRate
+  const sessionConsumed = isActive && type === 'Entertainment' && !paused
+    ? effectiveElapsed * debtRate
+    : paused ? frozenDisplay * debtRate
     : 0;
 
-  const canStart = true;
+  const handlePause = () => {
+    if (!paused) {
+      setFrozenDisplay(effectiveElapsed);
+      pauseStartMs.current = Date.now();
+      setPaused(true);
+    } else {
+      totalPausedMs.current += Date.now() - pauseStartMs.current;
+      setPaused(false);
+    }
+  };
 
   const handleClick = () => {
     if (isActive) {
       stopSession();
+      totalPausedMs.current = 0;
+      setPaused(false);
     } else {
+      totalPausedMs.current = 0;
+      setPaused(false);
       startSession(type);
     }
   };
@@ -152,22 +178,26 @@ export function TimerCard({
         );
       })()}
 
-      {/* Action Button */}
+      {/* Action Buttons */}
       <div style={{ marginTop: 32 }}>
-        <button
-          className={`btn btn-full ${isActive ? 'btn-stop' : 'btn-start'}`}
-          onClick={handleClick}
-          disabled={!canStart && !isActive}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
-        >
-          {isActive ? <Square size={16} /> : <Play size={16} />}
-          {isActive ? t('stop', { name: localizedName }) : t('start', { name: localizedName })}
-        </button>
-      </div>
-
-      {/* Status Text */}
-      <div className="status-text" style={{ color: isActive ? accentColor : undefined }}>
-        {isActive && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{icon} {t(statusKeyMap[type])}</span>}
+        {isActive ? (
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn btn-stop" onClick={handleClick}
+              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+              <Square size={16} /> {t('stop', { name: localizedName })}
+            </button>
+            <button className={`btn ${paused ? 'btn-start' : 'btn-secondary'}`} onClick={handlePause}
+              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+              {paused ? <Play size={16} /> : <Pause size={16} />}
+              {paused ? '恢复' : '暂停'}
+            </button>
+          </div>
+        ) : (
+          <button className="btn btn-full btn-start" onClick={handleClick}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+            <Play size={16} /> {t('start', { name: localizedName })}
+          </button>
+        )}
       </div>
     </div>
   );

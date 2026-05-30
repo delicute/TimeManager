@@ -575,6 +575,10 @@ function showContainerNotification(data: { type: string; notifType?: string; tit
   const payload = { id, iconSvg, title: data.title, body: data.body, color: data.color };
   if (containerReady) {
     notifContainer.webContents.send('container:add', payload);
+    if (!notifContainer.isVisible()) {
+      notifContainer.showInactive();
+      notifContainer.setIgnoreMouseEvents(true);
+    }
   } else {
     notifQueue.push(payload);
   }

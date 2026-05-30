@@ -106,7 +106,7 @@ export function DebugPage() {
 
       {/* 数值更改 */}
       <div className="card" style={{padding:12,marginBottom:6}}>
-        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>{t('debugTitle')} - 数值更改</div>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>数值更改</div>
         {[...SESSION_TYPES, 'balance' as const].map(key => {
           const isBal = key === 'balance';
           const label = isBal ? '余额' : (key === 'Study' ? '学习' : key === 'Hobby' ? '爱好' : '娱乐');
@@ -141,24 +141,24 @@ export function DebugPage() {
 
       {/* Send notification */}
       <div className="card" style={{padding:12,marginBottom:6}}>
-        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>{t('debugSendNotification')}</div>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>发送通知</div>
         <div style={{display:'flex',flexDirection:'column',gap:6,fontSize:12}}>
-          <div style={{display:'flex',alignItems:'center',gap:4}}>
-            <span style={{color:'#ffffff',width:36,flexShrink:0,fontSize:12}}>{t('debugTitle')}</span>
+          <div style={{display:'flex',flexDirection:'column',gap:2}}>
+            <span style={{color:'#ffffff',fontSize:12}}>标题</span>
             <input value={notifTitle} onChange={e=>setNotifTitle(e.target.value)} placeholder="Debug"
-              style={{...inpS,flex:1}} />
+              style={{...inpS,width:'100%'}} />
           </div>
-          <div style={{display:'flex',gap:4}}>
-            <span style={{color:'#ffffff',width:36,flexShrink:0,fontSize:12,paddingTop:4}}>Body</span>
+          <div style={{display:'flex',flexDirection:'column',gap:2}}>
+            <span style={{color:'#ffffff',fontSize:12}}>Body</span>
             <textarea value={notifBody} onChange={e=>setNotifBody(e.target.value)} placeholder="（可选）"
-              style={{...inpS,flex:1,minHeight:56,resize:'vertical',fontFamily:'inherit'}} />
+              style={{...inpS,width:'100%',minHeight:56,resize:'vertical',fontFamily:'inherit'}} />
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap',marginTop:2}}>
-            <span style={{color:'#ffffff',width:36,flexShrink:0,fontSize:12}}>数量</span>
+          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>
+            <span style={{color:'#ffffff',fontSize:12}}>数量</span>
             <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))}
               style={{...inpS,width:50}} min={1} />
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap',marginTop:2}}>
+          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>
             <span style={{color:'#ffffff',fontSize:12}}>类型:</span>
             {NOTIF_TYPES.map(nt => (
               <button key={nt} onClick={()=>setNotifType(nt)}

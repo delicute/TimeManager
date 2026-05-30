@@ -1,6 +1,6 @@
 import { Play, BarChart3, Bell, Keyboard, Settings, BookOpen, Palette, Gamepad2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
-import { useT, navKeyMap } from '../hooks/useI18n';
+import { useT, statusKeyMap, navKeyMap } from '../hooks/useI18n';
 import { Bug } from "lucide-react";
 import { formatDuration, activityColor } from '../utils/formatting';
 
@@ -41,6 +41,14 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   }
 
   const totalAvailable = balance.earnedBalance + balance.dailyGiftedRemaining;
+  const statusKey = session.isActive
+    ? statusKeyMap[session.currentType]
+    : null;
+  const statusLabel = statusKey ? t(statusKey) : t('statusIdle');
+  const statusColor = session.isActive
+    ? activityColor(session.currentType as string)
+    : 'var(--color-on-dark-soft)';
+  const ActivityIcon = session.isActive ? ACTIVITY_ICONS[session.currentType as string] : null;
 
   return (
     <aside className="sidebar">
@@ -60,6 +68,15 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         <div className="balance-detail">
           {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}
           {' | '} {t('balanceEarned')}: {formatDuration(balance.earnedBalance)}
+        </div>
+      </div>
+
+      {/* Status Indicator */}
+      <div className="sidebar-summary sidebar-summary-first">
+        <div className="summary-title">{t('currentStatus')}</div>
+        <div style={{ fontSize: 16, fontWeight: 500, color: statusColor, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {ActivityIcon && <ActivityIcon size={18} />}
+          {statusLabel}
         </div>
       </div>
 
