@@ -114,24 +114,24 @@ export function TimerCard({
       {(type === 'Study' || type === 'Hobby') && (() => {
         const milestones = type === 'Study' ? STUDY_MILESTONES : HOBBY_MILESTONES;
         const claimKey = type === 'Study' ? 'studyClaimed' : 'hobbyClaimed';
+        const contKey = type === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
         const mData = state.balance.milestones;
         const claimed = mData?.[claimKey as keyof typeof mData] as number || 0;
-        const continuous = computeTodayTotal();
-        let nextThreshold = milestones[milestones.length - 1].threshold;
-        for (const m of milestones) {
-          if (!(claimed & (1 << milestones.indexOf(m)))) {
-            nextThreshold = m.threshold;
-            break;
-          }
-        }
-        const progress = continuous >= nextThreshold ? 100 : (continuous / nextThreshold) * 100;
+        // Use stored continuous time + current session elapsed (real-time)
+        const storedCont = (mData?.[contKey as keyof typeof mData] as number) || 0;
+        const continuous = storedCont + (isActive ? rawElapsed : 0);
+        // Only show unclaimed milestones
+        const activeMilestones = milestones.filter((_, i) => !(claimed & (1 << i)));
+        if (activeMilestones.length === 0) return null; // all done, hide bar
+        const nextThreshold = activeMilestones[0].threshold;
         const maxTh = milestones[milestones.length - 1].threshold;
+        const progress = continuous >= nextThreshold ? 100 : (continuous / nextThreshold) * 100;
 
         return (
           <div className="milestone-bar-wrap">
             {/* Rewards above each milestone node */}
             <div className="milestone-rewards-row">
-              {milestones.map((m, i) => (
+              {activeMilestones.map((m, i) => (
                 <div key={i} className="milestone-reward" style={{ left: `${(m.threshold / maxTh) * 100}%` }}>
                   <Gift size={10} />
                   <span>+{formatDuration(m.reward)}</span>
@@ -141,8 +141,8 @@ export function TimerCard({
             {/* Bar */}
             <div className="milestone-bar">
               <div className="milestone-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
-              {milestones.map((m, i) => (
-                <div key={i} className={`milestone-dot${(claimed & (1 << i)) ? ' claimed' : ''}`}
+              {activeMilestones.map((m, i) => (
+                <div key={i} className="milestone-dot"
                   style={{ left: `${(m.threshold / maxTh) * 100}%` }} />
               ))}
             </div>
@@ -150,7 +150,7 @@ export function TimerCard({
             <div className="milestone-top-row">
               <span className="milestone-current-time">{continuous < 60 ? `${Math.round(continuous)}s` : formatDuration(Math.round(continuous / 60) * 60)}</span>
               <div className="milestone-marks">
-                {milestones.map((m, i) => (
+                {activeMilestones.map((m, i) => (
                   <span key={i} style={{ left: `${(m.threshold / maxTh) * 100}%` }}>{m.label}</span>
                 ))}
               </div>
