@@ -169,7 +169,7 @@ export function DebugPage() {
     dispatch({ type: 'SET_BALANCE', payload: updated });
     const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
     const n = Math.floor(targetSeconds / mult(unit[type]));
-    notify(`Debug: ${label}`, `设定为 ${n}${unit[type]}（不影响余额）`);
+    notify(`Debug: ${label}`, `设定为 ${n}${unit[type]}`);
   };
 
   // Set balance to a specific value
