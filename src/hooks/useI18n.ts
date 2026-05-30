@@ -44,6 +44,7 @@ export const todayKeyMap: Record<string, keyof import('../i18n/types').Translati
 
 // Maps page id to nav translation key
 export const navKeyMap: Record<string, keyof import('../i18n/types').Translations> = {
+  Start: 'navStart',
   Study: 'navStudy',
   Hobby: 'navHobby',
   Entertainment: 'navEntertainment',

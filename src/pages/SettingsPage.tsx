@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, RotateCcw } from 'lucide-react';
+import { Settings, RotateCcw, FolderOpen, Trash2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, useLocale } from '../hooks/useI18n';
 import { formatWeight } from '../utils/formatting';
@@ -7,21 +7,18 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { AppSettings } from '../types';
 
 const DEFAULTS: AppSettings = {
-  autoStart: false,
-  silentStart: false,
-  minimizeToTray: true,
-  studyWeight: 2,
-  studyWeightMin: 0.5,
-  studyWeightMax: 60,
-  studyWeightStep: 0.5,
-  hobbyWeight: 4,
-  hobbyWeightMin: 0.5,
-  hobbyWeightMax: 120,
-  hobbyWeightStep: 0.5,
-  notificationEnabled: true,
-  notificationDuration: 5,
-  debug: false,
+  autoStart: false, silentStart: false, minimizeToTray: true,
+  studyWeight: 2, studyWeightMin: 0.5, studyWeightMax: 60, studyWeightStep: 0.5,
+  hobbyWeight: 4, hobbyWeightMin: 0.5, hobbyWeightMax: 120, hobbyWeightStep: 0.5,
+  notificationEnabled: true, notificationDuration: 5, debug: false,
 };
+
+const SECTION_TABS = [
+  { id: 'general', label: '通用' },
+  { id: 'weight', label: '权重' },
+  { id: 'data', label: '数据' },
+  { id: 'other', label: '其他' },
+];
 
 export function SettingsPage() {
   const { state, dispatch } = useAppStore();
@@ -36,12 +33,8 @@ export function SettingsPage() {
   const [hobbyMax, setHobbyMax] = useState(String(s.hobbyWeightMax));
   const [hobbyStep, setHobbyStep] = useState(String(s.hobbyWeightStep));
   const [basePath, setBasePath] = useState('');
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [showDebugConfirm, setShowDebugConfirm] = useState(false);
-  const [showDanger, setShowDanger] = useState(false);
-  const [dangerAction, setDangerAction] = useState<string|null>(null);
-  const [dangerConfirm2, setDangerConfirm2] = useState(false);
   const [section, setSection] = useState('general');
+  const [confirmState, setConfirmState] = useState<{open:boolean;title:string;message:string;onConfirm:()=>void;danger?:boolean}>({open:false,title:'',message:'',onConfirm:()=>{}});
 
   // Load base path on mount
   useState(() => {
@@ -54,7 +47,11 @@ export function SettingsPage() {
     window.electronAPI.saveSettings(updated);
   };
 
-  const handleResetConfirm = () => {
+  const showConfirm = (title:string, message:string, onConfirm:()=>void, danger?:boolean) => {
+    setConfirmState({ open: true, title, message, onConfirm, danger });
+  };
+
+  const handleReset = () => {
     const reset = { ...DEFAULTS, dataPath: s.dataPath };
     dispatch({ type: 'SET_SETTINGS', payload: reset });
     window.electronAPI.saveSettings(reset);
@@ -64,333 +61,180 @@ export function SettingsPage() {
     setHobbyMin(String(DEFAULTS.hobbyWeightMin));
     setHobbyMax(String(DEFAULTS.hobbyWeightMax));
     setHobbyStep(String(DEFAULTS.hobbyWeightStep));
-    setShowResetConfirm(false);
+    setConfirmState(c=>({...c,open:false}));
   };
 
-      {/* Navigation */}
-      <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
-        {["general","weight","data","other"].map(sec => (
-          <button key={sec} onClick={()=>setSection(sec)}
-            style={{padding:"4px 14px",borderRadius:6,fontSize:12,cursor:"pointer",height:30,
-              border:section===sec?"1.5px solid var(--color-accent-teal)":"1px solid rgba(255,255,255,0.12)",
-              background:section===sec?"rgba(93,184,166,0.15)":"transparent",
-              color:section===sec?"var(--color-accent-teal)":"#faf9f5"}}>{sec}</button>
-        ))}
-      </div>
+  const handleClearData = () => {
+    dispatch({ type: 'SET_TODAY_LOGS', payload: [] });
+    window.electronAPI.saveBalance({ earnedBalance: 0, dailyGiftedRemaining: 1800, lastDate: '' });
+    dispatch({ type: 'SET_BALANCE', payload: { earnedBalance: 0, dailyGiftedRemaining: 1800, lastDate: '' } });
+    setConfirmState(c=>({...c,open:false}));
+  };
+
+  const handleOpenFolder = () => {
+    const p = basePath || '';
+    if (p) window.electronAPI.shellOpenPath(p);
+  };
+
+  const navTab: React.CSSProperties = {
+    padding:'4px 14px',borderRadius:6,fontSize:12,cursor:'pointer',height:30,border:'1px solid rgba(255,255,255,0.12)',
+    background:'transparent',color:'#faf9f5',fontFamily:'inherit',
+  };
+  const navTabActive: React.CSSProperties = {
+    ...navTab, border:'1.5px solid var(--color-accent-teal)',
+    background:'rgba(93,184,166,0.15)', color:'var(--color-accent-teal)', fontWeight:600,
+  };
+  const cardStyle: React.CSSProperties = { padding:'8px 12px', marginBottom:6 };
+  const rowStyle: React.CSSProperties = { display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 0' };
+  const labelStyle: React.CSSProperties = { fontSize:13, color:'var(--color-on-dark)' };
+
   return (
     <>
       <h1 className="page-title">
         <span className="title-icon"><Settings size={24} /></span> {t('settingsTitle')}
       </h1>
 
-      {/* Language */}
-      <div className="card">
-        <div className="settings-section-title">{t('language')}</div>
-        <div className="setting-row">
-          <div className="lang-toggle">
-            <button
-              className={`lang-btn${locale === 'zh' ? ' active' : ''}`}
-              onClick={() => setLocale('zh')}
-            >
-              中文
-            </button>
-            <button
-              className={`lang-btn${locale === 'en' ? ' active' : ''}`}
-              onClick={() => setLocale('en')}
-            >
-              English
-            </button>
-          </div>
-        </div>
+      {/* Navigation */}
+      <div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>
+        {SECTION_TABS.map(sec => (
+          <button key={sec.id} onClick={()=>setSection(sec.id)}
+            style={section===sec.id ? navTabActive : navTab}>{sec.label}</button>
+        ))}
       </div>
 
-      {/* Startup Options */}
-      <div className="card">
-        <div className="settings-section-title">{t('startupOptions')}</div>
-
-        <div className="setting-row">
-          <span className="setting-label">{t('autoStart')}</span>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={s.autoStart}
-              onChange={e => {
-                const val = e.target.checked;
-                updateSetting({ autoStart: val });
-                window.electronAPI.setAutoStart(val);
-              }}
-            />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-
-        <div className="setting-row">
-          <span className="setting-label">{t('silentStart')}</span>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={s.silentStart}
-              onChange={e => updateSetting({ silentStart: e.target.checked })}
-            />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-
-        <div className="setting-row">
-          <span className="setting-label">{t('minimizeToTray')}</span>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={s.minimizeToTray}
-              onChange={e => updateSetting({ minimizeToTray: e.target.checked })}
-            />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-      </div>
-
-      {/* Notification Settings */}
-      <div className="card">
-        <div className="settings-section-title">{t('notifTitle')}</div>
-        <div className="setting-row">
-          <span className="setting-label">{t('notifEnabled')}</span>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={s.notificationEnabled}
-              onChange={e => updateSetting({ notificationEnabled: e.target.checked })}
-            />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-        <div className="setting-row">
-          <span className="setting-label">{t('notifDuration')}</span>
-          <div className="slider-group">
-            <input
-              type="range"
-              min={2}
-              max={20}
-              step={1}
-              value={s.notificationDuration}
-              onChange={e => updateSetting({ notificationDuration: parseInt(e.target.value) })}
-            />
-            <span className="slider-value">{s.notificationDuration}{t('notifDurationUnit')}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Weight Settings */}
-      <div className="card">
-        <div className="settings-section-title">{t('weightSettings')}</div>
-
-        {/* Study Weight */}
-        <div style={{ color: 'var(--color-study)', fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-          {t('navStudy')}
-        </div>
-        <div className="weight-desc">
-          {t('earnPerSecond', { time: formatWeight(s.studyWeight) })}
-        </div>
-        <div className="slider-group">
-          <input
-            type="range"
-            min={s.studyWeightMin}
-            max={s.studyWeightMax}
-            step={s.studyWeightStep}
-            value={s.studyWeight}
-            onChange={e => updateSetting({ studyWeight: parseFloat(e.target.value) })}
-          />
-          <span className="slider-value">{formatWeight(s.studyWeight)}</span>
-        </div>
-        <div className="limit-inputs">
-          <div className="limit-input">
-            <label>{t('min')}</label>
-            <input
-              type="text"
-              value={studyMin}
-              onChange={e => setStudyMin(e.target.value)}
-              onBlur={() => {
-                const val = parseFloat(studyMin);
-                if (!isNaN(val) && val < s.studyWeightMax) {
-                  updateSetting({ studyWeightMin: val });
-                }
-              }}
-            />
-          </div>
-          <div className="limit-input">
-            <label>{t('max')}</label>
-            <input
-              type="text"
-              value={studyMax}
-              onChange={e => setStudyMax(e.target.value)}
-              onBlur={() => {
-                const val = parseFloat(studyMax);
-                if (!isNaN(val) && val > s.studyWeightMin) {
-                  updateSetting({ studyWeightMax: val });
-                }
-              }}
-            />
-          </div>
-          <div className="limit-input">
-            <label>{t('step')}</label>
-            <input
-              type="text"
-              value={studyStep}
-              onChange={e => setStudyStep(e.target.value)}
-              onBlur={() => {
-                const val = parseFloat(studyStep);
-                if (!isNaN(val) && val > 0) {
-                  updateSetting({ studyWeightStep: val });
-                }
-              }}
-            />
+      {/* ===== 通用 ===== */}
+      {section === 'general' && <>
+        <div className="card" style={cardStyle}>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--color-on-dark)',marginBottom:4}}>{t('language')}</div>
+          <div className="lang-toggle" style={{gap:4}}>
+            <button className={`lang-btn${locale==='zh'?' active':''}`} onClick={()=>setLocale('zh')}
+              style={{padding:'5px 14px',height:30,fontSize:12}}>中文</button>
+            <button className={`lang-btn${locale==='en'?' active':''}`} onClick={()=>setLocale('en')}
+              style={{padding:'5px 14px',height:30,fontSize:12}}>English</button>
           </div>
         </div>
 
-        <hr className="separator" />
-
-        {/* Hobby Weight */}
-        <div style={{ color: 'var(--color-hobby)', fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-          {t('navHobby')}
-        </div>
-        <div className="weight-desc">
-          {t('earnPerSecond', { time: formatWeight(s.hobbyWeight) })}
-        </div>
-        <div className="slider-group">
-          <input
-            type="range"
-            min={s.hobbyWeightMin}
-            max={s.hobbyWeightMax}
-            step={s.hobbyWeightStep}
-            value={s.hobbyWeight}
-            onChange={e => updateSetting({ hobbyWeight: parseFloat(e.target.value) })}
-          />
-          <span className="slider-value">{formatWeight(s.hobbyWeight)}</span>
-        </div>
-        <div className="limit-inputs">
-          <div className="limit-input">
-            <label>{t('min')}</label>
-            <input
-              type="text"
-              value={hobbyMin}
-              onChange={e => setHobbyMin(e.target.value)}
-              onBlur={() => {
-                const val = parseFloat(hobbyMin);
-                if (!isNaN(val) && val < s.hobbyWeightMax) {
-                  updateSetting({ hobbyWeightMin: val });
-                }
-              }}
-            />
+        <div className="card" style={cardStyle}>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--color-on-dark)',marginBottom:4}}>{t('startupOptions')}</div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>{t('autoStart')}</span>
+            <label className="toggle"><input type="checkbox" checked={s.autoStart} onChange={e=>{updateSetting({autoStart:e.target.checked});window.electronAPI.setAutoStart(e.target.checked);}}/><span className="toggle-slider"/></label>
           </div>
-          <div className="limit-input">
-            <label>{t('max')}</label>
-            <input
-              type="text"
-              value={hobbyMax}
-              onChange={e => setHobbyMax(e.target.value)}
-              onBlur={() => {
-                const val = parseFloat(hobbyMax);
-                if (!isNaN(val) && val > s.hobbyWeightMin) {
-                  updateSetting({ hobbyWeightMax: val });
-                }
-              }}
-            />
+          <div style={rowStyle}>
+            <span style={labelStyle}>{t('silentStart')}</span>
+            <label className="toggle"><input type="checkbox" checked={s.silentStart} onChange={e=>updateSetting({silentStart:e.target.checked})}/><span className="toggle-slider"/></label>
           </div>
-          <div className="limit-input">
-            <label>{t('step')}</label>
-            <input
-              type="text"
-              value={hobbyStep}
-              onChange={e => setHobbyStep(e.target.value)}
-              onBlur={() => {
-                const val = parseFloat(hobbyStep);
-                if (!isNaN(val) && val > 0) {
-                  updateSetting({ hobbyWeightStep: val });
-                }
-              }}
-            />
+          <div style={rowStyle}>
+            <span style={labelStyle}>{t('minimizeToTray')}</span>
+            <label className="toggle"><input type="checkbox" checked={s.minimizeToTray} onChange={e=>updateSetting({minimizeToTray:e.target.checked})}/><span className="toggle-slider"/></label>
           </div>
         </div>
-      </div>
 
-      {/* Data */}
-      <div className="card">
-        <div className="settings-section-title">{t('dataSection')}</div>
-        <div style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>{t('dataPath')}</div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <div className="data-path" style={{ flex: 1 }}>{basePath || t('selectFolder')}</div>
-          <button className="btn btn-secondary" style={{ padding: '4px 12px', height: 32, fontSize: 12, flexShrink: 0 }}
-            onClick={async () => {
-              const folder = await window.electronAPI.selectFolder();
-              if (folder) { setBasePath(folder); updateSetting({ dataPath: folder }); }
-            }}>{t('selectFolder')}</button>
-        </div>
-      </div>
-
-      {/* Min session log time */}
-      <div className="card">
-        <div className="setting-row">
-          <span className="setting-label">时间线最短记录</span>
-          <label className="toggle">
-            <input type="checkbox" checked={!!s.minSessionLogEnabled} onChange={e => updateSetting({ minSessionLogEnabled: e.target.checked })} />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-        {s.minSessionLogEnabled && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <span style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>{'<'} </span>
-            <input type="number" value={s.minSessionLogSec ?? 10} onChange={e => updateSetting({ minSessionLogSec: Number(e.target.value) })}
-              style={{ width: 60, padding: '3px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 12, height: 28 }} />
-            <span style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>s 不显示</span>
+        <div className="card" style={cardStyle}>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--color-on-dark)',marginBottom:4}}>{t('notifTitle')}</div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>{t('notifEnabled')}</span>
+            <label className="toggle"><input type="checkbox" checked={s.notificationEnabled} onChange={e=>updateSetting({notificationEnabled:e.target.checked})}/><span className="toggle-slider"/></label>
           </div>
-        )}
-      </div>
-
-      {/* Danger Zone */}
-      <div className="card" style={{ border: '1px solid rgba(198,69,69,0.3)' }}>
-        <div className="setting-row">
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-error)' }}>危险设置</span>
-          <label className="toggle">
-            <input type="checkbox" checked={showDanger} onChange={e => {
-              if (e.target.checked) setShowDebugConfirm(true);
-              else setShowDanger(false);
-            }} />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-        {showDanger && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-            <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
-              onClick={() => { setDangerAction('reset'); setDangerConfirm2(true); }}>重置设置选项</button>
-            <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
-              onClick={() => { setDangerAction('clear'); setDangerConfirm2(true); }}>清除所有数据</button>
-            <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
-              onClick={() => updateSetting({ debug: true })}>调试面板</button>
+          <div style={rowStyle}>
+            <span style={labelStyle}>{t('notifDuration')}</span>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <input type="range" min={2} max={20} step={1} value={s.notificationDuration} onChange={e=>updateSetting({notificationDuration:parseInt(e.target.value)})} style={{flex:1,width:100}}/>
+              <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{s.notificationDuration}{t('notifDurationUnit')}</span>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      </>}
 
-      <div className="hint-text">
-        {t('hintMinimize')}
-      </div>
-      <ConfirmDialog open={showResetConfirm}
-        title={locale === 'zh' ? '重置设置' : 'Reset Settings'}
-        message={locale === 'zh' ? '确定将所有设置重置为默认值吗？' : 'Reset all settings to defaults?'}
-        confirmLabel={locale === 'zh' ? '重置' : 'Reset'}
-        onConfirm={handleResetConfirm} onCancel={() => setShowResetConfirm(false)} danger />
-      <ConfirmDialog open={showDebugConfirm}
-        title={locale === 'zh' ? '启用危险设置' : 'Enable Danger Zone'}
-        message={locale === 'zh' ? '确定要启用危险设置吗？' : 'Are you sure?'}
-        onConfirm={() => { setShowDanger(true); setShowDebugConfirm(false); }}
-        onCancel={() => setShowDebugConfirm(false)} />
-      <ConfirmDialog open={dangerConfirm2}
-        title={locale === 'zh' ? '二次确认' : 'Confirm Again'}
-        message={locale === 'zh' ? '此操作不可撤销，确定要执行吗？' : 'This cannot be undone. Proceed?'}
-        onConfirm={() => {
-          if (dangerAction === 'reset') handleResetConfirm();
-          else if (dangerAction === 'clear') { updateSetting({ dataPath: undefined } as any); }
-          setDangerConfirm2(false); setDangerAction(null);
-        }}
-        onCancel={() => { setDangerConfirm2(false); setDangerAction(null); }} danger />
+      {/* ===== 权重 ===== */}
+      {section === 'weight' && <>
+        <div className="card" style={cardStyle}>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--color-on-dark)',marginBottom:4}}>{t('weightSettings')}</div>
+
+          <div style={{color:'var(--color-study)',fontWeight:600,fontSize:13,marginBottom:2}}>{t('navStudy')}</div>
+          <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.studyWeight)})}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <input type="range" min={s.studyWeightMin} max={s.studyWeightMax} step={s.studyWeightStep} value={s.studyWeight} onChange={e=>updateSetting({studyWeight:parseFloat(e.target.value)})} style={{flex:1}}/>
+            <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.studyWeight)}</span>
+          </div>
+          <div className="limit-inputs" style={{marginTop:2,gap:6}}>
+            <div className="limit-input"><label style={{fontSize:10}}>{t('min')}</label><input type="text" value={studyMin} onChange={e=>setStudyMin(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(studyMin);if(!isNaN(v)&&v<s.studyWeightMax)updateSetting({studyWeightMin:v})}}/></div>
+            <div className="limit-input"><label style={{fontSize:10}}>{t('max')}</label><input type="text" value={studyMax} onChange={e=>setStudyMax(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(studyMax);if(!isNaN(v)&&v>s.studyWeightMin)updateSetting({studyWeightMax:v})}}/></div>
+            <div className="limit-input"><label style={{fontSize:10}}>{t('step')}</label><input type="text" value={studyStep} onChange={e=>setStudyStep(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(studyStep);if(!isNaN(v)&&v>0)updateSetting({studyWeightStep:v})}}/></div>
+          </div>
+
+          <hr style={{border:'none',height:1,background:'rgba(255,255,255,0.08)',margin:'8px 0'}}/>
+
+          <div style={{color:'var(--color-hobby)',fontWeight:600,fontSize:13,marginBottom:2}}>{t('navHobby')}</div>
+          <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.hobbyWeight)})}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <input type="range" min={s.hobbyWeightMin} max={s.hobbyWeightMax} step={s.hobbyWeightStep} value={s.hobbyWeight} onChange={e=>updateSetting({hobbyWeight:parseFloat(e.target.value)})} style={{flex:1}}/>
+            <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.hobbyWeight)}</span>
+          </div>
+          <div className="limit-inputs" style={{marginTop:2,gap:6}}>
+            <div className="limit-input"><label style={{fontSize:10}}>{t('min')}</label><input type="text" value={hobbyMin} onChange={e=>setHobbyMin(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(hobbyMin);if(!isNaN(v)&&v<s.hobbyWeightMax)updateSetting({hobbyWeightMin:v})}}/></div>
+            <div className="limit-input"><label style={{fontSize:10}}>{t('max')}</label><input type="text" value={hobbyMax} onChange={e=>setHobbyMax(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(hobbyMax);if(!isNaN(v)&&v>s.hobbyWeightMin)updateSetting({hobbyWeightMax:v})}}/></div>
+            <div className="limit-input"><label style={{fontSize:10}}>{t('step')}</label><input type="text" value={hobbyStep} onChange={e=>setHobbyStep(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(hobbyStep);if(!isNaN(v)&&v>0)updateSetting({hobbyWeightStep:v})}}/></div>
+          </div>
+        </div>
+      </>}
+
+      {/* ===== 数据 ===== */}
+      {section === 'data' && <>
+        <div className="card" style={cardStyle}>
+          <div style={{fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>存储路径</div>
+          <div style={{display:'flex',gap:6,alignItems:'center'}}>
+            <div style={{flex:1,fontSize:11,color:'var(--color-on-dark-soft)',wordBreak:'break-all',background:'rgba(255,255,255,0.04)',padding:'4px 8px',borderRadius:4,lineHeight:'22px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{basePath || '（默认路径）'}</div>
+            <button style={{padding:'3px 10px',height:28,fontSize:11,flexShrink:0,borderRadius:4,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',cursor:'pointer',fontFamily:'inherit'}}
+              onClick={async()=>{const folder=await window.electronAPI.selectFolder();if(folder){setBasePath(folder);updateSetting({dataPath:folder})}}}>选择</button>
+            <button style={{padding:'3px 10px',height:28,fontSize:11,flexShrink:0,borderRadius:4,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
+              onClick={handleOpenFolder}><FolderOpen size={12}/> 打开</button>
+          </div>
+        </div>
+
+        <div className="card" style={cardStyle}>
+          <div style={rowStyle}>
+            <span style={labelStyle}>时间线最短记录</span>
+            <label className="toggle"><input type="checkbox" checked={!!s.minSessionLogEnabled} onChange={e=>updateSetting({minSessionLogEnabled:e.target.checked})}/><span className="toggle-slider"/></label>
+          </div>
+          {s.minSessionLogEnabled && (
+            <div style={{display:'flex',alignItems:'center',gap:4,marginTop:2}}>
+              <span style={{fontSize:12,color:'var(--color-on-dark-soft)'}}>&lt; </span>
+              <input type="number" value={s.minSessionLogSec??10} onChange={e=>updateSetting({minSessionLogSec:Number(e.target.value)})}
+                style={{width:60,padding:'2px 6px',borderRadius:4,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontSize:12,height:24}} />
+              <span style={{fontSize:12,color:'var(--color-on-dark-soft)'}}>s 不显示</span>
+            </div>
+          )}
+        </div>
+      </>}
+
+      {/* ===== 其他 ===== */}
+      {section === 'other' && <>
+        <div className="card" style={{...cardStyle,border:'1px solid rgba(198,69,69,0.3)'}}>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--color-error)',marginBottom:6}}>危险设置</div>
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            <button className="btn btn-danger" style={{width:'100%',padding:'5px 12px',height:30,fontSize:12,display:'flex',alignItems:'center',gap:4,justifyContent:'center'}}
+              onClick={()=>showConfirm('重置设置','确定将所有设置重置为默认值？此操作将丢失所有自定义设置。',handleReset,true)}><RotateCcw size={13}/> 重置设置选项</button>
+            <button className="btn btn-danger" style={{width:'100%',padding:'5px 12px',height:30,fontSize:12,display:'flex',alignItems:'center',gap:4,justifyContent:'center'}}
+              onClick={()=>showConfirm('清除所有数据','确定清除所有本地数据？包括所有记录和余额。此操作不可撤销。',handleClearData,true)}><Trash2 size={13}/> 清除所有数据</button>
+            <button style={{width:'100%',padding:'5px 12px',height:30,fontSize:12,borderRadius:4,cursor:'pointer',display:'flex',alignItems:'center',gap:4,justifyContent:'center',
+              border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontFamily:'inherit'}}
+              onClick={()=>{
+                const next = !s.debug;
+                showConfirm(next?'开启调试面板':'关闭调试面板',next?'开启后将显示调试导航项。':'关闭后调试导航项将隐藏。',
+                  ()=>{updateSetting({debug:next});setConfirmState(c=>({...c,open:false}));},false);
+              }}>调试面板（{s.debug ? '开' : '关'}）</button>
+          </div>
+        </div>
+
+        <div style={{textAlign:'center',fontSize:11,color:'var(--color-on-dark-soft)',marginTop:12}}>
+          {t('hintMinimize')}
+        </div>
+      </>}
+
+      <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message}
+        confirmLabel="确定" onConfirm={confirmState.onConfirm} onCancel={()=>setConfirmState(c=>({...c,open:false}))}
+        danger={confirmState.danger} />
     </>
   );
 }

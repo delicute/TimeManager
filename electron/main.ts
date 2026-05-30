@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import zlib from 'zlib';
@@ -160,6 +160,10 @@ function setupIPC() {
   });
 
   ipcMain.handle('settings:getBasePath', () => BASE_PATH);
+
+  ipcMain.handle('shell:openPath', (_, dirPath: string) => {
+    try { shell.openPath(dirPath); } catch { /* ignore */ }
+  });
 
   // Auto-start
   ipcMain.handle('settings:setAutoStart', (_, enabled: boolean) => {
@@ -554,7 +558,7 @@ const NOTIF_SVGS: Record<string, string> = {
   reminder:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
   urgent:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
   notification:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-  info:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 11h6"/></svg>',
+  info:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 7 22 17 12 22 2 17 2 7 12 2"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="15" r="0.5" fill="currentColor"/></svg>',
   warning:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>',
   milestone:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
 };
@@ -571,10 +575,6 @@ function showContainerNotification(data: { type: string; notifType?: string; tit
   const payload = { id, iconSvg, title: data.title, body: data.body, color: data.color };
   if (containerReady) {
     notifContainer.webContents.send('container:add', payload);
-    if (!notifContainer.isVisible()) {
-      notifContainer.showInactive();
-      notifContainer.setIgnoreMouseEvents(true);
-    }
   } else {
     notifQueue.push(payload);
   }
@@ -593,10 +593,6 @@ function dismissContainerNotification(id: string) {
 
   if (notifContainer && !notifContainer.isDestroyed()) {
     notifContainer.webContents.send('container:remove', id);
-    // Hide window when empty
-    if (containerNotifs.length === 0 && notifQueue.length === 0) {
-      notifContainer.hide();
-    }
   }
 }
 
@@ -628,7 +624,7 @@ var nfSvg={
   reminder:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
   urgent:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
   notification:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-  info:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 11h6"/></svg>',
+  info:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 7 22 17 12 22 2 17 2 7 12 2"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="15" r="0.5" fill="currentColor"/></svg>',
   warning:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>',
   milestone:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
   low:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>',
@@ -653,24 +649,29 @@ function removeNotif(id){
   // FLIP: snapshot positions before DOM removal
   var sib=[];for(var i=0;i<st.children.length;i++){var c=st.children[i];if(c!==e)sib.push(c);}
   var oldTops=sib.map(function(s){return s.getBoundingClientRect().top});
-  e.classList.add('leaving');
-  setTimeout(function(){
-    e.remove();
-    // FLIP: filter for elements still in DOM, matching oldTops per-element
-    var valid=[],validOld=[];
-    for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
-    var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
-    valid.forEach(function(s,i){
-      var dy=newTops[i]-validOld[i];
-      if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
-    });
-    requestAnimationFrame(function(){requestAnimationFrame(function(){
-      valid.forEach(function(s,i){
-        var dy=newTops[i]-validOld[i];
-        if(dy!==0){s.style.transition='';s.style.transform='';}
-      });
-    })});
-  },${NOTIF_FADE_MS});
+  // Use rAF to ensure browser paints the pre-leaving frame, then add class
+  requestAnimationFrame(function(){
+    e.classList.add('leaving');
+    setTimeout(function(){
+      e.remove();
+      // FLIP: filter for elements still in DOM, matching oldTops per-element
+      var valid=[],validOld=[];
+      for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
+      if(valid.length>0){
+        var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
+        valid.forEach(function(s,i){
+          var dy=newTops[i]-validOld[i];
+          if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
+        });
+        requestAnimationFrame(function(){requestAnimationFrame(function(){
+          valid.forEach(function(s,i){
+            var dy=newTops[i]-validOld[i];
+            if(dy!==0){s.style.transition='';s.style.transform='';}
+          });
+        })});
+      }
+    },${NOTIF_FADE_MS});
+  });
 }
 function _e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
 if(window.containerBridge){

@@ -54,8 +54,7 @@ export function TimerCard({
     ? elapsedSeconds
     : 0;
 
-  const canStart = type !== 'Entertainment' ||
-    (state.balance.earnedBalance + state.balance.dailyGiftedRemaining > 0);
+  const canStart = true;
 
   const handleClick = () => {
     if (isActive) {
@@ -168,9 +167,6 @@ export function TimerCard({
       {/* Status Text */}
       <div className="status-text" style={{ color: isActive ? accentColor : undefined }}>
         {isActive && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{icon} {t(statusKeyMap[type])}</span>}
-        {!canStart && type === 'Entertainment' && !isActive && (
-          <span style={{ color: 'var(--color-error)' }}>{t('statusInsufficient')}</span>
-        )}
       </div>
     </div>
   );

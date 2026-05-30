@@ -6,6 +6,7 @@ export const en: Translations = {
   appSubtitle: 'Time Manager',
 
   // Navigation
+  navStart: 'Start',
   navStudy: 'Study',
   navHobby: 'Hobby',
   navEntertainment: 'Entertainment',

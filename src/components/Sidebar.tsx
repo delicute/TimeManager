@@ -1,7 +1,6 @@
-import { BookOpen, Palette, Gamepad2, BarChart3, Bell, Keyboard, Settings } from 'lucide-react';
-import type { SessionType } from '../types';
+import { Play, BarChart3, Bell, Keyboard, Settings } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
-import { useT, statusKeyMap, navKeyMap } from '../hooks/useI18n';
+import { useT, navKeyMap } from '../hooks/useI18n';
 import { Bug } from "lucide-react";
 import { formatDuration, activityColor } from '../utils/formatting';
 
@@ -11,19 +10,17 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'Study', icon: BookOpen },
-  { id: 'Hobby', icon: Palette },
-  { id: 'Entertainment', icon: Gamepad2 },
+  { id: 'Start', icon: Play },
   { id: 'Record', icon: BarChart3 },
   { id: 'Reminder', icon: Bell },
   { id: 'Hotkey', icon: Keyboard },
   { id: 'Settings', icon: Settings },
 ];
 
-const ACTIVITY_ICONS: Record<string, typeof BookOpen> = {
-  Study: BookOpen,
-  Hobby: Palette,
-  Entertainment: Gamepad2,
+const ACTIVITY_ICONS: Record<string, typeof Play> = {
+  Study: Play,
+  Hobby: Play,
+  Entertainment: Play,
 };
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
@@ -38,22 +35,12 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     todaySeconds[log.activityType] = (todaySeconds[log.activityType] || 0) + sec;
   }
 
-  // Add active session
   if (session.isActive && session.currentType !== 'None' && session.startTime) {
     const elapsed = (Date.now() - session.startTime) / 1000;
     todaySeconds[session.currentType] = (todaySeconds[session.currentType] || 0) + elapsed;
   }
 
   const totalAvailable = balance.earnedBalance + balance.dailyGiftedRemaining;
-  const statusKey = session.isActive
-    ? statusKeyMap[session.currentType]
-    : null;
-  const statusLabel = statusKey ? t(statusKey) : t('statusIdle');
-  const statusColor = session.isActive
-    ? activityColor(session.currentType as string)
-    : 'var(--color-on-dark-soft)';
-
-  const ActivityIcon = session.isActive ? ACTIVITY_ICONS[session.currentType as string] : null;
 
   return (
     <aside className="sidebar">
@@ -81,23 +68,6 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         )}
       </div>
 
-      {/* Status Indicator */}
-      <div className="sidebar-summary sidebar-summary-first">
-        <div className="summary-title">{t('currentStatus')}</div>
-        <div style={{
-          fontSize: 16,
-          fontWeight: 500,
-          color: statusColor,
-          marginTop: 4,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          {ActivityIcon && <ActivityIcon size={18} />}
-          {statusLabel}
-        </div>
-      </div>
-
       {/* Navigation */}
       <nav className="sidebar-nav">
         {navItems.map(item => {
@@ -105,7 +75,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           return (
             <button
               key={item.id}
-              className={`nav-btn ${currentPage === item.id ? 'active' : ''}`}
+              className={`nav-btn ${currentPage === item.id || (item.id === 'Start' && ['Study','Hobby','Entertainment'].includes(currentPage)) ? 'active' : ''}`}
               onClick={() => onNavigate(item.id)}
             >
               <span className="nav-icon"><Icon size={18} /></span>
@@ -117,7 +87,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       </nav>
 
       {/* Daily Summary */}
-      <div className="sidebar-summary">
+      <div className="sidebar-summary sidebar-summary-first">
         <div className="summary-title">{t('todayOverview')}</div>
         <div className="today-row">
           {(['Study', 'Hobby', 'Entertainment'] as const).map(type => {

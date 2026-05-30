@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from './hooks/useAppStore';
 import { Sidebar } from './components/Sidebar';
-import { StudyPage } from './pages/StudyPage';
-import { HobbyPage } from './pages/HobbyPage';
-import { EntertainmentPage } from './pages/EntertainmentPage';
+import { StartPage } from './pages/StartPage';
 import { RecordPage } from './pages/RecordPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReminderPage } from './pages/ReminderPage';
@@ -12,7 +10,8 @@ import { HotkeySettingsPage } from './pages/HotkeySettingsPage';
 import { DEFAULT_HOTKEYS, type SessionType } from './types';
 
 export function App() {
-  const [currentPage, setCurrentPage] = useState('Study');
+  const [currentPage, setCurrentPage] = useState('Start');
+  const [startTab, setStartTab] = useState<SessionType>('Study');
   const { state, loadInitialData, startSession, stopSession } = useAppStore();
   const hotkeys = state.settings.hotkeys;
   const session = state.session;
@@ -70,12 +69,12 @@ export function App() {
 
       e.preventDefault();
       switch (action) {
-        case 'navStudy': setCurrentPage('Study'); return;
-        case 'navHobby': setCurrentPage('Hobby'); return;
-        case 'navEntertainment': setCurrentPage('Entertainment'); return;
+        case 'navStudy': setCurrentPage('Start'); setStartTab('Study'); return;
+        case 'navHobby': setCurrentPage('Start'); setStartTab('Hobby'); return;
+        case 'navEntertainment': setCurrentPage('Start'); setStartTab('Entertainment'); return;
         case 'navRecord': setCurrentPage('Record'); return;
         case 'navReminder': setCurrentPage('Reminder'); return;
-        case 'navSettings': setCurrentPage('Settings');
+        case 'navSettings': setCurrentPage('Settings'); return;
         case 'navDebug': setCurrentPage('Debug'); return;
         case 'sessionStudy': startSession('Study'); return;
         case 'sessionHobby': startSession('Hobby'); return;
@@ -90,15 +89,17 @@ export function App() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'Study': return <StudyPage />;
-      case 'Hobby': return <HobbyPage />;
-      case 'Entertainment': return <EntertainmentPage />;
+      case 'Start':
+      case 'Study':
+      case 'Hobby':
+      case 'Entertainment':
+        return <StartPage initialTab={currentPage === 'Start' ? startTab : currentPage as SessionType} />;
       case 'Record': return <RecordPage />;
       case 'Reminder': return <ReminderPage />;
       case 'Hotkey': return <HotkeySettingsPage />;
       case 'Debug': return <DebugPage />;
       case 'Settings': return <SettingsPage />;
-      default: return <StudyPage />;
+      default: return <StartPage initialTab="Study" />;
     }
   };
 

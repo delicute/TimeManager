@@ -32,6 +32,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Folder picker
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
 
+  // Open folder in explorer
+  shellOpenPath: (dirPath: string) => ipcRenderer.invoke('shell:openPath', dirPath),
+
   // Reminders
   remindersLoad: () => ipcRenderer.invoke('reminders:load'),
   remindersSave: (rules: any) => ipcRenderer.invoke('reminders:save', rules),

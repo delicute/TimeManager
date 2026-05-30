@@ -111,7 +111,6 @@ function reducer(state: AppState, action: Action): AppState {
     case 'BALANCE_TRY_CONSUME': {
       const { earnedBalance, dailyGiftedRemaining } = state.balance;
       const rate = earnedBalance < 0 ? 2 : 1;
-      if (dailyGiftedRemaining + earnedBalance <= 0) return state;
       if (dailyGiftedRemaining >= rate) {
         return {
           ...state,

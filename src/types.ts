@@ -203,6 +203,7 @@ declare global {
       getBasePath: () => Promise<string>;
       setAutoStart: (enabled: boolean) => Promise<void>;
       selectFolder: () => Promise<string | null>;
+      shellOpenPath: (dirPath: string) => Promise<void>;
       remindersLoad: () => Promise<ReminderRule[]>;
       remindersSave: (rules: ReminderRule[]) => Promise<void>;
       windowSetAlwaysOnTop: (onTop: boolean) => Promise<void>;

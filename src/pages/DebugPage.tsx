@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bug, Plus, Minus, Bell, Clock } from 'lucide-react';
+import { Bug, Plus, Minus, Bell, Clock, ToggleLeft } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import type { SessionType } from '../types';
@@ -18,7 +18,7 @@ export function DebugPage() {
   const [includeLog, setIncludeLog] = useState(true);
   const [notifCount, setNotifCount] = useState(1);
   const [notifType, setNotifType] = useState<NotifType>('notification');
-  const [notifTitle, setNotifTitle] = useState('Debug');
+  const [notifTitle, setNotifTitle] = useState('');
   const [notifBody, setNotifBody] = useState('');
 
   // Per-type values and units
@@ -42,6 +42,13 @@ export function DebugPage() {
       type: 'debug', notifType: 'notification', title, body, color: '#5db872',
       duration: state.settings.notificationDuration ?? 5,
     });
+  };
+
+  // Toggle debug setting (persists)
+  const toggleDebug = () => {
+    const updated = { ...state.settings, debug: !state.settings.debug };
+    dispatch({ type: 'SET_SETTINGS', payload: updated });
+    window.electronAPI.saveSettings(updated);
   };
 
   // Adjust time for a session type
@@ -81,6 +88,14 @@ export function DebugPage() {
     <>
       <h1 className="page-title" style={{color:'#ffffff',fontWeight:700}}><span className="title-icon"><Bug size={24}/></span> {t('debugTitle')}</h1>
 
+      {/* Debug 设置持久化 */}
+      <div className="card" style={{padding:'5px 12px',marginBottom:6}}>
+        <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#ffffff'}}>
+          <input type="checkbox" checked={!!state.settings.debug} onChange={toggleDebug} style={{accentColor:'#5db8a6'}} />
+          <ToggleLeft size={13}/> 保持调试面板开启
+        </label>
+      </div>
+
       {/* Include Logs toggle */}
       <div className="card" style={{padding:'5px 12px',marginBottom:6}}>
         <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#ffffff'}}>
@@ -91,20 +106,23 @@ export function DebugPage() {
 
       {/* 数值更改 */}
       <div className="card" style={{padding:12,marginBottom:6}}>
-        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>数值更改</div>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>{t('debugTitle')} - 数值更改</div>
         {[...SESSION_TYPES, 'balance' as const].map(key => {
           const isBal = key === 'balance';
           const label = isBal ? '余额' : (key === 'Study' ? '学习' : key === 'Hobby' ? '爱好' : '娱乐');
-          const curVal = isBal ? balance.earnedBalance : (session.isActive && session.currentType === key ? `${Math.floor(runTime(key as SessionType)/60)}m` : '-');
+          const liveTime = session.isActive && session.currentType===key && session.startTime
+            ? `${Math.floor((now-session.startTime)/1000/60)}m` : null;
           return (
             <div key={key} style={{display:'flex',alignItems:'center',gap:4,marginBottom:4,fontSize:12,flexWrap:'wrap'}}>
-              <span style={{width:40,flexShrink:0,color:'#ffffff'}}>{label}</span>
-              {session.isActive && session.currentType===key && session.startTime ? <span style={{color:'var(--color-accent-teal)',fontSize:11,width:45}}>{Math.floor((now-session.startTime)/1000/60)}m</span> : <span style={{width:45}}></span>}
-              {/* Value input + unit toggle */}
-              <input type="number" step="any" value={val[key]||''} onChange={e=>setVal({...val,[key]:e.target.value})} style={{...inpS,width:55}} />
+              <span style={{width:36,flexShrink:0,color:'#ffffff'}}>{label}</span>
+              {liveTime && <span style={{color:'var(--color-accent-teal)',fontSize:11,width:50}}>{liveTime}</span>}
+              {/* Value input */}
+              <input type="number" value={val[key]||''} onChange={e=>setVal({...val,[key]:e.target.value})}
+                style={{...inpS,width:55}} />
+              {/* Unit toggle */}
               {(['s','m','h'] as const).map(u => (
                 <button key={u} onClick={()=>setUnit({...unit,[key]:u})}
-                  style={{...inpS, height:22, width:26, padding:0, textAlign:'center', fontSize:10, cursor:'pointer',
+                  style={{...inpS, height:22, width:24, padding:0, textAlign:'center', fontSize:10, cursor:'pointer',
                     border: unit[key]===u ? '1.5px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
                     background: unit[key]===u ? 'rgba(93,184,166,0.15)' : 'transparent',
                     color: unit[key]===u ? 'var(--color-accent-teal)' : '#ffffff',
@@ -115,7 +133,7 @@ export function DebugPage() {
                 style={{...btn, padding:'3px 6px'}}><Plus size={12}/></button>
               <button onClick={() => { if(isBal) { const nv=numVal('balance'); setBal(balance.earnedBalance - nv); } else adjTime(key as SessionType, -numVal(key)); }}
                 style={{...btn, padding:'3px 6px'}}><Minus size={12}/></button>
-              <button onClick={() => { if(isBal) { const nv = numVal('balance'); setBal(nv); } else adjTime(key as SessionType, numVal(key)); }} style={{...btn, fontSize:10}}>{t('debugSet')}</button>
+              <button onClick={() => { if(isBal) { const nv = numVal('balance'); setBal(nv); } else adjTime(key as SessionType, numVal(key)); }} style={{...btn, fontSize:10}}>设定</button>
             </div>
           );
         })}
@@ -124,25 +142,35 @@ export function DebugPage() {
       {/* Send notification */}
       <div className="card" style={{padding:12,marginBottom:6}}>
         <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>{t('debugSendNotification')}</div>
-        <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12,flexWrap:'wrap',marginBottom:4}}>
-          <span style={{color:'#ffffff'}}>{t("debugTitle")}</span>
-          <input value={notifTitle} onChange={e=>setNotifTitle(e.target.value)} style={{...inpS,width:120}} />
-          <span style={{color:'#ffffff'}}>Body</span>
-          <input value={notifBody} onChange={e=>setNotifBody(e.target.value)} style={{...inpS,width:120}} />
-          <span style={{color:'#ffffff'}}>{t('debugAmount')}</span>
-          <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))} style={{...inpS,width:50}} min={1} />
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12,flexWrap:'wrap'}}>
-          <span style={{color:"#ffffff",fontSize:12}}>类型:</span>{NOTIF_TYPES.map(nt => (
-            <button key={nt} onClick={()=>setNotifType(nt)}
-              style={{...btn, height:22, padding:'2px 8px',
-                border: notifType===nt ? `1.5px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
-                background: notifType===nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
-                color: notifType===nt ? NOTIF_COLORS[nt] : '#ffffff',
-              }}>{nt}</button>
-          ))}
-          <button onClick={()=>{for(let i=0;i<notifCount;i++)window.electronAPI.notificationShow({type:'debug',notifType,title:notifTitle||'Debug',body:notifBody,color:NOTIF_COLORS[notifType],duration:state.settings.notificationDuration??5});}}
-            style={btn}><Bell size={12}/> {t('debugSendNotification')}</button>
+        <div style={{display:'flex',flexDirection:'column',gap:6,fontSize:12}}>
+          <div style={{display:'flex',alignItems:'center',gap:4}}>
+            <span style={{color:'#ffffff',width:36,flexShrink:0,fontSize:12}}>{t('debugTitle')}</span>
+            <input value={notifTitle} onChange={e=>setNotifTitle(e.target.value)} placeholder="Debug"
+              style={{...inpS,flex:1}} />
+          </div>
+          <div style={{display:'flex',gap:4}}>
+            <span style={{color:'#ffffff',width:36,flexShrink:0,fontSize:12,paddingTop:4}}>Body</span>
+            <textarea value={notifBody} onChange={e=>setNotifBody(e.target.value)} placeholder="（可选）"
+              style={{...inpS,flex:1,minHeight:56,resize:'vertical',fontFamily:'inherit'}} />
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap',marginTop:2}}>
+            <span style={{color:'#ffffff',width:36,flexShrink:0,fontSize:12}}>数量</span>
+            <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))}
+              style={{...inpS,width:50}} min={1} />
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap',marginTop:2}}>
+            <span style={{color:'#ffffff',fontSize:12}}>类型:</span>
+            {NOTIF_TYPES.map(nt => (
+              <button key={nt} onClick={()=>setNotifType(nt)}
+                style={{...btn, height:22, padding:'2px 8px',
+                  border: notifType===nt ? `1.5px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
+                  background: notifType===nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
+                  color: notifType===nt ? NOTIF_COLORS[nt] : '#ffffff',
+                }}>{nt}</button>
+            ))}
+            <button onClick={()=>{for(let i=0;i<notifCount;i++)window.electronAPI.notificationShow({type:'debug',notifType,title:notifTitle||'Debug',body:notifBody,color:NOTIF_COLORS[notifType],duration:state.settings.notificationDuration??5});}}
+              style={{...btn,marginLeft:'auto'}}><Bell size={12}/> 发送</button>
+          </div>
         </div>
       </div>
     </>

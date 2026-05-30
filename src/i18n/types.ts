@@ -1,6 +1,7 @@
 export interface Translations {
   appTitle: string;
   appSubtitle: string;
+  navStart: string;
   navStudy: string;
   navHobby: string;
   navEntertainment: string;
@@ -126,7 +127,6 @@ export interface Translations {
   notifDuration: string;
   notifDurationUnit: string;
   navDebug: string;
-  debugTitle: string;
   debugTitle: string;
   debugEnable: string;
   debugDisable: string;

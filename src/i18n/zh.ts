@@ -6,6 +6,7 @@ export const zh: Translations = {
   appSubtitle: '时间管理器',
 
   // Navigation
+  navStart: '开始',
   navStudy: '学习',
   navHobby: '爱好',
   navEntertainment: '娱乐',
