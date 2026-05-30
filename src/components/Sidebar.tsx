@@ -1,4 +1,4 @@
-import { Play, BarChart3, Bell, Keyboard, Settings, BookOpen, Palette, Gamepad2 } from 'lucide-react';
+import { Play, BarChart3, Bell, Settings, BookOpen, Palette, Gamepad2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, statusKeyMap, navKeyMap } from '../hooks/useI18n';
 import { Bug } from "lucide-react";
@@ -13,7 +13,6 @@ const navItems = [
   { id: 'Start', icon: Play },
   { id: 'Record', icon: BarChart3 },
   { id: 'Reminder', icon: Bell },
-  { id: 'Hotkey', icon: Keyboard },
   { id: 'Settings', icon: Settings },
 ];
 

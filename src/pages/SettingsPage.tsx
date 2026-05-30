@@ -92,8 +92,8 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
     ...navTab, border:'1.5px solid var(--color-accent-teal)',
     background:'rgba(93,184,166,0.15)', color:'var(--color-accent-teal)', fontWeight:600,
   };
-  const cardStyle: React.CSSProperties = { padding:'8px 12px', marginBottom:6 };
-  const rowStyle: React.CSSProperties = { display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 0' };
+  const cardStyle: React.CSSProperties = { padding:'8px 12px', marginBottom:11 };
+  const rowStyle: React.CSSProperties = { display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 0' };
   const labelStyle: React.CSSProperties = { fontSize:13, color:'var(--color-on-dark)' };
 
   return (

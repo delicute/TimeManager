@@ -571,6 +571,12 @@ body {
   transform: translateX(18px);
 }
 
+/* ── Large Toggle Switch (reminder cards) ── */
+.toggle-lg { width: 46px; height: 26px; }
+.toggle-lg .toggle-slider { width: 46px; height: 26px; }
+.toggle-lg .toggle-slider::before { width: 22px; height: 22px; }
+.toggle-lg input:checked + .toggle-slider::before { transform: translateX(20px); }
+
 /* ── Slider ── */
 .slider-group {
   display: flex;
