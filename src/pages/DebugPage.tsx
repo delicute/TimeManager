@@ -166,7 +166,7 @@ export function DebugPage() {
       // Session earnings → earnedBalance, milestone gifts → dailyGiftedRemaining
       const updated = {
         ...b,
-        earnedBalance: Math.max(0, (b.earnedBalance || 0) + balanceChange),
+        earnedBalance: (b.earnedBalance || 0) + balanceChange,
         dailyGiftedRemaining: (b.dailyGiftedRemaining || 1800) + rewardTotal,
         milestones: { ...m, [contKey]: newCont, [claimKey]: claimed },
       };
