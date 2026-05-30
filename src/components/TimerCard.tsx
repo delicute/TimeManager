@@ -138,7 +138,7 @@ export function TimerCard({
                 ))}
               </div>
               <div className="milestone-top-row">
-                <span className="milestone-current-time">{formatDuration(continuous)}</span>
+                <span className="milestone-current-time">{continuous < 60 ? `${Math.round(continuous)}s` : formatDuration(Math.round(continuous / 60) * 60)}</span>
                 <span style={{ fontSize: 11, color: 'var(--color-accent-teal)', whiteSpace: 'nowrap' }}>
                   {t('milestoneAllClaimed')}
                 </span>
