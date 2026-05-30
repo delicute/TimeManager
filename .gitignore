@@ -44,3 +44,8 @@ record.txt
 tmp-wincodesign/
 vite-project/
 fix_*.py
+
+# Project-specific
+CLAUDE.md
+run.bat
+run-debug.bat
