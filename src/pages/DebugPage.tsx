@@ -101,11 +101,7 @@ export function DebugPage() {
     const newTotal = Math.max(0, currentTotal + (delta > 0 ? sec : -sec));
     const debugOverride = { ...(state.balance.debugTodayOverride || {}), [type]: newTotal };
 
-    // Update store with new total (does NOT persist debugTodayOverride to disk)
-    dispatch({ type: 'SET_BALANCE', payload: { ...state.balance, debugTodayOverride: debugOverride } });
-
-    // Write log entry for balance tracking (duration is ignored for today total,
-    // since debugTodayOverride takes precedence everywhere)
+    // Write log entry for balance tracking
     window.electronAPI.writeLogEntry({
       startTime: new Date(ts - sec * 1000).toISOString(),
       endTime: new Date(ts).toISOString(),
