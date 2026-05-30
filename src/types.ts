@@ -10,6 +10,7 @@ export interface BalanceState {
     studyClaimed: number;
     hobbyClaimed: number;
   };
+  debugTodayOverride?: Record<string, number>;
 }
 
 export interface AppSettings {
@@ -171,6 +172,7 @@ export interface AppState {
     startTime: number | null;
     tickCount: number;
     isPaused: boolean;
+    pausedAt?: number;
   };
   balance: BalanceState;
   settings: AppSettings;

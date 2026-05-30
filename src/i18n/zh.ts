@@ -46,6 +46,7 @@ export const zh: Translations = {
   todayHobby: '今日爱好',
   todayEntertainment: '今日娱乐',
 
+  milestoneAllClaimed: '今日奖励已全部领取，等待明天吧~',
   // Record
   recordTitle: '记录',
   recordTimeline: '时间线',

@@ -46,6 +46,7 @@ export const en: Translations = {
   todayHobby: "Today's Hobby",
   todayEntertainment: "Today's Entertainment",
 
+  milestoneAllClaimed: "Today's rewards all collected. See you tomorrow~",
   // Record
   recordTitle: 'Records',
   recordTimeline: 'Timeline',

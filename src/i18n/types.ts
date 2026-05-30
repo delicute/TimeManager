@@ -60,6 +60,7 @@ export interface Translations {
   step: string;
   currentStatus: string;
   todayOverview: string;
+  milestoneAllClaimed: string;
   lowBalanceTitle: string;
   lowBalanceBody: string;
   longSessionTitle: string;

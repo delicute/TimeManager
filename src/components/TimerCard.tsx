@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useRef } from 'react';
 import { Play, Square, Gift, Pause } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
@@ -40,13 +39,13 @@ export function TimerCard({
   const { state, dispatch, startSession, stopSession } = useAppStore();
   const { session } = state;
   const t = useT();
-  const pausedDisplay = useRef(0);
 
   const isActive = session.isActive && session.currentType === type;
   const paused = session.isPaused;
+  const now = paused && session.pausedAt ? session.pausedAt : Date.now();
   const rawElapsed = isActive && session.startTime
-    ? Math.floor((Date.now() - session.startTime) / 1000) : 0;
-  const elapsedSeconds = paused ? pausedDisplay.current : rawElapsed;
+    ? Math.floor((now - session.startTime) / 1000) : 0;
+  const elapsedSeconds = rawElapsed;
 
   const sessionEarned = isActive && type !== 'Entertainment'
     ? Math.floor(rawElapsed / intervalSeconds) : 0;
@@ -56,12 +55,7 @@ export function TimerCard({
     ? rawElapsed * debtRate : 0;
 
   const handlePause = () => {
-    if (!paused) {
-      pausedDisplay.current = rawElapsed;
-      dispatch({ type: 'SESSION_PAUSE' });
-    } else {
-      dispatch({ type: 'SESSION_RESUME' });
-    }
+    dispatch({ type: paused ? 'SESSION_RESUME' : 'SESSION_PAUSE' });
   };
 
   const handleClick = () => {
@@ -122,9 +116,37 @@ export function TimerCard({
         const continuous = storedCont + (isActive ? rawElapsed : 0);
         // Only show unclaimed milestones
         const activeMilestones = milestones.filter((_, i) => !(claimed & (1 << i)));
-        if (activeMilestones.length === 0) return null; // all done, hide bar
-        const nextThreshold = activeMilestones[0].threshold;
         const maxTh = milestones[milestones.length - 1].threshold;
+
+        if (activeMilestones.length === 0) {
+          // All milestones claimed — show bar with completion message
+          return (
+            <div className="milestone-bar-wrap" style={{ opacity: 0.45 }}>
+              <div className="milestone-rewards-row">
+                {milestones.map((m, i) => (
+                  <div key={i} className="milestone-reward claimed" style={{ left: `${(m.threshold / maxTh) * 100}%` }}>
+                    <Gift size={10} />
+                    <span>+{formatDuration(m.reward)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="milestone-bar">
+                <div className="milestone-fill" style={{ width: '100%', opacity: 0.4 }} />
+                {milestones.map((m, i) => (
+                  <div key={i} className="milestone-dot claimed"
+                    style={{ left: `${(m.threshold / maxTh) * 100}%` }} />
+                ))}
+              </div>
+              <div className="milestone-top-row">
+                <span className="milestone-current-time">{formatDuration(continuous)}</span>
+                <span style={{ fontSize: 11, color: 'var(--color-accent-teal)', whiteSpace: 'nowrap' }}>
+                  {t('milestoneAllClaimed')}
+                </span>
+              </div>
+            </div>
+          );
+        }
+        const nextThreshold = activeMilestones[0].threshold;
         const progress = continuous >= nextThreshold ? 100 : (continuous / nextThreshold) * 100;
 
         return (
@@ -184,6 +206,10 @@ export function TimerCard({
   );
 
   function computeTodayTotal(): number {
+    // Check for debug override first
+    const dbgOverride = state.balance.debugTodayOverride?.[type];
+    if (dbgOverride !== undefined) return dbgOverride;
+
     let total = 0;
     for (const log of state.todayLogs) {
       if (log.activityType === type) {

@@ -185,16 +185,23 @@ export function RecordPage() {
   const totals: Record<string, number> = { Study: 0, Hobby: 0, Entertainment: 0 };
   let totalBalEarned = 0, totalBalConsumed = 0;
   for (const log of filteredLogs) {
-    if (!log.debug) {
-      const sec = Math.floor((new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000);
-      totals[log.activityType] = (totals[log.activityType] || 0) + sec;
-      if (log.balanceChange > 0) totalBalEarned += log.balanceChange;
-      else if (log.balanceChange < 0) totalBalConsumed += Math.abs(log.balanceChange);
-    }
+    const sec = Math.floor((new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000);
+    totals[log.activityType] = (totals[log.activityType] || 0) + sec;
+    if (log.balanceChange > 0) totalBalEarned += log.balanceChange;
+    else if (log.balanceChange < 0) totalBalConsumed += Math.abs(log.balanceChange);
   }
   if (preset === 'today' && session.isActive && session.currentType !== 'None' && session.startTime) {
-    const elapsed = Math.floor((Date.now() - session.startTime) / 1000);
+    const now = session.isPaused && session.pausedAt ? session.pausedAt : Date.now();
+    const elapsed = Math.floor((now - session.startTime) / 1000);
     totals[session.currentType] = (totals[session.currentType] || 0) + elapsed;
+  }
+
+  // Apply debug today override (for Set operation in DebugPage)
+  const dbgOverride = state.balance.debugTodayOverride;
+  if (preset === 'today' && dbgOverride) {
+    for (const t of ['Study', 'Hobby', 'Entertainment'] as const) {
+      if (dbgOverride[t] !== undefined) totals[t] = dbgOverride[t];
+    }
   }
   const totalTime = Object.values(totals).reduce((a, b) => a + b, 0);
 

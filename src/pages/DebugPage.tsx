@@ -139,6 +139,19 @@ export function DebugPage() {
     notify(`Debug: ${label}`, `${delta > 0 ? '+' : '-'}${n}${unit[type]}, 余额${balanceChange > 0 ? '+' : ''}${balanceChange}`);
   };
 
+  // Set today's total for a session type to a specific value (does NOT change balance)
+  const setTodayTotal = (type: SessionType, targetSeconds: number) => {
+    const currentOverride = state.balance.debugTodayOverride || {};
+    const updated = {
+      ...state.balance,
+      debugTodayOverride: { ...currentOverride, [type]: targetSeconds } as Record<string, number>,
+    };
+    dispatch({ type: 'SET_BALANCE', payload: updated });
+    const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
+    const n = Math.floor(targetSeconds / mult(unit[type]));
+    notify(`Debug: ${label}`, `设定为 ${n}${unit[type]}（不影响余额）`);
+  };
+
   // Set balance to a specific value
   const setBal = (target: number) => {
     window.electronAPI.loadBalance().then((b: any) => {
@@ -203,7 +216,7 @@ export function DebugPage() {
                 style={{...btn, padding:'3px 6px'}}><Plus size={12}/></button>
               <button onClick={() => { if(isBal) { const nv=numVal('balance'); setBal(balance.earnedBalance - nv); } else adjTime(key as SessionType, -numVal(key)); }}
                 style={{...btn, padding:'3px 6px'}}><Minus size={12}/></button>
-              <button onClick={() => { if(isBal) { const nv = numVal('balance'); setBal(nv); } else adjTime(key as SessionType, numVal(key)); }} style={{...btn, fontSize:10}}>{t('debugSet')}</button>
+              <button onClick={() => { if(isBal) { const nv = numVal('balance'); setBal(nv); } else setTodayTotal(key as SessionType, numVal(key)); }} style={{...btn, fontSize:10}}>{t('debugSet')}</button>
             </div>
           );
         })}

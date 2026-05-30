@@ -95,9 +95,14 @@ function reducer(state: AppState, action: Action): AppState {
         },
       };
     case 'SESSION_PAUSE':
-      return { ...state, session: { ...state.session, isPaused: true } };
-    case 'SESSION_RESUME':
-      return { ...state, session: { ...state.session, isPaused: false } };
+      return { ...state, session: { ...state.session, isPaused: true, pausedAt: Date.now() } };
+    case 'SESSION_RESUME': {
+      const pausedMs = state.session.pausedAt ? Date.now() - state.session.pausedAt : 0;
+      return {
+        ...state,
+        session: { ...state.session, isPaused: false, startTime: (state.session.startTime ?? Date.now()) + pausedMs, pausedAt: undefined as any },
+      };
+    }
     case 'SESSION_STOP':
       return {
         ...state,
@@ -140,7 +145,7 @@ function reducer(state: AppState, action: Action): AppState {
       if (state.balance.lastDate !== today) {
         return {
           ...state,
-          balance: { ...state.balance, dailyGiftedRemaining: DAILY_GIFT, lastDate: today, milestones: undefined },
+          balance: { ...state.balance, dailyGiftedRemaining: DAILY_GIFT, lastDate: today, milestones: undefined, debugTodayOverride: undefined },
         };
       }
       return state;
@@ -318,7 +323,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const persistBalance = useCallback(async () => {
     try {
-      await window.electronAPI.saveBalance(balanceRef.current);
+      // Strip debug-only fields before persisting to disk
+      const { debugTodayOverride: _, ...toSave } = balanceRef.current;
+      await window.electronAPI.saveBalance(toSave as any);
     } catch { /* ignore */ }
   }, []);
 
@@ -399,8 +406,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           todaySec[log.activityType] = (todaySec[log.activityType] || 0) + sec;
         }
         if (s.isActive && s.currentType !== 'None' && s.startTime) {
-          const elapsed = (Date.now() - s.startTime) / 1000;
+          const now = s.isPaused && s.pausedAt ? s.pausedAt : Date.now();
+          const elapsed = (now - s.startTime) / 1000;
           todaySec[s.currentType] = (todaySec[s.currentType] || 0) + elapsed;
+        }
+
+        // Apply debug today override (for Set operation in DebugPage)
+        const dbgOverride = bal.debugTodayOverride;
+        if (dbgOverride) {
+          for (const t of ['Study', 'Hobby', 'Entertainment'] as const) {
+            if (dbgOverride[t] !== undefined) todaySec[t] = dbgOverride[t];
+          }
         }
 
         const continuousEntertainment = s.isActive && s.currentType === 'Entertainment' && s.startTime

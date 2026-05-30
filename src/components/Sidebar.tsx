@@ -35,8 +35,17 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   }
 
   if (session.isActive && session.currentType !== 'None' && session.startTime) {
-    const elapsed = (Date.now() - session.startTime) / 1000;
+    const now = session.isPaused && session.pausedAt ? session.pausedAt : Date.now();
+    const elapsed = (now - session.startTime) / 1000;
     todaySeconds[session.currentType] = (todaySeconds[session.currentType] || 0) + elapsed;
+  }
+
+  // Apply debug today override
+  const dbgOverride = balance.debugTodayOverride;
+  if (dbgOverride) {
+    for (const t of ['Study', 'Hobby', 'Entertainment'] as const) {
+      if (dbgOverride[t] !== undefined) todaySeconds[t] = dbgOverride[t];
+    }
   }
 
   const totalAvailable = balance.earnedBalance + balance.dailyGiftedRemaining;
