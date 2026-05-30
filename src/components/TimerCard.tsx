@@ -120,8 +120,11 @@ export function TimerCard({
         // Use stored continuous time + current session elapsed (real-time)
         const storedCont = (mData?.[contKey as keyof typeof mData] as number) || 0;
         const continuous = storedCont + (isActive ? rawElapsed : 0);
-        // Only show unclaimed milestones
-        const activeMilestones = milestones.filter((_, i) => !(claimed & (1 << i)));
+        // Only show unclaimed milestones that haven't been passed yet
+        const activeMilestones = milestones.filter((_, i) => {
+          if (claimed & (1 << i)) return false;
+          return continuous < milestones[i].threshold;
+        });
         if (activeMilestones.length === 0) return null; // all done, hide bar
         const nextThreshold = activeMilestones[0].threshold;
         const maxTh = milestones[milestones.length - 1].threshold;
