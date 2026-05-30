@@ -60,15 +60,6 @@ export interface TimeLogEntry {
   minSessionLogEnabled?: boolean;
 }
 
-export interface LogItem {
-  icon: string;
-  activityName: string;
-  timeRange: string;
-  duration: string;
-  balanceText: string;
-  isNegative: boolean;
-}
-
 // ─── Reminder Types ───────────────────────────────────────────
 
 export type ReminderMetric =
@@ -84,8 +75,7 @@ export type ReminderMetric =
 
 export type ReminderOperator = 'lt' | 'gt' | 'gte' | 'lte' | 'eq';
 
-export type ReminderUrgency = 'low' | 'medium' | 'high' | 'critical';
-
+export type ReminderUrgency = 'low' | 'medium' | 'high' | 'critical' | 'urgent' | 'reminder' | 'notification' | 'info';
 export interface ReminderCondition {
   metric: ReminderMetric;
   operator: ReminderOperator;

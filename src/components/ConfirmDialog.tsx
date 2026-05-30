@@ -21,10 +21,10 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
         <div className="confirm-message">{message}</div>
         <div className="confirm-actions">
           <button className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm}>
-            {confirmLabel || '确定'}
+            {confirmLabel || 'Confirm'}
           </button>
           <button className="btn btn-secondary" onClick={onCancel}>
-            {cancelLabel || '取消'}
+            {cancelLabel || 'Cancel'}
           </button>
         </div>
       </div>

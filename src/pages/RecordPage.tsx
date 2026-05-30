@@ -225,7 +225,7 @@ export function RecordPage() {
     color: active ? 'var(--color-accent-teal)' : '#faf9f5', fontFamily: 'inherit',
   });
 
-  const typeLabel = (label: string) => label === 'other' ? '其他' : t(navKeyMap[label] || label);
+  const typeLabel = (label: string) => t(navKeyMap[label] || label);
 
   return (
     <>
@@ -256,7 +256,7 @@ export function RecordPage() {
         {/* Custom date range (expanded when 'custom' is selected) */}
         {preset === 'custom' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, marginLeft: 2 }}>
-            <span style={{ color: 'var(--color-on-dark-soft)' }}>从</span>
+            <span style={{ color: 'var(--color-on-dark-soft)' }}>{t('recordDateFrom')}</span>
             <span style={{ position: 'relative' }} ref={pickerRef}>
               <button onClick={() => { setCalTarget('from'); setShowPicker(v => !v); }}
                 style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 11, height: 26, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -274,7 +274,7 @@ export function RecordPage() {
                 </div>
               )}
             </span>
-            <span style={{ color: 'var(--color-on-dark-soft)' }}>~</span>
+            <span style={{ color: 'var(--color-on-dark-soft)' }}>{t('recordDateTo')}</span>
             <span style={{ position: 'relative' }}>
               <button onClick={() => { setCalTarget('to'); setShowPicker(v => !v); }}
                 style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 11, height: 26, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -323,12 +323,12 @@ export function RecordPage() {
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         <div className="card" style={{ flex: 1, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <TrendingUp size={14} style={{ color: 'var(--color-accent-teal)' }} />
-          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>Earned</span>
+          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>{t('recordEarned')}</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent-teal)' }}>{totalBalEarned}</span>
         </div>
         <div className="card" style={{ flex: 1, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <TrendingDown size={14} style={{ color: 'var(--color-error)' }} />
-          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>Consumed</span>
+          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>{t('recordConsumed')}</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-error)' }}>{totalBalConsumed}</span>
         </div>
       </div>

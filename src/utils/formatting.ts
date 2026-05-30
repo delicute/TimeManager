@@ -14,23 +14,8 @@ export function formatDurationFull(seconds: number): string {
   return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-export function formatBalance(balance: number): string {
-  if (balance > 0) return `+${balance}`;
-  if (balance < 0) return `${balance}`;
-  return '';
-}
-
 export function formatWeight(val: number): string {
   return val % 1 === 0 ? `${val.toFixed(0)}s` : `${val.toFixed(1)}s`;
-}
-
-export function activityName(type: string): string {
-  switch (type) {
-    case 'Study': return '学习';
-    case 'Hobby': return '爱好';
-    case 'Entertainment': return '娱乐';
-    default: return type;
-  }
 }
 
 export function activityColor(type: string): string {

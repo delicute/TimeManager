@@ -184,14 +184,14 @@ export function HotkeySettingsPage() {
             style={{ height: 28, fontSize: 11, padding: '2px 10px' }}
             onClick={confirmPending}
           >
-            {locale === 'zh' ? '确定' : 'Confirm'}
+            {t('hotkeyConfirm')}
           </button>
           <button
             className="btn btn-secondary"
             style={{ height: 28, fontSize: 11, padding: '2px 10px' }}
             onClick={cancelPending}
           >
-            {locale === 'zh' ? '取消' : 'Cancel'}
+            {t('hotkeyCancel')}
           </button>
         </div>
       );
@@ -202,11 +202,11 @@ export function HotkeySettingsPage() {
         <div className="hotkey-setting-controls">
           {conflictId === action.id && (
             <span className="hotkey-conflict-hint">
-              {locale === 'zh' ? '与其他快捷键冲突' : 'Conflicts with another hotkey'}
+              {t('hotkeyConflict')}
             </span>
           )}
           <span className="hotkey-recording">
-            {locale === 'zh' ? '按下快捷键...' : 'Press shortcut...'}
+            {t('hotkeyPressHint')}
           </span>
         </div>
       );
@@ -216,7 +216,7 @@ export function HotkeySettingsPage() {
       <div className="hotkey-setting-controls">
         {conflictId === action.id && (
           <span className="hotkey-conflict-hint">
-            {locale === 'zh' ? '与其他快捷键冲突' : 'Conflicts with another hotkey'}
+            {t('hotkeyConflict')}
           </span>
         )}
         <kbd className="hotkey-kbd" onClick={() => { setRecordingId(action.id); setConflictId(null); }}>
@@ -233,7 +233,7 @@ export function HotkeySettingsPage() {
       </h1>
 
       <div className="card">
-        <div className="settings-section-title">{locale === 'zh' ? '导航' : 'Navigation'}</div>
+        <div className="settings-section-title">{t('navNavigation')}</div>
         {NAV_ACTIONS.map(action => (
           <div key={action.id} className="hotkey-setting-row">
             <span className="hotkey-setting-label">{actionLabel(action)}</span>
@@ -243,7 +243,7 @@ export function HotkeySettingsPage() {
       </div>
 
       <div className="card">
-        <div className="settings-section-title">{locale === 'zh' ? '会话控制' : 'Session Control'}</div>
+        <div className="settings-section-title">{t('sessionControl')}</div>
         {SESSION_ACTIONS.map(action => (
           <div key={action.id} className="hotkey-setting-row">
             <span className="hotkey-setting-label">{actionLabel(action)}</span>
@@ -253,7 +253,7 @@ export function HotkeySettingsPage() {
       </div>
 
       <div className="card">
-        <div className="settings-section-title">{locale === 'zh' ? '录制控制' : 'Recording Controls'}</div>
+        <div className="settings-section-title">{t('recordingControls')}</div>
         {RECORDING_ACTIONS.map(action => (
           <div key={action.id} className="hotkey-setting-row">
             <span className="hotkey-setting-label">{actionLabel(action)}</span>
@@ -264,19 +264,19 @@ export function HotkeySettingsPage() {
 
       <div className="card" style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '12px 16px' }}>
         <button className="btn btn-secondary" onClick={() => setShowResetConfirm(true)} style={{ height: 32, fontSize: 12 }}>
-          {locale === 'zh' ? '重置所有快捷键' : 'Reset All'}
+          {t('hotkeyResetAll')}
         </button>
         {recordingId && (
           <button className="btn btn-secondary" onClick={() => { setRecordingId(null); setConflictId(null); }} style={{ height: 32, fontSize: 12 }}>
-            {locale === 'zh' ? '取消' : 'Cancel'}
+            {t('hotkeyCancel')}
           </button>
         )}
       </div>
       <ConfirmDialog
         open={showResetConfirm}
-        title={locale === 'zh' ? '重置快捷键' : 'Reset Hotkeys'}
-        message={locale === 'zh' ? '确定重置所有快捷键？' : 'Reset all hotkeys to defaults?'}
-        confirmLabel={locale === 'zh' ? '重置' : 'Reset'}
+        title={t('hotkeyResetConfirmTitle')}
+        message={t('hotkeyResetConfirmMsg')}
+        confirmLabel={t('resetAll')}
         onConfirm={() => {
           updateSetting({ hotkeys: undefined });
           setRecordingId(null);
@@ -288,7 +288,7 @@ export function HotkeySettingsPage() {
       />
 
       <div className="hint-text" style={{ marginTop: 16 }}>
-        {locale === 'zh' ? '点击快捷键进行修改，按快捷键录制完成后使用确认/取消键提交' : 'Click a shortcut to rebind, use confirm/cancel key to finish'}
+        {t('hotkeyHint')}
       </div>
     </div>
   );

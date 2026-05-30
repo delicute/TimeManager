@@ -52,9 +52,7 @@ export interface Translations {
   silentStart: string;
   minimizeToTray: string;
   weightSettings: string;
-  dataSection: string;
   dataPath: string;
-  hintMinimize: string;
   selectFolder: string;
   language: string;
   min: string;
@@ -138,7 +136,6 @@ export interface Translations {
   notifEnabled: string;
   notifDuration: string;
   notifDurationUnit: string;
-  navDebug: string;
   debugTitle: string;
   settingsTabGeneral: string;
   settingsTabWeight: string;
@@ -166,6 +163,26 @@ export interface Translations {
   debugTypeLabel: string;
   debugSend: string;
   debugKeepOpen: string;
+
+  // RecordPage
+  recordDateFrom: string;
+  recordDateTo: string;
+  recordEarned: string;
+  recordConsumed: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  resetAll: string;
+  navNavigation: string;
+  sessionControl: string;
+  recordingControls: string;
+  hotkeyConfirm: string;
+  hotkeyCancel: string;
+  hotkeyPressHint: string;
+  hotkeyConflict: string;
+  hotkeyResetAll: string;
+  hotkeyResetConfirmTitle: string;
+  hotkeyResetConfirmMsg: string;
+  hotkeyHint: string;
 
   // Settings extended
   settingsDefaultPath: string;

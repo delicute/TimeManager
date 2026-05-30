@@ -59,6 +59,7 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
       </div>
     );
   }
+  if (node.type === 'group') return null;
   const u: Unit = (node as any).unit || 's';
   const displayVal = Math.round(node.value / UNIT_MULT[u]);
   return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, RotateCcw, FolderOpen, Trash2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, useLocale } from '../hooks/useI18n';
@@ -38,9 +38,9 @@ export function SettingsPage() {
   const [confirmState, setConfirmState] = useState<{open:boolean;title:string;message:string;onConfirm:()=>void;danger?:boolean}>({open:false,title:'',message:'',onConfirm:()=>{}});
 
   // Load base path on mount
-  useState(() => {
+  useEffect(() => {
     window.electronAPI.getBasePath().then(setBasePath).catch(() => {});
-  });
+  }, []);
 
   const updateSetting = (partial: Partial<typeof s>) => {
     const updated = { ...s, ...partial };
