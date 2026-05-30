@@ -53,7 +53,7 @@ export function RecordPage() {
   const { session } = state;
   const t = useT();
   const [preset, setPreset] = useState<RangePreset>('today');
-  const [customFrom, setCustomFrom] = useState(() => fmt(daysAgo(7)));
+  const [customFrom, setCustomFrom] = useState(() => fmt(now()));
   const [customTo, setCustomTo] = useState(() => fmt(now()));
   const [logs, setLogs] = useState<any[]>([]);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -241,15 +241,7 @@ export function RecordPage() {
               <PieSVG data={mainPie} size={120} />
               <div style={{marginTop:4,fontSize:9,color:'var(--color-on-dark-soft)'}}>主</div>
             </div>
-            {(otherRaw.length > 0) && (
-              <>
-                <div style={{width:1,height:60,background:'rgba(255,255,255,0.08)'}} />
-                <div style={{textAlign:'center'}}>
-                  <PieSVG data={otherRaw} size={80} />
-                  <div style={{marginTop:4,fontSize:9,color:'var(--color-on-dark-soft)'}}>其他</div>
-                </div>
-              </>
-            )}
+
             <div style={{display:'flex',flexDirection:'column',gap:2}}>
               {[...mainPie, ...otherRaw].filter((_,i,a)=>!(i<mainPie.length&&i<3)).map((d,i) => (
                 <div key={i} style={{display:'flex',alignItems:'center',gap:4,fontSize:10}}>
