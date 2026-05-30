@@ -204,6 +204,23 @@ export function ReminderPage() {
   const [editingId, setEditingId] = useState<string|null>(null);
   const [form, setForm] = useState<ReminderRule>({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true});
   const [deleteId, setDeleteId] = useState<string|null>(null);
+  const [dragIndex, setDragIndex] = useState<number|null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number|null>(null);
+
+  const handleDragStart = (index:number) => (e:React.DragEvent) => { setDragIndex(index); e.dataTransfer.effectAllowed='move'; (e.target as HTMLElement).style.opacity='0.3'; };
+  const handleDragEnd = (e:React.DragEvent) => { setDragIndex(null); setDragOverIndex(null); (e.target as HTMLElement).style.opacity=''; };
+  const handleDragOver = (index:number) => (e:React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect='move'; setDragOverIndex(index); };
+  const handleDrop = (index:number) => (e:React.DragEvent) => {
+    e.preventDefault();
+    if (dragIndex===null || dragIndex===index) { setDragIndex(null); setDragOverIndex(null); return; }
+    const reordered = [...reminderRules];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(index, 0, moved);
+    window.electronAPI.remindersSave(reordered);
+    dispatch({type:'REMINDER_LOAD_RULES', payload:reordered});
+    setDragIndex(null); setDragOverIndex(null);
+    showToast(t('reminderReordered'),'success');
+  };
 
   const startAdd = () => { setForm({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true}); setEditingId('__new__'); };
   const startEdit = (rule:ReminderRule) => { setForm(JSON.parse(JSON.stringify(rule))); setEditingId(rule.id); };
@@ -266,8 +283,8 @@ export function ReminderPage() {
           <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
           {reminderRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
-            : <div style={{marginTop:16,columnCount:2,columnGap:6}}>{reminderRules.map(rule=>(
-                <div key={rule.id} className="card reminder-card" style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:rule.enabled?1:0.5}}>
+            : <div style={{marginTop:16,columnCount:2,columnGap:6}}>{reminderRules.map((rule, index)=>(
+                <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:dragIndex===index?0.3:(rule.enabled?1:0.5),border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
                       <div style={{width:3,height:20,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>

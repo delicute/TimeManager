@@ -153,6 +153,7 @@ export const zh: Translations = {
   reminderCancel: '取消',
   reminderDisabled: '关',
   reminderSaved: '提醒已保存',
+  reminderReordered: '提醒已排序',
   reminderUpdated: '提醒已更新',
   reminderDeleted: '提醒已删除',
   settingsSaved: '设置已保存',

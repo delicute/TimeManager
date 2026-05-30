@@ -129,6 +129,7 @@ export interface Translations {
   reminderCancel: string;
   reminderDisabled: string;
   reminderSaved: string;
+  reminderReordered: string;
   reminderUpdated: string;
   reminderDeleted: string;
   settingsSaved: string;
