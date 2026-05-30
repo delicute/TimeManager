@@ -41,6 +41,7 @@ export function SettingsPage() {
   const [showDanger, setShowDanger] = useState(false);
   const [dangerAction, setDangerAction] = useState<string|null>(null);
   const [dangerConfirm2, setDangerConfirm2] = useState(false);
+  const [section, setSection] = useState('general');
 
   // Load base path on mount
   useState(() => {
@@ -66,6 +67,16 @@ export function SettingsPage() {
     setShowResetConfirm(false);
   };
 
+      {/* Navigation */}
+      <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
+        {["general","weight","data","other"].map(sec => (
+          <button key={sec} onClick={()=>setSection(sec)}
+            style={{padding:"4px 14px",borderRadius:6,fontSize:12,cursor:"pointer",height:30,
+              border:section===sec?"1.5px solid var(--color-accent-teal)":"1px solid rgba(255,255,255,0.12)",
+              background:section===sec?"rgba(93,184,166,0.15)":"transparent",
+              color:section===sec?"var(--color-accent-teal)":"#faf9f5"}}>{sec}</button>
+        ))}
+      </div>
   return (
     <>
       <h1 className="page-title">
@@ -349,7 +360,7 @@ export function SettingsPage() {
         {showDanger && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
             <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
-              onClick={() => { setDangerAction('reset'); setDangerConfirm2(true); }}>重置为默认</button>
+              onClick={() => { setDangerAction('reset'); setDangerConfirm2(true); }}>重置设置选项</button>
             <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
               onClick={() => { setDangerAction('clear'); setDangerConfirm2(true); }}>清除所有数据</button>
             <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
@@ -357,31 +368,6 @@ export function SettingsPage() {
           </div>
         )}
       </div>
-
-      {/* Reset */}
-      <div className="card">
-        <button className="btn btn-secondary" style={{ width: '100%', gap: 6 }}
-          onClick={() => setShowResetConfirm(true)}>
-          <RotateCcw size={16} /> {locale === 'zh' ? '重置为默认' : 'Reset to Defaults'}
-        </button>
-      </div>
-
-      {/* Debug */}
-      <div className="card" style={{padding: '6px 12px'}}>
-        <div className="setting-row">
-          <span className="setting-label">{t("debugTitle")}</span>
-          <label className="toggle">
-            <input type="checkbox" checked={!!s.debug} onChange={e => {
-              const v = e.target.checked;
-              if (v) setShowDebugConfirm(true);
-              else { updateSetting({ debug: false }); setShowDebugConfirm(false); }
-            }} />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-      </div>
-
-
 
       <div className="hint-text">
         {t('hintMinimize')}

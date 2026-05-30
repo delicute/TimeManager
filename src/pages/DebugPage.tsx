@@ -99,7 +99,7 @@ export function DebugPage() {
           return (
             <div key={key} style={{display:'flex',alignItems:'center',gap:4,marginBottom:4,fontSize:12,flexWrap:'wrap'}}>
               <span style={{width:40,flexShrink:0,color:'#ffffff'}}>{label}</span>
-              <span style={{color:'var(--color-accent-teal)',fontSize:11,width:45}}>{curVal}</span>
+              {session.isActive && session.currentType===key && session.startTime ? <span style={{color:'var(--color-accent-teal)',fontSize:11,width:45}}>{Math.floor((now-session.startTime)/1000/60)}m</span> : <span style={{width:45}}></span>}
               {/* Value input + unit toggle */}
               <input type="number" step="any" value={val[key]||''} onChange={e=>setVal({...val,[key]:e.target.value})} style={{...inpS,width:55}} />
               {(['s','m','h'] as const).map(u => (
@@ -115,9 +115,7 @@ export function DebugPage() {
                 style={{...btn, padding:'3px 6px'}}><Plus size={12}/></button>
               <button onClick={() => { if(isBal) { const nv=numVal('balance'); setBal(balance.earnedBalance - nv); } else adjTime(key as SessionType, -numVal(key)); }}
                 style={{...btn, padding:'3px 6px'}}><Minus size={12}/></button>
-              {isBal && (
-                <button onClick={() => { const nv = numVal('balance'); setBal(nv); }} style={{...btn, fontSize:10}}>设定</button>
-              )}
+              <button onClick={() => { if(isBal) { const nv = numVal('balance'); setBal(nv); } else adjTime(key as SessionType, numVal(key)); }} style={{...btn, fontSize:10}}>{t('debugSet')}</button>
             </div>
           );
         })}
@@ -127,7 +125,7 @@ export function DebugPage() {
       <div className="card" style={{padding:12,marginBottom:6}}>
         <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>{t('debugSendNotification')}</div>
         <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12,flexWrap:'wrap',marginBottom:4}}>
-          <span style={{color:'#ffffff'}}>Title</span>
+          <span style={{color:'#ffffff'}}>{t("debugTitle")}</span>
           <input value={notifTitle} onChange={e=>setNotifTitle(e.target.value)} style={{...inpS,width:120}} />
           <span style={{color:'#ffffff'}}>Body</span>
           <input value={notifBody} onChange={e=>setNotifBody(e.target.value)} style={{...inpS,width:120}} />
@@ -135,7 +133,7 @@ export function DebugPage() {
           <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))} style={{...inpS,width:50}} min={1} />
         </div>
         <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12,flexWrap:'wrap'}}>
-          {NOTIF_TYPES.map(nt => (
+          <span style={{color:"#ffffff",fontSize:12}}>类型:</span>{NOTIF_TYPES.map(nt => (
             <button key={nt} onClick={()=>setNotifType(nt)}
               style={{...btn, height:22, padding:'2px 8px',
                 border: notifType===nt ? `1.5px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
