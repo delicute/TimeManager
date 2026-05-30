@@ -140,7 +140,7 @@ function reducer(state: AppState, action: Action): AppState {
       if (state.balance.lastDate !== today) {
         return {
           ...state,
-          balance: { ...state.balance, dailyGiftedRemaining: DAILY_GIFT, lastDate: today },
+          balance: { ...state.balance, dailyGiftedRemaining: DAILY_GIFT, lastDate: today, milestones: undefined },
         };
       }
       return state;
