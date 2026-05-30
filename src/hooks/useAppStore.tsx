@@ -323,9 +323,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const persistBalance = useCallback(async () => {
     try {
-      // Strip debug-only fields before persisting to disk
-      const { debugTodayOverride: _, ...toSave } = balanceRef.current;
-      await window.electronAPI.saveBalance(toSave as any);
+      await window.electronAPI.saveBalance(balanceRef.current);
     } catch { /* ignore */ }
   }, []);
 
