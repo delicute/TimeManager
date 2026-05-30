@@ -112,7 +112,7 @@ export function DebugPage() {
           const label = isBal ? t('debugBalance') : t(`timer${key}` as any);
           return (
             <div key={key} style={{display:'flex',alignItems:'center',gap:4,marginBottom:4,fontSize:12,flexWrap:'wrap'}}>
-              <span style={{width:36,flexShrink:0,color:'#ffffff'}}>{label}</span>
+              <span style={{width:90,flexShrink:0,color:'#ffffff',overflow:'hidden',textOverflow:'ellipsis'}}>{label}</span>
               {/* Value input */}
               <input type="text" inputMode="numeric" value={val[key]||''} onChange={e=>setVal({...val,[key]:e.target.value})}
                 style={{...inpS,width:55}} />

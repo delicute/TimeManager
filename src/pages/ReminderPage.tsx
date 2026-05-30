@@ -267,7 +267,7 @@ export function ReminderPage() {
           {reminderRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
             : <div style={{marginTop:16,columnCount:2,columnGap:6}}>{reminderRules.map(rule=>(
-                <div key={rule.id} className="card" style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:rule.enabled?1:0.5}}>
+                <div key={rule.id} className="card reminder-card" style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:rule.enabled?1:0.5}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
                       <div style={{width:3,height:20,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
@@ -281,7 +281,7 @@ export function ReminderPage() {
                         border:rule.enabled?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
                         background:rule.enabled?'rgba(93,184,166,0.15)':'transparent',
                         color:rule.enabled?'var(--color-accent-teal)':'var(--color-on-dark-soft)',
-                        fontWeight:rule.enabled?600:400}}>{rule.enabled?'开':'关'}</button>
+                        fontWeight:rule.enabled?600:400}}>{rule.enabled?t('reminderEnabled'):t('reminderDisabled')}</button>
                   </div>
                   {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4}}>{rule.content}</div>}
                   <div style={{marginTop:6,display:'flex',gap:6}}>

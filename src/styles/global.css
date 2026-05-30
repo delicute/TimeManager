@@ -207,6 +207,56 @@ body {
   white-space: nowrap;
 }
 
+/* ── Page Transitions ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.content-inner {
+  animation: fadeUp 250ms ease-out;
+}
+
+/* ── Button Press ── */
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Card Hover ── */
+.card {
+  transition: box-shadow 0.2s ease;
+}
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Reminder Card Entry Animation ── */
+.reminder-card {
+  animation: fadeUp 300ms ease-out both;
+}
+.reminder-card:nth-child(1) { animation-delay: 0ms; }
+.reminder-card:nth-child(2) { animation-delay: 40ms; }
+.reminder-card:nth-child(3) { animation-delay: 80ms; }
+.reminder-card:nth-child(4) { animation-delay: 120ms; }
+.reminder-card:nth-child(5) { animation-delay: 160ms; }
+.reminder-card:nth-child(6) { animation-delay: 200ms; }
+.reminder-card:nth-child(7) { animation-delay: 240ms; }
+.reminder-card:nth-child(8) { animation-delay: 280ms; }
+
+/* ── Loading Spinner ── */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: var(--color-accent-teal);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Content Area (dark theme) ── */
 .content-area {
   flex: 1;
