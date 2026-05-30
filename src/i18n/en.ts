@@ -11,6 +11,7 @@ export const en: Translations = {
   navEntertainment: 'Entertainment',
   navRecord: 'Records',
   navSettings: 'Settings',
+  navDebug: 'Debug',
 
   // Status
   statusIdle: 'Idle',
@@ -143,4 +144,22 @@ export const en: Translations = {
   notifEnabled: 'Show notifications',
   notifDuration: 'Duration',
   notifDurationUnit: 's',
+  // Debug
+  debugTitle: 'Debug Panel',
+  debugEnable: 'Enable Debug',
+  debugDisable: 'Disable Debug',
+  debugConfirmEnable: 'Are you sure you want to enable Debug mode?',
+  debugConfirmDisable: 'Are you sure you want to disable Debug mode?',
+  debugStudyTime: 'Study Time',
+  debugHobbyTime: 'Hobby Time',
+  debugEntertainmentTime: 'Entertainment Time',
+  debugBalance: 'Balance',
+  debugAdd: 'Add',
+  debugSubtract: 'Subtract',
+  debugSet: 'Set To',
+  debugMinutes: 'min',
+  debugAmount: 'amount',
+  debugSendNotification: 'Send Notification',
+  debugIncludeLog: 'Include in Logs',
+  debugTag: ' (Debug)',
 };

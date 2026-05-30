@@ -51,4 +51,5 @@ export const navKeyMap: Record<string, keyof import('../i18n/types').Translation
   Reminder: 'navReminder',
   Hotkey: 'navHotkey',
   Settings: 'navSettings',
+  Debug: 'navDebug',
 };

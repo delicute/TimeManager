@@ -7,6 +7,7 @@ import { EntertainmentPage } from './pages/EntertainmentPage';
 import { RecordPage } from './pages/RecordPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReminderPage } from './pages/ReminderPage';
+import { DebugPage } from './pages/DebugPage';
 import { HotkeySettingsPage } from './pages/HotkeySettingsPage';
 import { DEFAULT_HOTKEYS, type SessionType } from './types';
 
@@ -74,7 +75,8 @@ export function App() {
         case 'navEntertainment': setCurrentPage('Entertainment'); return;
         case 'navRecord': setCurrentPage('Record'); return;
         case 'navReminder': setCurrentPage('Reminder'); return;
-        case 'navSettings': setCurrentPage('Settings'); return;
+        case 'navSettings': setCurrentPage('Settings');
+        case 'navDebug': setCurrentPage('Debug'); return;
         case 'sessionStudy': startSession('Study'); return;
         case 'sessionHobby': startSession('Hobby'); return;
         case 'sessionEntertainment': startSession('Entertainment'); return;
@@ -94,6 +96,7 @@ export function App() {
       case 'Record': return <RecordPage />;
       case 'Reminder': return <ReminderPage />;
       case 'Hotkey': return <HotkeySettingsPage />;
+      case 'Debug': return <DebugPage />;
       case 'Settings': return <SettingsPage />;
       default: return <StudyPage />;
     }

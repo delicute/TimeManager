@@ -20,6 +20,7 @@ const DEFAULTS: AppSettings = {
   hobbyWeightStep: 0.5,
   notificationEnabled: true,
   notificationDuration: 5,
+  debug: false,
 };
 
 export function SettingsPage() {
@@ -36,6 +37,7 @@ export function SettingsPage() {
   const [hobbyStep, setHobbyStep] = useState(String(s.hobbyWeightStep));
   const [basePath, setBasePath] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showDebugConfirm, setShowDebugConfirm] = useState(false);
 
   // Load base path on mount
   useState(() => {
@@ -326,6 +328,26 @@ export function SettingsPage() {
           <RotateCcw size={16} /> {locale === 'zh' ? '重置为默认' : 'Reset to Defaults'}
         </button>
       </div>
+
+      {/* Debug */}
+      <div className="card">
+        <div className="setting-row">
+          <span className="setting-label">{t("debugTitle")}</span>
+          <label className="toggle">
+            <input type="checkbox" checked={!!s.debug} onChange={e => {
+              const v = e.target.checked;
+              if (v) setShowDebugConfirm(true);
+              else { updateSetting({ debug: false }); setShowDebugConfirm(false); }
+            }} />
+            <span className="toggle-slider" />
+          </label>
+        </div>
+      </div>
+
+      <ConfirmDialog open={showDebugConfirm} title={t("debugConfirmEnable")} message=""
+        onConfirm={() => { updateSetting({ debug: true }); setShowDebugConfirm(false); }}
+        onCancel={() => setShowDebugConfirm(false)} />
+
 
       <div className="hint-text">
         {t('hintMinimize')}

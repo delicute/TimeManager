@@ -29,6 +29,7 @@ export interface AppSettings {
   hotkeys?: Record<string, string>;
   notificationEnabled: boolean;
   notificationDuration: number;
+  debug?: boolean;
 }
 
 export const DEFAULT_HOTKEYS: Record<string, string> = {
@@ -38,6 +39,7 @@ export const DEFAULT_HOTKEYS: Record<string, string> = {
   navRecord: 'Ctrl+4',
   navReminder: 'Ctrl+5',
   navSettings: 'Ctrl+6',
+  navDebug: 'Ctrl+7',
   sessionStudy: 'Ctrl+Shift+S',
   sessionHobby: 'Ctrl+Shift+H',
   sessionEntertainment: 'Ctrl+Shift+E',
@@ -51,6 +53,7 @@ export interface TimeLogEntry {
   endTime: string;
   activityType: string;
   balanceChange: number;
+  debug?: boolean;
 }
 
 export interface LogItem {

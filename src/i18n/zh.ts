@@ -11,6 +11,7 @@ export const zh: Translations = {
   navEntertainment: '娱乐',
   navRecord: '记录',
   navSettings: '设置',
+  navDebug: '调试',
 
   // Status
   statusIdle: '空闲中',
@@ -143,4 +144,22 @@ export const zh: Translations = {
   notifEnabled: '启用通知',
   notifDuration: '停留时间',
   notifDurationUnit: '秒',
+  // Debug
+  debugTitle: '调试面板',
+  debugEnable: '启用调试',
+  debugDisable: '禁用调试',
+  debugConfirmEnable: '确定要启用调试模式吗？',
+  debugConfirmDisable: '确定要禁用调试模式吗？',
+  debugStudyTime: '学习时间',
+  debugHobbyTime: '爱好时间',
+  debugEntertainmentTime: '娱乐时间',
+  debugBalance: '余额',
+  debugAdd: '增加',
+  debugSubtract: '减少',
+  debugSet: '设为',
+  debugMinutes: '分钟',
+  debugAmount: '数量',
+  debugSendNotification: '发送通知',
+  debugIncludeLog: '纳入记录',
+  debugTag: '（调试）',
 };

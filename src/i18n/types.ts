@@ -6,6 +6,7 @@ export interface Translations {
   navEntertainment: string;
   navRecord: string;
   navSettings: string;
+  navDebug: string;
   statusIdle: string;
   statusStudying: string;
   statusHobbying: string;
@@ -124,4 +125,23 @@ export interface Translations {
   notifEnabled: string;
   notifDuration: string;
   notifDurationUnit: string;
+  navDebug: string;
+  debugTitle: string;
+  debugTitle: string;
+  debugEnable: string;
+  debugDisable: string;
+  debugConfirmEnable: string;
+  debugConfirmDisable: string;
+  debugStudyTime: string;
+  debugHobbyTime: string;
+  debugEntertainmentTime: string;
+  debugBalance: string;
+  debugAdd: string;
+  debugSubtract: string;
+  debugSet: string;
+  debugMinutes: string;
+  debugAmount: string;
+  debugSendNotification: string;
+  debugIncludeLog: string;
+  debugTag: string;
 }

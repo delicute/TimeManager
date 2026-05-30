@@ -2,6 +2,7 @@ import { BookOpen, Palette, Gamepad2, BarChart3, Bell, Keyboard, Settings } from
 import type { SessionType } from '../types';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, statusKeyMap, navKeyMap } from '../hooks/useI18n';
+import { Bug } from "lucide-react";
 import { formatDuration, activityColor } from '../utils/formatting';
 
 interface SidebarProps {
@@ -112,6 +113,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             </button>
           );
         })}
+        {state.settings.debug && <button key="Debug" className={`nav-btn ${currentPage === "Debug" ? "active" : ""}`} onClick={() => onNavigate("Debug")}><span className="nav-icon"><Bug size={18} /></span>{t("navDebug")}</button>}
       </nav>
 
       {/* Daily Summary */}
