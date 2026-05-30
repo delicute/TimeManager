@@ -20,39 +20,48 @@ function monthStart() { return new Date(now().getFullYear(), now().getMonth(), 1
 
 interface SegData { label: string; value: number; color: string; }
 
+function sectorPath(cx: number, cy: number, innerR: number, outerR: number, startDeg: number, endDeg: number): string {
+  const sar = (startDeg - 90) * Math.PI / 180;
+  const ear = (endDeg - 90) * Math.PI / 180;
+  const large = endDeg - startDeg > 180 ? 1 : 0;
+  const x1i = cx + innerR * Math.cos(sar), y1i = cy + innerR * Math.sin(sar);
+  const x1o = cx + outerR * Math.cos(sar), y1o = cy + outerR * Math.sin(sar);
+  const x2o = cx + outerR * Math.cos(ear), y2o = cy + outerR * Math.sin(ear);
+  const x2i = cx + innerR * Math.cos(ear), y2i = cy + innerR * Math.sin(ear);
+  return `M ${x1i} ${y1i} L ${x1o} ${y1o} A ${outerR} ${outerR} 0 ${large} 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${innerR} ${innerR} 0 ${large} 0 ${x1i} ${y1i} Z`;
+}
+
 function PieSVG({ data, size = 140, hovered, onHover }: {
   data: SegData[]; size?: number; hovered: string | null; onHover: (label: string | null) => void;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   if (total === 0) return <div style={{width:size,height:size,borderRadius:'50%',background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'var(--color-on-dark-soft)'}}>—</div>;
-  const r = size / 2 - 10;
-  const circ = 2 * Math.PI * r;
-  let offset = 0;
+  const cx = size / 2, cy = size / 2;
+  const r = cx - 10;
+  const sw = 7;
+  const swHov = 10;
+  const innerR = r - sw / 2, outerR = r + sw / 2;
+  const innerRH = r - swHov / 2, outerRH = r + swHov / 2;
+  let degOffset = 0;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:'block'}}>
-      <g transform={`translate(${size/2},${size/2}) rotate(-90)`}>
-        {data.map((d, i) => {
-          const pct = d.value / total;
-          const dash = pct * circ;
-          const g = (
-            <g key={i} style={{cursor:'pointer'}}
-              onMouseEnter={() => onHover(d.label)} onMouseLeave={() => onHover(null)}>
-              {/* Invisible wide stroke for hit detection */}
-              <circle r={r} fill="none" stroke="transparent" strokeWidth={16}
-                strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset} />
-              {/* Visible colored stroke - pointerEvents:none so events fall through to invisible one */}
-              <circle r={r} fill="none" stroke={hovered === d.label ? d.color : `${d.color}cc`}
-                strokeWidth={hovered === d.label ? 8 : 6}
-                strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset}
-                style={{transition:'stroke-width .12s,stroke .12s',pointerEvents:'none'}} />
-            </g>
-          );
-          offset += dash;
-          return g;
-        })}
-      </g>
+      {data.map((d, i) => {
+        const pct = d.value / total;
+        const startDeg = degOffset;
+        const endDeg = degOffset + pct * 360;
+        degOffset = endDeg;
+        const isHov = hovered === d.label;
+        return (
+          <path key={i}
+            d={sectorPath(cx, cy, isHov ? innerRH : innerR, isHov ? outerRH : outerR, startDeg, endDeg)}
+            fill={isHov ? d.color : `${d.color}cc`}
+            style={{cursor:'pointer', transition:'fill .12s'}}
+            onMouseEnter={() => onHover(d.label)}
+            onMouseLeave={() => onHover(null)} />
+        );
+      })}
       {/* Center text */}
-      <text x={size/2} y={size/2+4} textAnchor="middle" fill="#faf9f5" fontSize={13} fontWeight={600}>
+      <text x={cx} y={cy+4} textAnchor="middle" fill="#faf9f5" fontSize={13} fontWeight={600}>
         {formatDuration(total)}
       </text>
     </svg>

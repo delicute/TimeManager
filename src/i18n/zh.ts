@@ -173,7 +173,7 @@ export const zh: Translations = {
   debugBalance: '余额',
   debugAdd: '增加',
   debugSubtract: '减少',
-  debugSet: '设为',
+  debugSet: '应用',
   debugMinutes: '分钟',
   debugAmount: '数量',
   debugSendNotification: '发送通知',
