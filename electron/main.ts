@@ -223,16 +223,47 @@ function setupIPC() {
     minimizeToTrayEnabled = value;
   });
 
-  // Audio: read beep.wav and return as base64 data URL
-  ipcMain.handle('audio:getBeepDataUrl', () => {
-    const audioPath = getAssetPath('assets/audio/beep.wav');
+  // ─── Audio ────────────────────────────────────────────
+  // Read and return all built-in audio files as base64 data URLs
+  ipcMain.handle('audio:getBuiltinUrls', () => {
+    const result: Record<string, string> = {};
+    const audioDir = getAssetPath('assets/audio');
     try {
-      const buf = fs.readFileSync(audioPath);
-      return `data:audio/wav;base64,${buf.toString('base64')}`;
-    } catch {
-      // Return a minimal silent WAV as fallback
-      return '';
-    }
+      if (fs.existsSync(audioDir)) {
+        for (const file of fs.readdirSync(audioDir)) {
+          if (file.endsWith('.wav') || file.endsWith('.mp3') || file.endsWith('.ogg')) {
+            const name = path.parse(file).name;
+            const buf = fs.readFileSync(path.join(audioDir, file));
+            const ext = path.extname(file).slice(1);
+            result[name] = `data:audio/${ext};base64,${buf.toString('base64')}`;
+          }
+        }
+      }
+    } catch { /* ignore */ }
+    return result;
+  });
+
+  // Read a custom audio file and return as base64 data URL
+  ipcMain.handle('audio:readFile', async (_, filePath: string) => {
+    try {
+      if (fs.existsSync(filePath)) {
+        const buf = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).slice(1).toLowerCase();
+        const mime = ext === 'mp3' ? 'mpeg' : ext === 'ogg' ? 'ogg' : 'wav';
+        return `data:audio/${mime};base64,${buf.toString('base64')}`;
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
+
+  // File dialog for selecting custom audio
+  ipcMain.handle('dialog:selectAudioFile', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Audio Files', extensions: ['wav', 'mp3', 'ogg'] }],
+    });
+    if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
+    return null;
   });
 
   // ─── Global Hotkeys ──────────────────────────────
@@ -323,15 +354,21 @@ function closeReminderToast() {
 function showReminderToast(rule: any) {
   closeReminderToast();
 
-  // Read beep.wav for audio playback
-  let beepDataUrl = '';
-  try {
-    const audioPath = getAssetPath('assets/audio/beep.wav');
-    if (fs.existsSync(audioPath)) {
-      const buf = fs.readFileSync(audioPath);
-      beepDataUrl = `data:audio/wav;base64,${buf.toString('base64')}`;
-    }
-  } catch { /* ignore */ }
+  // Read audio per rule's sound setting
+  let audioDataUrl = '';
+  const soundSetting = rule.sound || '';
+  if (soundSetting.startsWith('builtin:')) {
+    const name = soundSetting.slice(8);
+    const audioPath = getAssetPath(`assets/audio/${name}.wav`);
+    try {
+      if (fs.existsSync(audioPath)) {
+        const buf = fs.readFileSync(audioPath);
+        audioDataUrl = `data:audio/wav;base64,${buf.toString('base64')}`;
+      }
+    } catch { /* ignore */ }
+  } else if (soundSetting.startsWith('file:')) {
+    audioDataUrl = soundSetting.slice(5);
+  }
 
   reminderToastWindow = new BrowserWindow({
     width: 335,
@@ -349,7 +386,7 @@ function showReminderToast(rule: any) {
     },
   });
 
-  const html = generateToastHtml(rule, beepDataUrl);
+  const html = generateToastHtml(rule, audioDataUrl);
   reminderToastWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
   // Measure content height after load, resize to fit, then show
@@ -444,7 +481,7 @@ function renderTreeHtml(node: any, values: Record<string, number>, path: string,
   return '';
 }
 
-function generateToastHtml(rule: any, beepDataUrl: string): string {
+function generateToastHtml(rule: any, audioDataUrl: string): string {
   const urgencyColors: Record<string, string> = {
     low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
   };
@@ -490,7 +527,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;f
 </style>
 </head>
 <body>
-${beepDataUrl ? `<audio autoplay src="${beepDataUrl}"></audio>` : ''}
+${audioDataUrl ? `<audio autoplay src="${audioDataUrl}"></audio>` : ''}
 <div class="ub"></div>
 <div class="bd${animClass ? ' ' + animClass : ''}">
 ${animClass ? '<div class="toast-glow"></div>' : ''}

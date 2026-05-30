@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Audio
   getBeepDataUrl: () => ipcRenderer.invoke('audio:getBeepDataUrl'),
+  getBuiltinSoundUrls: () => ipcRenderer.invoke('audio:getBuiltinUrls'),
+  readAudioFile: (filePath: string) => ipcRenderer.invoke('audio:readFile', filePath),
+  selectAudioFile: () => ipcRenderer.invoke('dialog:selectAudioFile'),
 
   // Reminder toast window
   reminderShowToast: (rule: any) => ipcRenderer.invoke('reminder:showToast', rule),

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, AlertTriangle, MessageCircle, Plus, Trash2, FileText, Shuffle, ToggleLeft, Search } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
@@ -201,6 +201,7 @@ export function ReminderPage() {
   const { reminderRules } = state;
   const t = useT();
   const { showToast } = useToast();
+  const [builtinSounds, setBuiltinSounds] = useState<Record<string,string>>({});
   const [editingId, setEditingId] = useState<string|null>(null);
   const [form, setForm] = useState<ReminderRule>({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true});
   const [deleteId, setDeleteId] = useState<string|null>(null);
@@ -230,6 +231,8 @@ export function ReminderPage() {
     setDragIndex(null); setDragOverIndex(null);
     showToast(t('reminderReordered'),'success');
   };
+
+  useEffect(() => { window.electronAPI.getBuiltinSoundUrls().then(setBuiltinSounds).catch(() => {}); }, []);
 
   const startAdd = () => { setForm({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true}); setEditingId('__new__'); };
   const startEdit = (rule:ReminderRule) => { setForm(JSON.parse(JSON.stringify(rule))); setEditingId(rule.id); };
@@ -281,6 +284,34 @@ export function ReminderPage() {
                 {t(`reminderNotifType${nt.charAt(0).toUpperCase()+nt.slice(1)}` as any)}
               </button>
             ))}</div>
+          </div>
+          {/* Sound selector */}
+          <div style={{marginBottom:12}}>
+            <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderSoundLabel')}</label>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              <button onClick={()=>setForm({...form,sound:''})}
+                style={{padding:'4px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:26,
+                  border:!form.sound?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                  background:!form.sound?'rgba(93,184,166,0.15)':'transparent',
+                  color:!form.sound?'var(--color-accent-teal)':'#faf9f5',fontFamily:'inherit',fontWeight:!form.sound?600:400,
+                }}>{t('reminderSoundNone')}</button>
+              {Object.keys(builtinSounds).map(name => (
+                <button key={name} onClick={()=>setForm({...form,sound:`builtin:${name}`})}
+                  style={{padding:'4px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:26,
+                    border:form.sound===`builtin:${name}`?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                    background:form.sound===`builtin:${name}`?'rgba(93,184,166,0.15)':'transparent',
+                    color:form.sound===`builtin:${name}`?'var(--color-accent-teal)':'#faf9f5',
+                    fontFamily:'inherit',fontWeight:form.sound===`builtin:${name}`?600:400,textTransform:'capitalize',
+                  }}>{name}</button>
+              ))}
+              <button onClick={async()=>{const p=await window.electronAPI.selectAudioFile();if(p){const d=await window.electronAPI.readAudioFile(p);if(d){setForm({...form,sound:`file:${d}`});showToast(t('reminderSoundSelected'),'success');}}}}
+                style={{padding:'4px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:26,
+                  border:form.sound?.startsWith('file:')?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                  background:form.sound?.startsWith('file:')?'rgba(93,184,166,0.15)':'transparent',
+                  color:form.sound?.startsWith('file:')?'var(--color-accent-teal)':'#faf9f5',
+                  fontFamily:'inherit',fontWeight:form.sound?.startsWith('file:')?600:400,
+                }}>{form.sound?.startsWith('file:')?t('reminderSoundCustomSelected'):t('reminderSoundCustom')}</button>
+            </div>
           </div>
           <div style={{display:'flex',gap:8}}>
             <button className="btn btn-primary" style={{height:28,fontSize:12,padding:'4px 14px'}} onClick={saveRule}>{t('reminderConfirm')}</button>

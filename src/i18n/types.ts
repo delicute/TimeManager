@@ -132,6 +132,11 @@ export interface Translations {
   reminderReordered: string;
   reminderSearchPlaceholder: string;
   reminderFilterAll: string;
+  reminderSoundLabel: string;
+  reminderSoundNone: string;
+  reminderSoundCustom: string;
+  reminderSoundCustomSelected: string;
+  reminderSoundSelected: string;
   reminderUpdated: string;
   reminderDeleted: string;
   settingsSaved: string;

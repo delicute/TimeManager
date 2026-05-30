@@ -114,6 +114,7 @@ export interface ReminderRule {
   conditionTree: ConditionNode;
   urgency: ReminderUrgency;
   enabled: boolean;
+  sound?: string; // '' = none, 'builtin:beep', 'builtin:completion', 'file:base64,<dataUrl>'
   // Internal: current metric values set by engine when enqueuing (path → value)
   _currentValues?: Record<string, number>;
   _locale?: string;
@@ -200,6 +201,9 @@ declare global {
       remindersSave: (rules: ReminderRule[]) => Promise<void>;
       windowSetAlwaysOnTop: (onTop: boolean) => Promise<void>;
       getBeepDataUrl: () => Promise<string>;
+      getBuiltinSoundUrls: () => Promise<Record<string, string>>;
+      readAudioFile: (filePath: string) => Promise<string | null>;
+      selectAudioFile: () => Promise<string | null>;
       reminderShowToast: (rule: ReminderRule) => Promise<void>;
       reminderToastDismiss: () => Promise<void>;
       reminderToastSnooze: (minutes: number) => Promise<void>;
