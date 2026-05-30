@@ -82,6 +82,30 @@ export function DebugPage() {
     const raw = isEntertainment ? sec * 5 : Math.floor(sec / (weight || 1));
     const balanceChange = delta > 0 ? raw : -raw;
 
+    // Compute current today total for this type (respecting existing override)
+    const currentOverride = state.balance.debugTodayOverride?.[type];
+    let currentTotal = 0;
+    if (currentOverride !== undefined) {
+      currentTotal = currentOverride;
+    } else {
+      for (const log of state.todayLogs) {
+        if (log.activityType === type) {
+          currentTotal += Math.floor(
+            (new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000
+          );
+        }
+      }
+    }
+
+    // Apply the delta to today's total via debugTodayOverride
+    const newTotal = Math.max(0, currentTotal + (delta > 0 ? sec : -sec));
+    const debugOverride = { ...(state.balance.debugTodayOverride || {}), [type]: newTotal };
+
+    // Update store with new total (does NOT persist debugTodayOverride to disk)
+    dispatch({ type: 'SET_BALANCE', payload: { ...state.balance, debugTodayOverride: debugOverride } });
+
+    // Write log entry for balance tracking (duration is ignored for today total,
+    // since debugTodayOverride takes precedence everywhere)
     window.electronAPI.writeLogEntry({
       startTime: new Date(ts - sec * 1000).toISOString(),
       endTime: new Date(ts).toISOString(),
@@ -132,7 +156,7 @@ export function DebugPage() {
         milestones: { ...m, [contKey]: newCont, [claimKey]: claimed },
       };
       window.electronAPI.saveBalance(updated);
-      dispatch({ type: 'SET_BALANCE', payload: updated });
+      dispatch({ type: 'SET_BALANCE', payload: { ...updated, debugTodayOverride: debugOverride } });
     });
     const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
     const n = Math.floor(sec / mult(unit[type]));
