@@ -10,24 +10,42 @@ const NOTIF_COLORS: Record<string,string> = { reminder:'#5db8a6', urgent:'#c6454
 const SESSION_TYPES: SessionType[] = ['Study','Hobby','Entertainment'];
 const UNIT_LABELS: Record<string,string> = { s:'s', m:'m', h:'h' };
 
+// Module-level cache so state survives page switches
+let _val: Record<string,string> = { Study:'1', Hobby:'1', Entertainment:'1', balance:'100' };
+let _unit: Record<string,'s'|'m'|'h'> = { Study:'m', Hobby:'m', Entertainment:'m', balance:'s' };
+let _includeLog = true;
+let _notifCount = 1;
+let _notifType: NotifType = 'notification';
+let _notifTitle = '';
+let _notifBody = '';
+
 export function DebugPage() {
   const { state, dispatch } = useAppStore();
   const { balance, session } = state;
   const t = useT();
 
-  const [includeLog, setIncludeLog] = useState(true);
-  const [notifCount, setNotifCount] = useState(1);
-  const [notifType, setNotifType] = useState<NotifType>('notification');
-  const [notifTitle, setNotifTitle] = useState('');
-  const [notifBody, setNotifBody] = useState('');
+  const [includeLog, setIncludeLog] = useState(_includeLog);
+  const [notifCount, setNotifCount] = useState(_notifCount);
+  const [notifType, setNotifType] = useState<NotifType>(_notifType);
+  const [notifTitle, setNotifTitle] = useState(_notifTitle);
+  const [notifBody, setNotifBody] = useState(_notifBody);
 
   // Per-type values and units
-  const [val, setVal] = useState<Record<string,string>>({ Study:'1', Hobby:'1', Entertainment:'1', balance:'100' });
-  const [unit, setUnit] = useState<Record<string,'s'|'m'|'h'>>({ Study:'m', Hobby:'m', Entertainment:'m', balance:'s' });
+  const [val, setVal] = useState<Record<string,string>>(_val);
+  const [unit, setUnit] = useState<Record<string,'s'|'m'|'h'>>(_unit);
 
   // Live time
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
+
+  // Sync debug form state to module cache so it survives page switches
+  useEffect(() => { _val = val; }, [val]);
+  useEffect(() => { _unit = unit; }, [unit]);
+  useEffect(() => { _includeLog = includeLog; }, [includeLog]);
+  useEffect(() => { _notifCount = notifCount; }, [notifCount]);
+  useEffect(() => { _notifType = notifType; }, [notifType]);
+  useEffect(() => { _notifTitle = notifTitle; }, [notifTitle]);
+  useEffect(() => { _notifBody = notifBody; }, [notifBody]);
 
   const runTime = (type: SessionType) =>
     session.isActive && session.currentType === type && session.startTime
