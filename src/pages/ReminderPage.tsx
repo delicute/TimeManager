@@ -52,10 +52,18 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
           </option>)}
         </select>
         <span style={{ fontSize:12, color:'var(--color-on-dark-soft)' }}>=</span>
-        <select value={node.expected?'true':'false'} onChange={e=>onChange({...node, expected:e.target.value==='true'})} style={{ ...ipt, width:80 }}>
-          <option value="true" style={{background:'#252320',color:'#faf9f5'}}>True</option>
-          <option value="false" style={{background:'#252320',color:'#faf9f5'}}>False</option>
-        </select>
+        <div style={{ display:'flex', gap:2 }}>
+          <button onClick={()=>onChange({...node, expected:true})}
+            style={{ padding:'2px 10px', borderRadius:4, fontSize:11, cursor:'pointer', height:24,
+              border:node.expected?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+              background:node.expected?'rgba(93,184,166,0.15)':'transparent',
+              color:node.expected?'var(--color-accent-teal)':'#faf9f5', fontWeight:node.expected?600:400 }}>True</button>
+          <button onClick={()=>onChange({...node, expected:false})}
+            style={{ padding:'2px 10px', borderRadius:4, fontSize:11, cursor:'pointer', height:24,
+              border:!node.expected?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+              background:!node.expected?'rgba(93,184,166,0.15)':'transparent',
+              color:!node.expected?'var(--color-accent-teal)':'#faf9f5', fontWeight:!node.expected?600:400 }}>False</button>
+        </div>
       </div>
     );
   }
@@ -256,7 +264,7 @@ export function ReminderPage() {
           {reminderRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
             : <div style={{marginTop:16,columnCount:2,columnGap:6}}>{reminderRules.map(rule=>(
-                <div key={rule.id} className="card" style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid'}}>
+                <div key={rule.id} className="card" style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:rule.enabled?1:0.5}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
                       <div style={{width:3,height:20,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
@@ -265,9 +273,12 @@ export function ReminderPage() {
                         {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()+rule.urgency.slice(1)}` as any)||rule.urgency}
                       </span>
                     </div>
-                    <label className="toggle" onClick={e=>e.stopPropagation()} style={{flexShrink:0}}>
-                      <input type="checkbox" checked={rule.enabled} onChange={()=>toggleEnabled(rule)}/><span className="toggle-slider"/>
-                    </label>
+                    <button onClick={()=>toggleEnabled(rule)}
+                      style={{flexShrink:0,padding:'2px 10px',height:24,fontSize:11,borderRadius:4,cursor:'pointer',
+                        border:rule.enabled?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                        background:rule.enabled?'rgba(93,184,166,0.15)':'transparent',
+                        color:rule.enabled?'var(--color-accent-teal)':'var(--color-on-dark-soft)',
+                        fontWeight:rule.enabled?600:400}}>{rule.enabled?'开':'关'}</button>
                   </div>
                   {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4}}>{rule.content}</div>}
                   <div style={{marginTop:6,display:'flex',gap:6}}>
