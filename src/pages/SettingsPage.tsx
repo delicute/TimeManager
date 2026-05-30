@@ -330,7 +330,7 @@ export function SettingsPage() {
       </div>
 
       {/* Debug */}
-      <div className="card">
+      <div className="card" style={{padding: '6px 12px'}}>
         <div className="setting-row">
           <span className="setting-label">{t("debugTitle")}</span>
           <label className="toggle">
