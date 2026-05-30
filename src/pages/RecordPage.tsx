@@ -342,7 +342,7 @@ export function RecordPage() {
               <PieSVG data={pieData} size={140} hovered={hoverSeg} onHover={setHoverSeg} />
             </div>
             {/* Detail panel */}
-            <div style={{ minWidth: 100, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ width: 175, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {hoverItem ? (
                 <div style={{ fontSize: 12, color: '#faf9f5', lineHeight: 1.6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
