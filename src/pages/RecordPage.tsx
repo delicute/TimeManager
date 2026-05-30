@@ -140,7 +140,7 @@ export function RecordPage() {
   const otherRaw = pieRaw.slice(2).length > 0 ? pieRaw.slice(2) : [];
 
   // Timeline
-  const timeline = filteredLogs.slice().sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).map(log => {
+  const timeline = filteredLogs.filter(l=>{if(!minSec||l.debug)return true;const d=Math.floor((new Date(l.endTime).getTime()-new Date(l.startTime).getTime())/1000);return d>=minSec;}).slice().sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).map(log => {
     const TypeIcon = ACTIVITY_ICONS[log.activityType] || BookOpen;
     return {
       icon: <TypeIcon size={16} />,

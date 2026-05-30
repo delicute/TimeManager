@@ -101,7 +101,6 @@ function reducer(state: AppState, action: Action): AppState {
         session: { ...state.session, tickCount: state.session.tickCount + 1 },
       };
     case 'BALANCE_ADD_EARNED':
-      if (state.balance.earnedBalance < 0) return state;
       return {
         ...state,
         balance: {

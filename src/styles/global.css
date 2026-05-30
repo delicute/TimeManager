@@ -216,7 +216,7 @@ body {
 
 .content-inner {
   width: 100%;
-  max-width: 520px;
+  max-width: 570px;
   margin: 0 auto;
   padding: 23px var(--space-lg) var(--space-xxl);
 }

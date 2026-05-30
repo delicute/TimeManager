@@ -38,6 +38,9 @@ export function SettingsPage() {
   const [basePath, setBasePath] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDebugConfirm, setShowDebugConfirm] = useState(false);
+  const [showDanger, setShowDanger] = useState(false);
+  const [dangerAction, setDangerAction] = useState<string|null>(null);
+  const [dangerConfirm2, setDangerConfirm2] = useState(false);
 
   // Load base path on mount
   useState(() => {
@@ -302,29 +305,63 @@ export function SettingsPage() {
       <div className="card">
         <div className="settings-section-title">{t('dataSection')}</div>
         <div style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>{t('dataPath')}</div>
-        <div className="data-path">{basePath || t('selectFolder')}</div>
-        <button
-          className="btn btn-secondary"
-          style={{ marginTop: 12, width: '100%' }}
-          onClick={async () => {
-            const folder = await window.electronAPI.selectFolder();
-            if (folder) {
-              setBasePath(folder);
-              updateSetting({ dataPath: folder });
-            }
-          }}
-        >
-          {t('selectFolder')}
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <div className="data-path" style={{ flex: 1 }}>{basePath || t('selectFolder')}</div>
+          <button className="btn btn-secondary" style={{ padding: '4px 12px', height: 32, fontSize: 12, flexShrink: 0 }}
+            onClick={async () => {
+              const folder = await window.electronAPI.selectFolder();
+              if (folder) { setBasePath(folder); updateSetting({ dataPath: folder }); }
+            }}>{t('selectFolder')}</button>
+        </div>
+      </div>
+
+      {/* Min session log time */}
+      <div className="card">
+        <div className="setting-row">
+          <span className="setting-label">时间线最短记录</span>
+          <label className="toggle">
+            <input type="checkbox" checked={!!s.minSessionLogEnabled} onChange={e => updateSetting({ minSessionLogEnabled: e.target.checked })} />
+            <span className="toggle-slider" />
+          </label>
+        </div>
+        {s.minSessionLogEnabled && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <span style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>{'<'} </span>
+            <input type="number" value={s.minSessionLogSec ?? 10} onChange={e => updateSetting({ minSessionLogSec: Number(e.target.value) })}
+              style={{ width: 60, padding: '3px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 12, height: 28 }} />
+            <span style={{ fontSize: 12, color: 'var(--color-on-dark-soft)' }}>s 不显示</span>
+          </div>
+        )}
+      </div>
+
+      {/* Danger Zone */}
+      <div className="card" style={{ border: '1px solid rgba(198,69,69,0.3)' }}>
+        <div className="setting-row">
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-error)' }}>危险设置</span>
+          <label className="toggle">
+            <input type="checkbox" checked={showDanger} onChange={e => {
+              if (e.target.checked) setShowDebugConfirm(true);
+              else setShowDanger(false);
+            }} />
+            <span className="toggle-slider" />
+          </label>
+        </div>
+        {showDanger && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+            <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
+              onClick={() => { setDangerAction('reset'); setDangerConfirm2(true); }}>重置为默认</button>
+            <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
+              onClick={() => { setDangerAction('clear'); setDangerConfirm2(true); }}>清除所有数据</button>
+            <button className="btn btn-secondary" style={{ width: '100%', padding: '6px 12px', height: 32, fontSize: 12 }}
+              onClick={() => updateSetting({ debug: true })}>调试面板</button>
+          </div>
+        )}
       </div>
 
       {/* Reset */}
       <div className="card">
-        <button
-          className="btn btn-secondary"
-          style={{ width: '100%', gap: 6 }}
-          onClick={() => setShowResetConfirm(true)}
-        >
+        <button className="btn btn-secondary" style={{ width: '100%', gap: 6 }}
+          onClick={() => setShowResetConfirm(true)}>
           <RotateCcw size={16} /> {locale === 'zh' ? '重置为默认' : 'Reset to Defaults'}
         </button>
       </div>
@@ -344,23 +381,30 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <ConfirmDialog open={showDebugConfirm} title={t("debugConfirmEnable")} message=""
-        onConfirm={() => { updateSetting({ debug: true }); setShowDebugConfirm(false); }}
-        onCancel={() => setShowDebugConfirm(false)} />
 
 
       <div className="hint-text">
         {t('hintMinimize')}
       </div>
-      <ConfirmDialog
-        open={showResetConfirm}
+      <ConfirmDialog open={showResetConfirm}
         title={locale === 'zh' ? '重置设置' : 'Reset Settings'}
         message={locale === 'zh' ? '确定将所有设置重置为默认值吗？' : 'Reset all settings to defaults?'}
         confirmLabel={locale === 'zh' ? '重置' : 'Reset'}
-        onConfirm={handleResetConfirm}
-        onCancel={() => setShowResetConfirm(false)}
-        danger
-      />
+        onConfirm={handleResetConfirm} onCancel={() => setShowResetConfirm(false)} danger />
+      <ConfirmDialog open={showDebugConfirm}
+        title={locale === 'zh' ? '启用危险设置' : 'Enable Danger Zone'}
+        message={locale === 'zh' ? '确定要启用危险设置吗？' : 'Are you sure?'}
+        onConfirm={() => { setShowDanger(true); setShowDebugConfirm(false); }}
+        onCancel={() => setShowDebugConfirm(false)} />
+      <ConfirmDialog open={dangerConfirm2}
+        title={locale === 'zh' ? '二次确认' : 'Confirm Again'}
+        message={locale === 'zh' ? '此操作不可撤销，确定要执行吗？' : 'This cannot be undone. Proceed?'}
+        onConfirm={() => {
+          if (dangerAction === 'reset') handleResetConfirm();
+          else if (dangerAction === 'clear') { updateSetting({ dataPath: undefined } as any); }
+          setDangerConfirm2(false); setDangerAction(null);
+        }}
+        onCancel={() => { setDangerConfirm2(false); setDangerAction(null); }} danger />
     </>
   );
 }

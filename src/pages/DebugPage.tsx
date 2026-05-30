@@ -7,128 +7,143 @@ import type { SessionType } from '../types';
 type NotifType = 'reminder'|'urgent'|'notification'|'info';
 const NOTIF_TYPES: NotifType[] = ['reminder','urgent','notification','info'];
 const NOTIF_COLORS: Record<string,string> = { reminder:'#5db8a6', urgent:'#c64545', notification:'#5db872', info:'#a09d96' };
+const SESSION_TYPES: SessionType[] = ['Study','Hobby','Entertainment'];
+const UNIT_LABELS: Record<string,string> = { s:'s', m:'m', h:'h' };
 
 export function DebugPage() {
   const { state, dispatch } = useAppStore();
   const { balance, session } = state;
   const t = useT();
-  const [, forceUpdate] = useState(0);
 
-  const [includeLog, setIncludeLog] = useState(false);
-  const [customVal, setCustomVal] = useState('1');
-  const [customUnit, setCustomUnit] = useState<'m'|'h'>('m');
+  const [includeLog, setIncludeLog] = useState(true);
   const [notifCount, setNotifCount] = useState(1);
-  const [notifType, setNotifType] = useState<NotifType>('info');
+  const [notifType, setNotifType] = useState<NotifType>('notification');
+  const [notifTitle, setNotifTitle] = useState('Debug');
+  const [notifBody, setNotifBody] = useState('');
 
-  // Live running time
+  // Per-type values and units
+  const [val, setVal] = useState<Record<string,string>>({ Study:'1', Hobby:'1', Entertainment:'1', balance:'100' });
+  const [unit, setUnit] = useState<Record<string,'s'|'m'|'h'>>({ Study:'m', Hobby:'m', Entertainment:'m', balance:'s' });
+
+  // Live time
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
 
-  const runTime = (type: SessionType) => {
-    if (session.isActive && session.currentType === type && session.startTime) {
-      return Math.floor((now - session.startTime) / 1000);
-    }
-    return 0;
-  };
+  const runTime = (type: SessionType) =>
+    session.isActive && session.currentType === type && session.startTime
+      ? Math.floor((now - session.startTime) / 1000) : 0;
 
-  // Balance: direct IPC save to bypass reducer restrictions
-  const setBalance = (val: number) => {
-    window.electronAPI.loadBalance().then((b: any) => {
-      const updated = { ...b, earnedBalance: val };
-      window.electronAPI.saveBalance(updated);
-      dispatch({ type: 'SET_BALANCE', payload: updated });
+  const mult = (u: string) => u === 'h' ? 3600 : u === 'm' ? 60 : 1;
+  const numVal = (key: string) => Math.floor(Number(val[key] || 0) * mult(unit[key] || 'm'));
+
+  // Notify after change
+  const notify = (title: string, body: string) => {
+    window.electronAPI.notificationShow({
+      type: 'debug', notifType: 'notification', title, body, color: '#5db872',
+      duration: state.settings.notificationDuration ?? 5,
     });
   };
 
-  const adjustTime = (type: SessionType, seconds: number) => {
-    if (!includeLog) return;
+  // Adjust time for a session type
+  const adjTime = (type: SessionType, delta: number) => {
+    const sec = delta > 0 ? delta : -delta;
     const ts = Date.now();
     window.electronAPI.writeLogEntry({
-      startTime: new Date(ts - Math.abs(seconds) * 1000).toISOString(),
+      startTime: new Date(ts - sec * 1000).toISOString(),
       endTime: new Date(ts).toISOString(),
-      activityType: type,
-      balanceChange: 0,
-      debug: true,
+      activityType: type, balanceChange: 0, debug: true,
     });
     window.electronAPI.getTodayLogs().then(logs => dispatch({ type: 'SET_TODAY_LOGS', payload: logs }));
+    const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
+    const n = Math.floor(sec / mult(unit[type]));
+    notify(`Debug: ${label}`, `${delta > 0 ? '+' : '-'}${n}${unit[type]}`);
   };
 
-  const unitMult = customUnit === "h" ? 3600 : 60;
-  const customValNum = () => Number(customVal) * unitMult;
+  // Set balance to a specific value
+  const setBal = (target: number) => {
+    window.electronAPI.loadBalance().then((b: any) => {
+      const updated = { ...b, earnedBalance: target };
+      window.electronAPI.saveBalance(updated);
+      dispatch({ type: 'SET_BALANCE', payload: updated });
+      notify('Debug: 余额', `设定为 ${target}`);
+    });
+  };
+
   const inpS: React.CSSProperties = {
-    padding:'4px 8px', borderRadius:4, border:'1px solid rgba(255,255,255,0.12)',
-    background:'rgba(255,255,255,0.06)', color:'#ffffff', fontSize:12, height:28,
-    boxSizing:'border-box',
+    padding:'3px 6px', borderRadius:4, border:'1px solid rgba(255,255,255,0.12)',
+    background:'rgba(255,255,255,0.06)', color:'#ffffff', fontSize:12, height:26, boxSizing:'border-box',
   };
   const btn: React.CSSProperties = {
-    ...inpS, height:28, cursor:'pointer', display:'inline-flex', alignItems:'center',
-    gap:3, padding:'4px 10px', color:'#ffffff',
+    ...inpS, height:26, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:2, padding:'3px 8px', color:'#ffffff',
   };
 
   return (
     <>
       <h1 className="page-title" style={{color:'#ffffff',fontWeight:700}}><span className="title-icon"><Bug size={24}/></span> {t('debugTitle')}</h1>
 
-      {/* Include in Logs */}
-      <div className="card" style={{padding:'6px 12px',marginBottom:8}}>
-        <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#ffffff'}}>
+      {/* Include Logs toggle */}
+      <div className="card" style={{padding:'5px 12px',marginBottom:6}}>
+        <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#ffffff'}}>
           <input type="checkbox" checked={includeLog} onChange={e=>setIncludeLog(e.target.checked)} style={{accentColor:'#5db8a6'}} />
-          <Clock size={14}/> {t('debugIncludeLog')}
+          <Clock size={13}/> {t('debugIncludeLog')}
         </label>
       </div>
 
-      {/* Time adjustment */}
-      <div className="card" style={{padding:12,marginBottom:8}}>
-        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'#ffffff'}}>{t('debugTitle')}</div>
-        {(['Study','Hobby','Entertainment'] as SessionType[]).map(type => (
-          <div key={type} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6,fontSize:12}}>
-            <span style={{width:80,flexShrink:0,color:'#ffffff'}}>{t(type==='Study'?'navStudy':type==='Hobby'?'navHobby':'navEntertainment')}</span>
-            <span style={{color:'var(--color-accent-teal)',fontSize:11,width:50}}>
-              {session.isActive && session.currentType===type ? `${Math.floor(runTime(type)/60)}m` : '-'}
-            </span>
-            <button onClick={()=>adjustTime(type, -customValNum())} style={btn}><Minus size={12}/></button>
-            <button onClick={()=>adjustTime(type, customValNum())} style={btn}><Plus size={12}/></button>
-          </div>
-        ))}
-        {/* Custom value + unit */}
-        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4,fontSize:12}}>
-          <input type="number" value={customVal} onChange={e=>setCustomVal(e.target.value)} style={{...inpS,width:70}} min={0} />
-          {(['m','h'] as const).map(u => (
-            <button key={u} onClick={()=>setCustomUnit(u)}
-              style={{...btn, padding:'2px 10px', height:24,
-                border: customUnit===u ? '1.5px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
-                background: customUnit===u ? 'rgba(93,184,166,0.15)' : 'transparent',
-                color: customUnit===u ? 'var(--color-accent-teal)' : '#ffffff',
-              }}>{u}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Balance */}
-      <div className="card" style={{padding:12,marginBottom:8}}>
-        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'#ffffff'}}>{t('debugBalance')}: <span style={{color:'var(--color-accent-teal)'}}>{balance.earnedBalance}</span></div>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12}}>
-          <span style={{color:'#ffffff'}}>{t('debugSet')}</span>
-          <input type="number" id="balVal" defaultValue={0} style={{...inpS,width:100}} />
-          <button onClick={()=>{const v=Number((document.getElementById('balVal')as HTMLInputElement)?.value||0);setBalance(v);}} style={btn}>{t('debugSet')}</button>
-        </div>
+      {/* 数值更改 */}
+      <div className="card" style={{padding:12,marginBottom:6}}>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>数值更改</div>
+        {[...SESSION_TYPES, 'balance' as const].map(key => {
+          const isBal = key === 'balance';
+          const label = isBal ? '余额' : (key === 'Study' ? '学习' : key === 'Hobby' ? '爱好' : '娱乐');
+          const curVal = isBal ? balance.earnedBalance : (session.isActive && session.currentType === key ? `${Math.floor(runTime(key as SessionType)/60)}m` : '-');
+          return (
+            <div key={key} style={{display:'flex',alignItems:'center',gap:4,marginBottom:4,fontSize:12,flexWrap:'wrap'}}>
+              <span style={{width:40,flexShrink:0,color:'#ffffff'}}>{label}</span>
+              <span style={{color:'var(--color-accent-teal)',fontSize:11,width:45}}>{curVal}</span>
+              {/* Value input + unit toggle */}
+              <input type="number" step="any" value={val[key]||''} onChange={e=>setVal({...val,[key]:e.target.value})} style={{...inpS,width:55}} />
+              {(['s','m','h'] as const).map(u => (
+                <button key={u} onClick={()=>setUnit({...unit,[key]:u})}
+                  style={{...inpS, height:22, width:26, padding:0, textAlign:'center', fontSize:10, cursor:'pointer',
+                    border: unit[key]===u ? '1.5px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
+                    background: unit[key]===u ? 'rgba(93,184,166,0.15)' : 'transparent',
+                    color: unit[key]===u ? 'var(--color-accent-teal)' : '#ffffff',
+                  }}>{u}</button>
+              ))}
+              {/* +/- buttons */}
+              <button onClick={() => { if(isBal) { const nv=numVal('balance'); setBal(balance.earnedBalance + nv); } else adjTime(key as SessionType, numVal(key)); }}
+                style={{...btn, padding:'3px 6px'}}><Plus size={12}/></button>
+              <button onClick={() => { if(isBal) { const nv=numVal('balance'); setBal(balance.earnedBalance - nv); } else adjTime(key as SessionType, -numVal(key)); }}
+                style={{...btn, padding:'3px 6px'}}><Minus size={12}/></button>
+              {isBal && (
+                <button onClick={() => { const nv = numVal('balance'); setBal(nv); }} style={{...btn, fontSize:10}}>设定</button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Send notification */}
-      <div className="card" style={{padding:12,marginBottom:8}}>
-        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'#ffffff'}}>{t('debugSendNotification')}</div>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,flexWrap:'wrap'}}>
+      <div className="card" style={{padding:12,marginBottom:6}}>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>{t('debugSendNotification')}</div>
+        <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12,flexWrap:'wrap',marginBottom:4}}>
+          <span style={{color:'#ffffff'}}>Title</span>
+          <input value={notifTitle} onChange={e=>setNotifTitle(e.target.value)} style={{...inpS,width:120}} />
+          <span style={{color:'#ffffff'}}>Body</span>
+          <input value={notifBody} onChange={e=>setNotifBody(e.target.value)} style={{...inpS,width:120}} />
           <span style={{color:'#ffffff'}}>{t('debugAmount')}</span>
-          <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))} style={{...inpS,width:60}} min={1} />
+          <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))} style={{...inpS,width:50}} min={1} />
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12,flexWrap:'wrap'}}>
           {NOTIF_TYPES.map(nt => (
             <button key={nt} onClick={()=>setNotifType(nt)}
-              style={{...btn, padding:'2px 8px',height:24,
+              style={{...btn, height:22, padding:'2px 8px',
                 border: notifType===nt ? `1.5px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
                 background: notifType===nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
                 color: notifType===nt ? NOTIF_COLORS[nt] : '#ffffff',
               }}>{nt}</button>
           ))}
-          <button onClick={()=>{for(let i=0;i<notifCount;i++)window.electronAPI.notificationShow({type:'debug',notifType,title:`Debug ${i+1}/${notifCount}`,body:'',color:NOTIF_COLORS[notifType],duration:state.settings.notificationDuration??5});}}
+          <button onClick={()=>{for(let i=0;i<notifCount;i++)window.electronAPI.notificationShow({type:'debug',notifType,title:notifTitle||'Debug',body:notifBody,color:NOTIF_COLORS[notifType],duration:state.settings.notificationDuration??5});}}
             style={btn}><Bell size={12}/> {t('debugSendNotification')}</button>
         </div>
       </div>

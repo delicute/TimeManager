@@ -30,6 +30,8 @@ export interface AppSettings {
   notificationEnabled: boolean;
   notificationDuration: number;
   debug?: boolean;
+  minSessionLogSec?: number;
+  minSessionLogEnabled?: boolean;
 }
 
 export const DEFAULT_HOTKEYS: Record<string, string> = {
@@ -54,6 +56,8 @@ export interface TimeLogEntry {
   activityType: string;
   balanceChange: number;
   debug?: boolean;
+  minSessionLogSec?: number;
+  minSessionLogEnabled?: boolean;
 }
 
 export interface LogItem {
