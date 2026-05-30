@@ -578,24 +578,62 @@ body {
   padding: var(--space-xs) 0;
 }
 
-.slider-group input[type="range"] {
+/* ── Custom Range Slider ── */
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xs) 0;
+}
+
+.slider-wrap {
+  position: relative;
   flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.slider-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.slider-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-accent-teal);
+  pointer-events: none;
+  transition: width 0.08s ease;
+}
+
+.slider-wrap input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  width: 100%;
+  height: 24px;
+  background: transparent;
   outline: none;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
+  margin: 0;
 }
 
-.slider-group input[type="range"]::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+.slider-wrap input[type="range"]::-webkit-slider-runnable-track {
+  height: 24px;
+  background: transparent;
 }
 
-.slider-group input[type="range"]::-webkit-slider-thumb {
+.slider-wrap input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
@@ -603,24 +641,23 @@ body {
   background: var(--color-accent-teal);
   border: 2px solid var(--color-surface-dark-elevated);
   cursor: pointer;
-  margin-top: -5px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  margin-top: 4px;
   box-shadow: 0 0 0 2px rgba(93, 184, 166, 0.2);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.slider-group input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
+.slider-wrap input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
   box-shadow: 0 0 0 4px rgba(93, 184, 166, 0.25);
 }
 
-.slider-group input[type="range"]::-moz-range-track {
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+.slider-wrap input[type="range"]::-moz-range-track {
+  height: 24px;
+  background: transparent;
   border: none;
 }
 
-.slider-group input[type="range"]::-moz-range-thumb {
+.slider-wrap input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;

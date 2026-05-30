@@ -163,4 +163,10 @@ export const en: Translations = {
   debugSendNotification: 'Send Notification',
   debugIncludeLog: 'Include in Logs',
   debugTag: ' (Debug)',
+  debugValueEdit: 'Adjust Values',
+  debugTitleLabel: 'Title',
+  debugBodyLabel: 'Body',
+  debugTypeLabel: 'Type',
+  debugSend: 'Send',
+  debugKeepOpen: 'Keep Debug Panel Open',
 };

@@ -144,4 +144,10 @@ export interface Translations {
   debugSendNotification: string;
   debugIncludeLog: string;
   debugTag: string;
+  debugValueEdit: string;
+  debugTitleLabel: string;
+  debugBodyLabel: string;
+  debugTypeLabel: string;
+  debugSend: string;
+  debugKeepOpen: string;
 }

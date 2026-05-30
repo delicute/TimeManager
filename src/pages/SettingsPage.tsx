@@ -34,6 +34,7 @@ export function SettingsPage() {
   const [hobbyStep, setHobbyStep] = useState(String(s.hobbyWeightStep));
   const [basePath, setBasePath] = useState('');
   const [section, setSection] = useState('general');
+  const [dangerUnlocked, setDangerUnlocked] = useState(false);
   const [confirmState, setConfirmState] = useState<{open:boolean;title:string;message:string;onConfirm:()=>void;danger?:boolean}>({open:false,title:'',message:'',onConfirm:()=>{}});
 
   // Load base path on mount
@@ -139,7 +140,10 @@ export function SettingsPage() {
           <div style={rowStyle}>
             <span style={labelStyle}>{t('notifDuration')}</span>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <input type="range" min={2} max={20} step={1} value={s.notificationDuration} onChange={e=>updateSetting({notificationDuration:parseInt(e.target.value)})} style={{flex:1,width:100}}/>
+              <div className="slider-wrap" style={{width:120}}>
+                <div className="slider-track"><div className="slider-fill" style={{width:`${((s.notificationDuration-2)/(20-2))*100}%`}} /></div>
+                <input type="range" min={2} max={20} step={1} value={s.notificationDuration} onChange={e=>updateSetting({notificationDuration:parseInt(e.target.value)})} />
+              </div>
               <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{s.notificationDuration}{t('notifDurationUnit')}</span>
             </div>
           </div>
@@ -154,7 +158,10 @@ export function SettingsPage() {
           <div style={{color:'var(--color-study)',fontWeight:600,fontSize:13,marginBottom:2}}>{t('navStudy')}</div>
           <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.studyWeight)})}</div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <input type="range" min={s.studyWeightMin} max={s.studyWeightMax} step={s.studyWeightStep} value={s.studyWeight} onChange={e=>updateSetting({studyWeight:parseFloat(e.target.value)})} style={{flex:1}}/>
+            <div className="slider-wrap">
+              <div className="slider-track"><div className="slider-fill" style={{width:`${((s.studyWeight-s.studyWeightMin)/(s.studyWeightMax-s.studyWeightMin))*100}%`}} /></div>
+              <input type="range" min={s.studyWeightMin} max={s.studyWeightMax} step={s.studyWeightStep} value={s.studyWeight} onChange={e=>updateSetting({studyWeight:parseFloat(e.target.value)})} />
+            </div>
             <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.studyWeight)}</span>
           </div>
           <div className="limit-inputs" style={{marginTop:2,gap:6}}>
@@ -168,7 +175,10 @@ export function SettingsPage() {
           <div style={{color:'var(--color-hobby)',fontWeight:600,fontSize:13,marginBottom:2}}>{t('navHobby')}</div>
           <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.hobbyWeight)})}</div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <input type="range" min={s.hobbyWeightMin} max={s.hobbyWeightMax} step={s.hobbyWeightStep} value={s.hobbyWeight} onChange={e=>updateSetting({hobbyWeight:parseFloat(e.target.value)})} style={{flex:1}}/>
+            <div className="slider-wrap">
+              <div className="slider-track"><div className="slider-fill" style={{width:`${((s.hobbyWeight-s.hobbyWeightMin)/(s.hobbyWeightMax-s.hobbyWeightMin))*100}%`}} /></div>
+              <input type="range" min={s.hobbyWeightMin} max={s.hobbyWeightMax} step={s.hobbyWeightStep} value={s.hobbyWeight} onChange={e=>updateSetting({hobbyWeight:parseFloat(e.target.value)})} />
+            </div>
             <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.hobbyWeight)}</span>
           </div>
           <div className="limit-inputs" style={{marginTop:2,gap:6}}>
@@ -210,26 +220,37 @@ export function SettingsPage() {
 
       {/* ===== 其他 ===== */}
       {section === 'other' && <>
-        <div className="card" style={{...cardStyle,border:'1px solid rgba(198,69,69,0.3)'}}>
-          <div style={{fontSize:14,fontWeight:600,color:'var(--color-error)',marginBottom:6}}>危险设置</div>
+        <div className="card" style={{...cardStyle,border: dangerUnlocked ? '1px solid rgba(198,69,69,0.3)' : '1px solid rgba(255,255,255,0.12)'}}>
           <div style={rowStyle}>
-            <span style={labelStyle}>重置设置选项</span>
-            <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
-              onClick={()=>showConfirm('重置设置','确定将所有设置重置为默认值？此操作将丢失所有自定义设置。',handleReset,true)}><RotateCcw size={12}/> 重置</button>
+            <span style={{fontSize:14,fontWeight:600,color:dangerUnlocked?'var(--color-error)':'var(--color-on-dark)'}}>危险设置</span>
+            {!dangerUnlocked ? (
+              <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit'}}
+                onClick={()=>showConfirm('进入危险设置','危险设置包含可清除所有数据和重置设置的操作。确定要进入吗？',()=>{setDangerUnlocked(true);setConfirmState(c=>({...c,open:false}));},true)}>进入</button>
+            ) : (
+              <button className="btn btn-secondary" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit'}}
+                onClick={()=>setDangerUnlocked(false)}>收起</button>
+            )}
           </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>清除所有数据</span>
-            <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
-              onClick={()=>showConfirm('清除数据','确定清除所有本地数据？包括所有记录和余额。此操作不可撤销。',handleClearData,true)}><Trash2 size={12}/> 清除</button>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>调试面板</span>
-            <label className="toggle"><input type="checkbox" checked={!!s.debug} onChange={e=>{
-              const next = e.target.checked;
-              showConfirm(next?'开启调试面板':'关闭调试面板',next?'开启后将显示调试导航项。':'关闭后调试导航项将隐藏。',
-                ()=>{updateSetting({debug:next});setConfirmState(c=>({...c,open:false}));},false);
-            }}/><span className="toggle-slider"/></label>
-          </div>
+          {dangerUnlocked && <>
+            <div style={rowStyle}>
+              <span style={labelStyle}>重置设置选项</span>
+              <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
+                onClick={()=>showConfirm('重置设置','确定将所有设置重置为默认值？此操作将丢失所有自定义设置。',handleReset,true)}><RotateCcw size={12}/> 重置</button>
+            </div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>清除所有数据</span>
+              <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
+                onClick={()=>showConfirm('清除数据','确定清除所有本地数据？包括所有记录和余额。此操作不可撤销。',handleClearData,true)}><Trash2 size={12}/> 清除</button>
+            </div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>调试面板</span>
+              <label className="toggle"><input type="checkbox" checked={!!s.debug} onChange={e=>{
+                const next = e.target.checked;
+                showConfirm(next?'开启调试面板':'关闭调试面板',next?'开启后将显示调试导航项。':'关闭后调试导航项将隐藏。',
+                  ()=>{updateSetting({debug:next});setConfirmState(c=>({...c,open:false}));},false);
+              }}/><span className="toggle-slider"/></label>
+            </div>
+          </>}
         </div>
       </>}
 

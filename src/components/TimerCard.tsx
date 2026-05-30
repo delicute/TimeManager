@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Play, Square, Gift, Pause } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
@@ -37,56 +37,37 @@ export function TimerCard({
   giftedRemaining,
   earnedRemaining,
 }: TimerCardProps) {
-  const { state, startSession, stopSession } = useAppStore();
+  const { state, dispatch, startSession, stopSession } = useAppStore();
   const { session } = state;
   const t = useT();
+  const pausedDisplay = useRef(0);
 
   const isActive = session.isActive && session.currentType === type;
+  const paused = session.isPaused;
+  const rawElapsed = isActive && session.startTime
+    ? Math.floor((Date.now() - session.startTime) / 1000) : 0;
+  const elapsedSeconds = paused ? pausedDisplay.current : rawElapsed;
 
-  // Pause tracking
-  const [paused, setPaused] = useState(false);
-  const totalPausedMs = useRef(0);
-  const pauseStartMs = useRef(0);
-
-  const effectiveElapsed = isActive && session.startTime
-    ? Math.floor((Date.now() - session.startTime - totalPausedMs.current) / 1000)
-    : paused ? Math.floor((pauseStartMs.current - session.startTime! - totalPausedMs.current) / 1000)
-    : 0;
-
-  // Display frozen time when paused
-  const [frozenDisplay, setFrozenDisplay] = useState(0);
-  const elapsedSeconds = paused ? frozenDisplay : effectiveElapsed;
-
-  const sessionEarned = isActive && type !== 'Entertainment' && !paused
-    ? Math.floor(effectiveElapsed / intervalSeconds)
-    : paused ? Math.floor(frozenDisplay / intervalSeconds)
-    : 0;
+  const sessionEarned = isActive && type !== 'Entertainment'
+    ? Math.floor(rawElapsed / intervalSeconds) : 0;
 
   const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
-  const sessionConsumed = isActive && type === 'Entertainment' && !paused
-    ? effectiveElapsed * debtRate
-    : paused ? frozenDisplay * debtRate
-    : 0;
+  const sessionConsumed = isActive && type === 'Entertainment'
+    ? rawElapsed * debtRate : 0;
 
   const handlePause = () => {
     if (!paused) {
-      setFrozenDisplay(effectiveElapsed);
-      pauseStartMs.current = Date.now();
-      setPaused(true);
+      pausedDisplay.current = rawElapsed;
+      dispatch({ type: 'SESSION_PAUSE' });
     } else {
-      totalPausedMs.current += Date.now() - pauseStartMs.current;
-      setPaused(false);
+      dispatch({ type: 'SESSION_RESUME' });
     }
   };
 
   const handleClick = () => {
     if (isActive) {
       stopSession();
-      totalPausedMs.current = 0;
-      setPaused(false);
     } else {
-      totalPausedMs.current = 0;
-      setPaused(false);
       startSession(type);
     }
   };

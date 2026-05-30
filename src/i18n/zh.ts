@@ -163,4 +163,10 @@ export const zh: Translations = {
   debugSendNotification: '发送通知',
   debugIncludeLog: '纳入记录',
   debugTag: '（调试）',
+  debugValueEdit: '数值更改',
+  debugTitleLabel: '标题',
+  debugBodyLabel: '正文',
+  debugTypeLabel: '类型',
+  debugSend: '发送',
+  debugKeepOpen: '保持调试面板开启',
 };

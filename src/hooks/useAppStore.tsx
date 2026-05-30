@@ -44,6 +44,7 @@ const defaultState: AppState = {
     currentType: 'None',
     startTime: null,
     tickCount: 0,
+    isPaused: false,
   },
   balance: {
     earnedBalance: 0,
@@ -63,6 +64,8 @@ type Action =
   | { type: 'SET_TODAY_LOGS'; payload: TimeLogEntry[] }
   | { type: 'SESSION_START'; payload: SessionType }
   | { type: 'SESSION_STOP' }
+  | { type: 'SESSION_PAUSE' }
+  | { type: 'SESSION_RESUME' }
   | { type: 'SESSION_TICK' }
   | { type: 'BALANCE_ADD_EARNED'; payload: number }
   | { type: 'BALANCE_TRY_CONSUME' }
@@ -88,12 +91,17 @@ function reducer(state: AppState, action: Action): AppState {
           currentType: action.payload,
           startTime: Date.now(),
           tickCount: 0,
+          isPaused: false,
         },
       };
+    case 'SESSION_PAUSE':
+      return { ...state, session: { ...state.session, isPaused: true } };
+    case 'SESSION_RESUME':
+      return { ...state, session: { ...state.session, isPaused: false } };
     case 'SESSION_STOP':
       return {
         ...state,
-        session: { isActive: false, currentType: 'None', startTime: null, tickCount: 0 },
+        session: { isActive: false, currentType: 'None', startTime: null, tickCount: 0, isPaused: false },
       };
     case 'SESSION_TICK':
       return {
@@ -343,6 +351,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!state.session.isActive) return;
 
     const interval = setInterval(() => {
+      if (sessionRef.current.isPaused) return; // Skip balance updates when paused
+
       dispatch({ type: 'SESSION_TICK' });
 
       const s = sessionRef.current;

@@ -178,6 +178,7 @@ export interface AppState {
     currentType: SessionType;
     startTime: number | null;
     tickCount: number;
+    isPaused: boolean;
   };
   balance: BalanceState;
   settings: AppSettings;
