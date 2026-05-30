@@ -17,6 +17,7 @@ export const en: Translations = {
   settingsTabWeight: 'Weights',
   settingsTabData: 'Data',
   settingsTabOther: 'Other',
+  settingsTabHotkey: 'Hotkeys',
 
   // Status
   statusIdle: 'Idle',
@@ -205,6 +206,7 @@ export const en: Translations = {
   hotkeyHint: 'Click a shortcut to rebind, use confirm/cancel key to finish',
 
   // Settings extended
+  settingsGlobalHotkeys: 'Global Hotkeys',
   settingsDefaultPath: '(Default path)',
   settingsOpenFolder: 'Open',
   settingsMinSessionLog: 'Min Session Log',

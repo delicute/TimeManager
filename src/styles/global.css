@@ -86,6 +86,7 @@ body {
   align-items: center;
   gap: var(--space-sm);
   padding: 10px var(--space-md);
+  height: 42px;
   background: transparent;
   border: none;
   border-radius: var(--radius-md);

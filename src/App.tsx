@@ -6,7 +6,6 @@ import { RecordPage } from './pages/RecordPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReminderPage } from './pages/ReminderPage';
 import { DebugPage } from './pages/DebugPage';
-import { HotkeySettingsPage } from './pages/HotkeySettingsPage';
 import { DEFAULT_HOTKEYS, type SessionType } from './types';
 
 export function App() {
@@ -37,6 +36,25 @@ export function App() {
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  // ─── Global Hotkeys ─────────────────────────────────
+  useEffect(() => {
+    window.electronAPI.onGlobalShortcutTrigger((id) => {
+      switch (id) {
+        case 'navStudy': setCurrentPage('Start'); setStartTab('Study'); return;
+        case 'navHobby': setCurrentPage('Start'); setStartTab('Hobby'); return;
+        case 'navEntertainment': setCurrentPage('Start'); setStartTab('Entertainment'); return;
+        case 'navRecord': setCurrentPage('Record'); return;
+        case 'navReminder': setCurrentPage('Reminder'); return;
+        case 'navSettings': setCurrentPage('Settings'); return;
+        case 'navDebug': setCurrentPage('Debug'); return;
+        case 'sessionStudy': startSession('Study'); return;
+        case 'sessionHobby': startSession('Hobby'); return;
+        case 'sessionEntertainment': startSession('Entertainment'); return;
+        case 'sessionStop': stopSession(); return;
+      }
+    });
+  }, [startSession, stopSession]);
 
   // ─── Hotkeys ──────────────────────────────────────────
   useEffect(() => {
@@ -96,9 +114,9 @@ export function App() {
         return <StartPage initialTab={currentPage === 'Start' ? startTab : currentPage as SessionType} />;
       case 'Record': return <RecordPage />;
       case 'Reminder': return <ReminderPage />;
-      case 'Hotkey': return <HotkeySettingsPage />;
-      case 'Debug': return <DebugPage />;
+      case 'Hotkey': return <SettingsPage initialTab="hotkey" />;
       case 'Settings': return <SettingsPage />;
+      case 'Debug': return <DebugPage />;
       default: return <StartPage initialTab="Study" />;
     }
   };

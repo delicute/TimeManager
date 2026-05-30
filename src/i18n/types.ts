@@ -141,6 +141,8 @@ export interface Translations {
   settingsTabWeight: string;
   settingsTabData: string;
   settingsTabOther: string;
+  settingsTabHotkey: string;
+  settingsGlobalHotkeys: string;
   debugEnable: string;
   debugDisable: string;
   debugConfirmEnable: string;

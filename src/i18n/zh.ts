@@ -17,6 +17,7 @@ export const zh: Translations = {
   settingsTabWeight: '权重',
   settingsTabData: '数据',
   settingsTabOther: '其他',
+  settingsTabHotkey: '快捷键',
 
   // Status
   statusIdle: '空闲中',
@@ -205,6 +206,7 @@ export const zh: Translations = {
   hotkeyHint: '点击快捷键进行修改，按快捷键录制完成后使用确认/取消键提交',
 
   // Settings extended
+  settingsGlobalHotkeys: '全局快捷键',
   settingsDefaultPath: '（默认路径）',
   settingsOpenFolder: '打开',
   settingsMinSessionLog: '时间线最短记录',

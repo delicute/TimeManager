@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen, shell, globalShortcut } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import zlib from 'zlib';
@@ -233,6 +233,30 @@ function setupIPC() {
       // Return a minimal silent WAV as fallback
       return '';
     }
+  });
+
+  // ─── Global Hotkeys ──────────────────────────────
+  ipcMain.handle('settings:registerGlobalHotkeys', (_, hotkeys: Record<string, string>) => {
+    globalShortcut.unregisterAll();
+    const results: Record<string, boolean> = {};
+    for (const [id, combo] of Object.entries(hotkeys)) {
+      try {
+        results[id] = globalShortcut.register(combo, () => {
+          mainWindow?.webContents.send('globalShortcut:trigger', id);
+        });
+      } catch {
+        results[id] = false;
+      }
+    }
+    return results;
+  });
+
+  ipcMain.handle('settings:unregisterGlobalHotkeys', () => {
+    globalShortcut.unregisterAll();
+  });
+
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
   });
 
   // Reminder toast notification window

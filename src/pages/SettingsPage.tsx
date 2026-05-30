@@ -4,6 +4,7 @@ import { useAppStore } from '../hooks/useAppStore';
 import { useT, useLocale } from '../hooks/useI18n';
 import { formatWeight } from '../utils/formatting';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { HotkeySettingsPage } from './HotkeySettingsPage';
 import type { AppSettings } from '../types';
 
 const DEFAULTS: AppSettings = {
@@ -17,10 +18,11 @@ const SECTION_TABS = [
   { id: 'general', key: 'settingsTabGeneral' as const },
   { id: 'weight', key: 'settingsTabWeight' as const },
   { id: 'data', key: 'settingsTabData' as const },
+  { id: 'hotkey', key: 'settingsTabHotkey' as const },
   { id: 'other', key: 'settingsTabOther' as const },
 ];
 
-export function SettingsPage() {
+export function SettingsPage({ initialTab }: { initialTab?: string }) {
   const { state, dispatch } = useAppStore();
   const s = state.settings;
   const t = useT();
@@ -33,7 +35,12 @@ export function SettingsPage() {
   const [hobbyMax, setHobbyMax] = useState(String(s.hobbyWeightMax));
   const [hobbyStep, setHobbyStep] = useState(String(s.hobbyWeightStep));
   const [basePath, setBasePath] = useState('');
-  const [section, setSection] = useState('general');
+  const [section, setSection] = useState(initialTab || 'general');
+
+  // Sync when initialTab changes (e.g. navigating between Hotkey/Settings nav)
+  useEffect(() => {
+    setSection(initialTab || 'general');
+  }, [initialTab]);
   const [dangerUnlocked, setDangerUnlocked] = useState(false);
   const [confirmState, setConfirmState] = useState<{open:boolean;title:string;message:string;onConfirm:()=>void;danger?:boolean}>({open:false,title:'',message:'',onConfirm:()=>{}});
 
@@ -216,6 +223,17 @@ export function SettingsPage() {
             </div>
           )}
         </div>
+      </>}
+
+      {/* ===== 快捷键 ===== */}
+      {section === 'hotkey' && <>
+        <div className="card" style={cardStyle}>
+          <div style={rowStyle}>
+            <span style={labelStyle}>{t('settingsGlobalHotkeys')}</span>
+            <label className="toggle"><input type="checkbox" checked={!!s.globalHotkeys} onChange={e=>updateSetting({globalHotkeys:e.target.checked})}/><span className="toggle-slider"/></label>
+          </div>
+        </div>
+        <HotkeySettingsPage embedded />
       </>}
 
       {/* ===== 其他 ===== */}

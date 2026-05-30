@@ -88,7 +88,7 @@ function eventToCombo(e: KeyboardEvent): string | null {
   return parts.join('+');
 }
 
-export function HotkeySettingsPage() {
+export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
   const { state, dispatch } = useAppStore();
   const t = useT();
   const locale = state.settings.locale || 'zh';
@@ -98,6 +98,17 @@ export function HotkeySettingsPage() {
   const [pendingCombo, setPendingCombo] = useState<string | null>(null);
   const [conflictId, setConflictId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [globalConflicts, setGlobalConflicts] = useState<Record<string, boolean>>({});
+
+  // Register/unregister global hotkeys when setting changes
+  useEffect(() => {
+    if (state.settings.globalHotkeys) {
+      window.electronAPI.registerGlobalHotkeys(currentHotkeys).then(setGlobalConflicts);
+    } else {
+      window.electronAPI.unregisterGlobalHotkeys();
+      setGlobalConflicts({});
+    }
+  }, [state.settings.globalHotkeys, state.settings.hotkeys]);
 
   const updateSetting = (partial: Partial<typeof state.settings>) => {
     const updated = { ...state.settings, ...partial };
@@ -219,7 +230,7 @@ export function HotkeySettingsPage() {
             {t('hotkeyConflict')}
           </span>
         )}
-        <kbd className="hotkey-kbd" onClick={() => { setRecordingId(action.id); setConflictId(null); }}>
+        <kbd className={`hotkey-kbd${globalConflicts[action.id] ? ' hotkey-global-conflict' : ''}`} onClick={() => { setRecordingId(action.id); setConflictId(null); }} style={globalConflicts[action.id] ? {borderColor:'var(--color-error)',color:'var(--color-error)'} : {}}>
           {currentHotkeys[action.id]}
         </kbd>
       </div>
@@ -228,9 +239,9 @@ export function HotkeySettingsPage() {
 
   return (
     <div>
-      <h1 className="page-title">
+      {!embedded && <h1 className="page-title">
         <span className="title-icon"><Keyboard size={24} /></span> {t('navHotkey')}
-      </h1>
+      </h1>}
 
       <div className="card">
         <div className="settings-section-title">{t('navNavigation')}</div>

@@ -61,6 +61,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   notificationShow: (data: any) => ipcRenderer.invoke('notification:show', data),
   notificationDismiss: (id: string) => ipcRenderer.invoke('notification:dismiss', id),
 
+  // ─── Global Hotkeys ──────────────────────────────
+  registerGlobalHotkeys: (hotkeys: Record<string, string>) =>
+    ipcRenderer.invoke('settings:registerGlobalHotkeys', hotkeys),
+  unregisterGlobalHotkeys: () => ipcRenderer.invoke('settings:unregisterGlobalHotkeys'),
+  onGlobalShortcutTrigger: (callback: (id: string) => void) => {
+    ipcRenderer.on('globalShortcut:trigger', (_event, id) => callback(id));
+  },
+
   // ─── Tray IPC ─────────────────────────────────────
   sessionUpdateState: (state: any) => ipcRenderer.invoke('session:stateUpdate', state),
   onTrayAction: (callback: (action: any) => void) => {
