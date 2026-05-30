@@ -175,7 +175,8 @@ export function DebugPage() {
     });
     const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
     const n = Math.floor(sec / mult(unit[type]));
-    notify(`Debug: ${label}`, `${delta > 0 ? '+' : '-'}${n}${unit[type]}, 余额${balanceChange > 0 ? '+' : ''}${balanceChange}`);
+    const rateInfo = isEntertainment && debtRate > 1 ? ` (负债率×${debtRate})` : '';
+    notify(`Debug: ${label}`, `余额${balanceChange >= 0 ? '+' : ''}${balanceChange} (${delta > 0 ? '+' : '-'}${n}${unit[type]}${rateInfo})`);
   };
 
   // Set today's total for a session type to a specific value (does NOT change balance)
