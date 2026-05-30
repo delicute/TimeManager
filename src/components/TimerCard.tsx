@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useRef } from 'react';
 import { Play, Square, Gift, Pause } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
@@ -40,24 +39,25 @@ export function TimerCard({
   const { state, dispatch, startSession, stopSession } = useAppStore();
   const { session } = state;
   const t = useT();
-  const pausedDisplay = useRef(0);
 
   const isActive = session.isActive && session.currentType === type;
   const paused = session.isPaused;
   const rawElapsed = isActive && session.startTime
     ? Math.floor((Date.now() - session.startTime) / 1000) : 0;
-  const elapsedSeconds = paused ? pausedDisplay.current : rawElapsed;
+  // When paused, compute elapsed from pausedAt (works for both button and shortcut pause)
+  const elapsedSeconds = paused && session.pausedAt && session.startTime
+    ? Math.floor((session.pausedAt - session.startTime) / 1000)
+    : rawElapsed;
 
   const sessionEarned = isActive && type !== 'Entertainment'
-    ? Math.floor(rawElapsed / intervalSeconds) : 0;
+    ? Math.floor(elapsedSeconds / intervalSeconds) : 0;
 
   const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
   const sessionConsumed = isActive && type === 'Entertainment'
-    ? rawElapsed * debtRate : 0;
+    ? elapsedSeconds * debtRate : 0;
 
   const handlePause = () => {
     if (!paused) {
-      pausedDisplay.current = rawElapsed;
       dispatch({ type: 'SESSION_PAUSE' });
     } else {
       dispatch({ type: 'SESSION_RESUME' });

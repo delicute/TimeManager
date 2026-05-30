@@ -63,8 +63,20 @@ export function App() {
         case 'sessionPause': {
           const s = sessionRef.current;
           if (!s.isActive) return;
-          if (s.isPaused) dispatch({ type: 'SESSION_RESUME' });
-          else dispatch({ type: 'SESSION_PAUSE' });
+          const typeLabel = s.currentType === 'Study' ? '学习' : s.currentType === 'Hobby' ? '爱好' : '娱乐';
+          if (s.isPaused) {
+            dispatch({ type: 'SESSION_RESUME' });
+            window.electronAPI.notificationShow({
+              type: s.currentType, notifType: 'info', title: `[${typeLabel}] 状态已恢复`, body: '',
+              color: '#5db872', duration: 3,
+            });
+          } else {
+            dispatch({ type: 'SESSION_PAUSE' });
+            window.electronAPI.notificationShow({
+              type: s.currentType, notifType: 'info', title: `[${typeLabel}] 状态已暂停`, body: '',
+              color: '#e8a55a', duration: 3,
+            });
+          }
           return;
         }
         case 'sessionPrint': {
@@ -136,8 +148,20 @@ export function App() {
         case 'sessionPause': {
           const s = sessionRef.current;
           if (!s.isActive) return;
-          if (s.isPaused) dispatch({ type: 'SESSION_RESUME' });
-          else dispatch({ type: 'SESSION_PAUSE' });
+          const typeLabel = s.currentType === 'Study' ? '学习' : s.currentType === 'Hobby' ? '爱好' : '娱乐';
+          if (s.isPaused) {
+            dispatch({ type: 'SESSION_RESUME' });
+            window.electronAPI.notificationShow({
+              type: s.currentType, notifType: 'info', title: `[${typeLabel}] 状态已恢复`, body: '',
+              color: '#5db872', duration: 3,
+            });
+          } else {
+            dispatch({ type: 'SESSION_PAUSE' });
+            window.electronAPI.notificationShow({
+              type: s.currentType, notifType: 'info', title: `[${typeLabel}] 状态已暂停`, body: '',
+              color: '#e8a55a', duration: 3,
+            });
+          }
           return;
         }
         case 'sessionPrint': {
