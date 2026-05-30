@@ -126,9 +126,8 @@ export function TimerCard({
           return continuous < milestones[i].threshold;
         });
         if (activeMilestones.length === 0) return null; // all done, hide bar
-        const nextThreshold = activeMilestones[0].threshold;
         const maxTh = milestones[milestones.length - 1].threshold;
-        const progress = continuous >= nextThreshold ? 100 : (continuous / nextThreshold) * 100;
+        const progress = (continuous / maxTh) * 100;
 
         return (
           <div className="milestone-bar-wrap">
