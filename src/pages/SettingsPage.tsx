@@ -23,6 +23,9 @@ const SECTION_TABS = [
   { id: 'other', key: 'settingsTabOther' as const },
 ];
 
+// Module-level cache so danger-zone toggle survives page switches
+let _dangerUnlocked = false;
+
 export function SettingsPage({ initialTab }: { initialTab?: string }) {
   const { state, dispatch } = useAppStore();
   const s = state.settings;
@@ -44,7 +47,8 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
   useEffect(() => {
     setSection(initialTab || 'general');
   }, [initialTab]);
-  const [dangerUnlocked, setDangerUnlocked] = useState(false);
+  const [dangerUnlocked, setDangerUnlocked] = useState(_dangerUnlocked);
+  useEffect(() => { _dangerUnlocked = dangerUnlocked; }, [dangerUnlocked]);
   const [confirmState, setConfirmState] = useState<{open:boolean;title:string;message:string;onConfirm:()=>void;danger?:boolean}>({open:false,title:'',message:'',onConfirm:()=>{}});
 
   // Load base path on mount
