@@ -94,14 +94,42 @@ export function DebugPage() {
       const m = b.milestones || { studyContinuous:0, hobbyContinuous:0, studyClaimed:0, hobbyClaimed:0 };
       const contKey = isStudy ? 'studyContinuous' : 'hobbyContinuous';
       const claimKey = isStudy ? 'studyClaimed' : 'hobbyClaimed';
-      // Update continuous time (respect delta direction: + adds, - subtracts but never below 0)
       const newCont = Math.max(0, (m[contKey] || 0) + (delta > 0 ? sec : -sec));
-      const milestones = { ...m, [contKey]: newCont };
+      let claimed = (m[claimKey] || 0) as number;
+      let rewardTotal = 0;
+      const locale = state.settings.locale || 'zh';
 
+      // Milestone definitions (same as useAppStore)
+      const msList = isStudy
+        ? [{ threshold:3600, reward:900, labelZH:'连续学习≥1h', labelEN:'Continuous study ≥1h' },
+           { threshold:10800, reward:2700, labelZH:'连续学习≥3h', labelEN:'Continuous study ≥3h' },
+           { threshold:18000, reward:3600, labelZH:'连续学习≥5h', labelEN:'Continuous study ≥5h' }]
+        : [{ threshold:3600, reward:600, labelZH:'连续爱好≥1h', labelEN:'Continuous hobby ≥1h' },
+           { threshold:10800, reward:1800, labelZH:'连续爱好≥3h', labelEN:'Continuous hobby ≥3h' },
+           { threshold:18000, reward:2700, labelZH:'连续爱好≥5h', labelEN:'Continuous hobby ≥5h' }];
+
+      msList.forEach((ms, i) => {
+        if (!(claimed & (1 << i)) && newCont >= ms.threshold && delta > 0) {
+          claimed |= (1 << i);
+          rewardTotal += ms.reward;
+          const label = locale === 'zh' ? ms.labelZH : ms.labelEN;
+          const rewardMin = Math.round(ms.reward / 60);
+          const desc = locale === 'zh'
+            ? `连续大于${ms.threshold >= 3600 ? `${Math.round(ms.threshold / 3600)}h` : `${Math.round(ms.threshold / 60)}min`}，获得${rewardMin}min赠送余额`
+            : `Continuous >${ms.threshold >= 3600 ? `${Math.round(ms.threshold / 3600)}h` : `${Math.round(ms.threshold / 60)}min`}, earned ${rewardMin}min gifted balance`;
+          window.electronAPI.notificationShow({
+            type, notifType: 'milestone', title: label, body: desc,
+            color: '#e8a55a', duration: state.settings.notificationDuration ?? 5,
+          });
+        }
+      });
+
+      // Session earnings → earnedBalance, milestone gifts → dailyGiftedRemaining
       const updated = {
         ...b,
         earnedBalance: Math.max(0, (b.earnedBalance || 0) + balanceChange),
-        milestones,
+        dailyGiftedRemaining: (b.dailyGiftedRemaining || 1800) + rewardTotal,
+        milestones: { ...m, [contKey]: newCont, [claimKey]: claimed },
       };
       window.electronAPI.saveBalance(updated);
       dispatch({ type: 'SET_BALANCE', payload: updated });
