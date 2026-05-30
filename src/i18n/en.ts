@@ -185,4 +185,23 @@ export const en: Translations = {
   debugTypeLabel: 'Type',
   debugSend: 'Send',
   debugKeepOpen: 'Keep Debug Panel Open',
+
+  // Settings extended
+  settingsDefaultPath: '(Default path)',
+  settingsOpenFolder: 'Open',
+  settingsMinSessionLog: 'Min Session Log',
+  settingsHideLabel: 'hide',
+  settingsDangerZone: 'Danger Zone',
+  settingsResetSettings: 'Reset Settings',
+  settingsReset: 'Reset',
+  settingsClearData: 'Clear All Data',
+  settingsClear: 'Clear',
+  settingsDebugPanel: 'Debug Panel',
+  settingsConfirmDangerTitle: 'Enter Danger Zone',
+  settingsConfirmDangerMsg: 'Danger Zone allows resetting settings and clearing all data. Are you sure you want to enter?',
+  settingsConfirmResetTitle: 'Reset Settings',
+  settingsConfirmResetMsg: 'Are you sure you want to reset all settings to defaults? All custom settings will be lost.',
+  settingsConfirmClearTitle: 'Clear Data',
+  settingsConfirmClearMsg: 'Are you sure you want to clear all local data? This includes all records and balances. This action cannot be undone.',
+  settingsConfirmDebugTitle: 'Debug Panel',
 };

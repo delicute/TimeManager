@@ -166,4 +166,23 @@ export interface Translations {
   debugTypeLabel: string;
   debugSend: string;
   debugKeepOpen: string;
+
+  // Settings extended
+  settingsDefaultPath: string;
+  settingsOpenFolder: string;
+  settingsMinSessionLog: string;
+  settingsHideLabel: string;
+  settingsDangerZone: string;
+  settingsResetSettings: string;
+  settingsReset: string;
+  settingsClearData: string;
+  settingsClear: string;
+  settingsDebugPanel: string;
+  settingsConfirmDangerTitle: string;
+  settingsConfirmDangerMsg: string;
+  settingsConfirmResetTitle: string;
+  settingsConfirmResetMsg: string;
+  settingsConfirmClearTitle: string;
+  settingsConfirmClearMsg: string;
+  settingsConfirmDebugTitle: string;
 }

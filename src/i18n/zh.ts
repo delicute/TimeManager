@@ -185,4 +185,23 @@ export const zh: Translations = {
   debugTypeLabel: '类型',
   debugSend: '发送',
   debugKeepOpen: '保持调试面板开启',
+
+  // Settings extended
+  settingsDefaultPath: '（默认路径）',
+  settingsOpenFolder: '打开',
+  settingsMinSessionLog: '时间线最短记录',
+  settingsHideLabel: '不显示',
+  settingsDangerZone: '危险设置',
+  settingsResetSettings: '重置设置选项',
+  settingsReset: '重置',
+  settingsClearData: '清除所有数据',
+  settingsClear: '清除',
+  settingsDebugPanel: '调试面板',
+  settingsConfirmDangerTitle: '进入危险设置',
+  settingsConfirmDangerMsg: '危险设置包含可清除所有数据和重置设置的操作。确定要进入吗？',
+  settingsConfirmResetTitle: '重置设置',
+  settingsConfirmResetMsg: '确定将所有设置重置为默认值？此操作将丢失所有自定义设置。',
+  settingsConfirmClearTitle: '清除数据',
+  settingsConfirmClearMsg: '确定清除所有本地数据？包括所有记录和余额。此操作不可撤销。',
+  settingsConfirmDebugTitle: '调试面板',
 };
