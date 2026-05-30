@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, AlertTriangle, Info, Circle, Plus, Trash2, FileText, Shuffle, ToggleLeft } from 'lucide-react';
+import { Bell, AlertTriangle, MessageCircle, CircleDot, Plus, Trash2, FileText, Shuffle, ToggleLeft } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -9,7 +9,7 @@ function genId() { return Date.now().toString(36) + Math.random().toString(36).s
 
 const NOTIF_TYPES = ['reminder', 'urgent', 'notification', 'info'] as const;
 const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c64545', notification: '#5db872', info: '#a09d96' };
-const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: Info, info: Circle };
+const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: MessageCircle, info: CircleDot };
 
 const metricKeys: ReminderMetric[] = [
   'entertainmentBalance','dailyGiftedBalance','earnedBalance',
