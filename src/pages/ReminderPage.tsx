@@ -70,7 +70,7 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
       <select value={node.operator} onChange={e=>onChange({...node, operator:e.target.value as ReminderOperator})} style={{ ...ipt, width:60 }}>
         {operatorKeys.map(op => <option key={op} value={op} style={{background:'#252320',color:'#faf9f5'}}>{t(`reminderOper${op.charAt(0).toUpperCase()}${op.slice(1)}` as any)}</option>)}
       </select>
-      <input type="number" value={displayVal} onChange={e=>onChange({...node, value:Number(e.target.value)*UNIT_MULT[u]})} style={{ ...ipt, width:70 }} />
+      <input type="text" inputMode="numeric" value={displayVal} onChange={e=>onChange({...node, value:Number(e.target.value)*UNIT_MULT[u]})} style={{ ...ipt, width:70 }} />
       <div style={{ display:'flex', gap:2 }}>
         {(['s','m','h'] as Unit[]).map(unit => (
           <button key={unit} onClick={() => {

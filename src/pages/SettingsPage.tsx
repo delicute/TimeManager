@@ -210,7 +210,7 @@ export function SettingsPage() {
           {s.minSessionLogEnabled && (
             <div style={{display:'flex',alignItems:'center',gap:4,marginTop:2}}>
               <span style={{fontSize:12,color:'var(--color-on-dark-soft)'}}>&lt; </span>
-              <input type="number" value={s.minSessionLogSec??10} onChange={e=>updateSetting({minSessionLogSec:Number(e.target.value)})}
+              <input type="text" inputMode="numeric" value={s.minSessionLogSec??10} onChange={e=>updateSetting({minSessionLogSec:Number(e.target.value)})}
                 style={{width:60,padding:'2px 6px',borderRadius:4,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontSize:12,height:24}} />
               <span style={{fontSize:12,color:'var(--color-on-dark-soft)'}}>s 不显示</span>
             </div>

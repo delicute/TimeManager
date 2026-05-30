@@ -114,7 +114,7 @@ export function DebugPage() {
             <div key={key} style={{display:'flex',alignItems:'center',gap:4,marginBottom:4,fontSize:12,flexWrap:'wrap'}}>
               <span style={{width:36,flexShrink:0,color:'#ffffff'}}>{label}</span>
               {/* Value input */}
-              <input type="number" value={val[key]||''} onChange={e=>setVal({...val,[key]:e.target.value})}
+              <input type="text" inputMode="numeric" value={val[key]||''} onChange={e=>setVal({...val,[key]:e.target.value})}
                 style={{...inpS,width:55}} />
               {/* Unit toggle */}
               {(['s','m','h'] as const).map(u => (
@@ -152,7 +152,7 @@ export function DebugPage() {
           </div>
           <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>
             <span style={{color:'#ffffff',fontSize:12}}>{t('debugAmount')}</span>
-            <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))}
+            <input type="text" inputMode="numeric" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))}
               style={{...inpS,width:50}} min={1} />
           </div>
           <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>
