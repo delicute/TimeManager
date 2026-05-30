@@ -3,23 +3,12 @@ import type { AppState, SessionType, BalanceState, AppSettings, TimeLogEntry, Re
 import { todayStr } from '../utils/formatting';
 import { t } from '../i18n';
 import type { Locale } from '../i18n';
+import { STUDY_MILESTONES, HOBBY_MILESTONES } from '../constants';
 
 // ─── Constants ──────────────────────────────────────────────
 const DAILY_GIFT = 1800; // 30 minutes
 const REMINDER_INTERVAL = 200; // 200ms polling
 const CONTINUITY_GAP = 300; // 5 minutes max gap to maintain continuity
-
-const STUDY_MILESTONES = [
-  { threshold: 3600, reward: 900, labelZH: '连续学习≥1h', labelEN: 'Continuous study ≥1h' },
-  { threshold: 10800, reward: 2700, labelZH: '连续学习≥3h', labelEN: 'Continuous study ≥3h' },
-  { threshold: 18000, reward: 3600, labelZH: '连续学习≥5h', labelEN: 'Continuous study ≥5h' },
-];
-
-const HOBBY_MILESTONES = [
-  { threshold: 3600, reward: 600, labelZH: '连续爱好≥1h', labelEN: 'Continuous hobby ≥1h' },
-  { threshold: 10800, reward: 1800, labelZH: '连续爱好≥3h', labelEN: 'Continuous hobby ≥3h' },
-  { threshold: 18000, reward: 2700, labelZH: '连续爱好≥5h', labelEN: 'Continuous hobby ≥5h' },
-];
 
 // ─── Defaults ────────────────────────────────────────────────
 const defaultSettings: AppSettings = {
@@ -98,9 +87,10 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, session: { ...state.session, isPaused: true, pausedAt: Date.now() } };
     case 'SESSION_RESUME': {
       const pausedMs = state.session.pausedAt ? Date.now() - state.session.pausedAt : 0;
+      const { pausedAt: _, ...rest } = state.session;
       return {
         ...state,
-        session: { ...state.session, isPaused: false, startTime: (state.session.startTime ?? Date.now()) + pausedMs, pausedAt: undefined as any },
+        session: { ...rest, isPaused: false, startTime: (state.session.startTime ?? Date.now()) + pausedMs },
       };
     }
     case 'SESSION_STOP':
@@ -200,9 +190,12 @@ function evalNode(node: ConditionNode, metrics: Record<string, number>, session?
       return node.expected === (session.isActive && session.currentType === node.boolValue);
     }
     return false;
-  } else {
+  } else if (node.type === 'group') {
     const results = node.nodes.map(n => evalNode(n, metrics, session));
     return node.logic === 'and' ? results.every(Boolean) : results.some(Boolean);
+  } else {
+    const _exhaustive: never = node;
+    return false;
   }
 }
 
@@ -344,12 +337,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   }, []);
 
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   // Persist balance on change
   useEffect(() => {
     if (state.balance.lastDate) {
-      const t = setTimeout(() => persistBalance(), 100);
-      return () => clearTimeout(t);
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => persistBalance(), 1000);
     }
+    return () => clearTimeout(saveTimerRef.current);
   }, [state.balance, persistBalance]);
 
   // Persist settings on every change (skip initial mount)
@@ -524,7 +520,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   // ─── Session Management ──────────────────────────────────
-  const stopSession = useCallback(() => {
+  const stopSession = useCallback(async () => {
     const s = sessionRef.current;
     const bal = balanceRef.current;
     const activeType = s.currentType;
@@ -544,10 +540,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           balanceChange,
         };
 
-        window.electronAPI.writeLogEntry(entry);
-        window.electronAPI.getTodayLogs().then(logs => {
-          dispatch({ type: 'SET_TODAY_LOGS', payload: logs });
-        });
+        await window.electronAPI.writeLogEntry(entry);
+        const logs = await window.electronAPI.getTodayLogs();
+        dispatch({ type: 'SET_TODAY_LOGS', payload: logs });
 
         // ─── Reward check for Study / Hobby ─────────────
         if (activeType === 'Study' || activeType === 'Hobby') {
@@ -560,14 +555,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const milestoneList = isStudy ? STUDY_MILESTONES : HOBBY_MILESTONES;
 
           // Add this session's duration to continuous
-          let continuous = (milestones as any)[contKey] + elapsed;
-          const lastEnd = (milestones as any)[lastEndKey] || 0;
+          const m = milestones as NonNullable<BalanceState['milestones']>;
+          let continuous = m[contKey] + elapsed;
+          const lastEnd = m[lastEndKey] || 0;
           // Reset if gap too large
           if (lastEnd > 0 && s.startTime - lastEnd > CONTINUITY_GAP * 1000) {
             continuous = elapsed;
           }
 
-          let claimed = (milestones as any)[claimKey] || 0;
+          let claimed = m[claimKey] || 0;
           let rewardTotal = 0;
 
           milestoneList.forEach((m, i) => {

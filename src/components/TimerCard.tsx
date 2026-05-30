@@ -4,18 +4,7 @@ import { useAppStore } from '../hooks/useAppStore';
 import { useT, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
 import { formatDurationFull, formatDuration } from '../utils/formatting';
 import type { SessionType } from '../types';
-
-const STUDY_MILESTONES = [
-  { threshold: 3600, label: '1h', reward: 900 },
-  { threshold: 10800, label: '3h', reward: 2700 },
-  { threshold: 18000, label: '5h', reward: 3600 },
-];
-
-const HOBBY_MILESTONES = [
-  { threshold: 3600, label: '1h', reward: 600 },
-  { threshold: 10800, label: '3h', reward: 1800 },
-  { threshold: 18000, label: '5h', reward: 2700 },
-];
+import { STUDY_MILESTONES, HOBBY_MILESTONES } from '../constants';
 
 interface TimerCardProps {
   type: SessionType;
@@ -117,9 +106,9 @@ export function TimerCard({
         const contKey = type === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
         const mData = state.balance.milestones;
         const claimed = mData?.[claimKey as keyof typeof mData] as number || 0;
-        // Use stored continuous time + current session elapsed (real-time)
+        // Use stored continuous time + current session elapsed (pause-aware)
         const storedCont = (mData?.[contKey as keyof typeof mData] as number) || 0;
-        const continuous = storedCont + (isActive ? rawElapsed : 0);
+        const continuous = storedCont + (isActive ? elapsedSeconds : 0);
         // Only show unclaimed milestones that haven't been passed yet
         const activeMilestones = milestones.filter((_, i) => {
           if (claimed & (1 << i)) return false;

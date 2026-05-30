@@ -30,7 +30,7 @@ export function App() {
 
   // Listen for tray actions
   useEffect(() => {
-    window.electronAPI.onTrayAction((action) => {
+    const cleanup = window.electronAPI.onTrayAction((action) => {
       if (action.action === 'startSession' && action.type) {
         startSession(action.type as SessionType);
       } else if (action.action === 'stopSession') {
@@ -39,6 +39,7 @@ export function App() {
         setCurrentPage(action.page);
       }
     });
+    return () => cleanup();
   }, [startSession, stopSession]);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function App() {
 
   // ─── Global Hotkeys ─────────────────────────────────
   useEffect(() => {
-    window.electronAPI.onGlobalShortcutTrigger((id) => {
+    const cleanup = window.electronAPI.onGlobalShortcutTrigger((id) => {
       switch (id) {
         case 'navStudy': setCurrentPage('Start'); setStartTab('Study'); return;
         case 'navHobby': setCurrentPage('Start'); setStartTab('Hobby'); return;
@@ -101,6 +102,7 @@ export function App() {
         }
       }
     });
+    return () => cleanup();
   }, [startSession, stopSession, dispatch]);
 
   // ─── Hotkeys ──────────────────────────────────────────

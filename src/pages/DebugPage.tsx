@@ -3,6 +3,7 @@ import { Bug, Plus, Minus, Bell, Clock, ToggleLeft } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import type { SessionType } from '../types';
+import { STUDY_MILESTONES, HOBBY_MILESTONES } from '../constants';
 
 type NotifType = 'reminder'|'urgent'|'notification'|'info';
 const NOTIF_TYPES: NotifType[] = ['reminder','urgent','notification','info'];
@@ -139,13 +140,7 @@ export function DebugPage() {
       const locale = state.settings.locale || 'zh';
 
       // Milestone definitions (same as useAppStore)
-      const msList = isStudy
-        ? [{ threshold:3600, reward:900, labelZH:'连续学习≥1h', labelEN:'Continuous study ≥1h' },
-           { threshold:10800, reward:2700, labelZH:'连续学习≥3h', labelEN:'Continuous study ≥3h' },
-           { threshold:18000, reward:3600, labelZH:'连续学习≥5h', labelEN:'Continuous study ≥5h' }]
-        : [{ threshold:3600, reward:600, labelZH:'连续爱好≥1h', labelEN:'Continuous hobby ≥1h' },
-           { threshold:10800, reward:1800, labelZH:'连续爱好≥3h', labelEN:'Continuous hobby ≥3h' },
-           { threshold:18000, reward:2700, labelZH:'连续爱好≥5h', labelEN:'Continuous hobby ≥5h' }];
+      const msList = isStudy ? STUDY_MILESTONES : HOBBY_MILESTONES;
 
       msList.forEach((ms, i) => {
         if (!(claimed & (1 << i)) && newCont >= ms.threshold && delta > 0) {
@@ -187,6 +182,7 @@ export function DebugPage() {
       debugTodayOverride: { ...currentOverride, [type]: targetSeconds } as Record<string, number>,
     };
     dispatch({ type: 'SET_BALANCE', payload: updated });
+    window.electronAPI.saveBalance(updated);
     const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
     const n = Math.floor(targetSeconds / mult(unit[type]));
     notify(`Debug: ${label}`, `设定为 ${n}${unit[type]}`);

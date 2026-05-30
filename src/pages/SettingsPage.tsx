@@ -27,7 +27,7 @@ const SECTION_TABS = [
 let _dangerUnlocked = false;
 
 export function SettingsPage({ initialTab }: { initialTab?: string }) {
-  const { state, dispatch } = useAppStore();
+  const { state, dispatch, stopSession } = useAppStore();
   const s = state.settings;
   const t = useT();
   const [locale, setLocale] = useLocale();
@@ -59,7 +59,7 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
   const updateSetting = (partial: Partial<typeof s>) => {
     const updated = { ...s, ...partial };
     dispatch({ type: 'SET_SETTINGS', payload: updated });
-    window.electronAPI.saveSettings(updated);
+    // Persistence is handled by the useAppStore effect watching state.settings
   };
 
   const showConfirm = (title:string, message:string, onConfirm:()=>void, danger?:boolean) => {
@@ -69,7 +69,7 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
   const handleReset = () => {
     const reset = { ...DEFAULTS, dataPath: s.dataPath };
     dispatch({ type: 'SET_SETTINGS', payload: reset });
-    window.electronAPI.saveSettings(reset);
+    // Persistence is handled by the useAppStore effect
     setStudyMin(String(DEFAULTS.studyWeightMin));
     setStudyMax(String(DEFAULTS.studyWeightMax));
     setStudyStep(String(DEFAULTS.studyWeightStep));
@@ -80,10 +80,10 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
     showToast(t('settingsReset') + ' ✓', 'success');
   };
 
-  const handleClearData = () => {
-    // Stop any active session first so no stale state remains
+  const handleClearData = async () => {
+    // Properly stop any active session first (writes log, calculates milestones, etc.)
     if (state.session.isActive) {
-      dispatch({ type: 'SESSION_STOP' });
+      await stopSession();
     }
     window.electronAPI.clearAllLogs();
     dispatch({ type: 'SET_TODAY_LOGS', payload: [] });

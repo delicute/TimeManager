@@ -9,6 +9,8 @@ export interface BalanceState {
     hobbyContinuous: number;
     studyClaimed: number;
     hobbyClaimed: number;
+    lastStudyEnd?: number;
+    lastHobbyEnd?: number;
   };
   debugTodayOverride?: Record<string, number>;
 }
@@ -206,7 +208,6 @@ declare global {
       remindersLoad: () => Promise<ReminderRule[]>;
       remindersSave: (rules: ReminderRule[]) => Promise<void>;
       windowSetAlwaysOnTop: (onTop: boolean) => Promise<void>;
-      getBeepDataUrl: () => Promise<string>;
       getBuiltinSoundUrls: () => Promise<Record<string, string>>;
       readAudioFile: (filePath: string) => Promise<string | null>;
       selectAudioFile: () => Promise<string | null>;
@@ -214,15 +215,15 @@ declare global {
       reminderToastDismiss: () => Promise<void>;
       reminderToastSnooze: (minutes: number) => Promise<void>;
       reminderResize: (height: number) => Promise<void>;
-      onReminderToastAction: (callback: (action: { action: string; minutes?: number }) => void) => void;
+      onReminderToastAction: (callback: (action: { action: string; minutes?: number }) => void) => () => void;
       setMinimizeToTray: (value: boolean) => Promise<void>;
       notificationShow: (data: { type: string; notifType: string; title: string; body: string; color: string; duration: number }) => Promise<void>;
       notificationDismiss: (id: string) => Promise<void>;
       sessionUpdateState: (state: { isActive: boolean; type: string }) => Promise<void>;
-      onTrayAction: (callback: (action: { action: string; type?: string; page?: string }) => void) => void;
+      onTrayAction: (callback: (action: { action: string; type?: string; page?: string }) => void) => () => void;
       registerGlobalHotkeys: (hotkeys: Record<string, string>) => Promise<Record<string, boolean>>;
       unregisterGlobalHotkeys: () => Promise<void>;
-      onGlobalShortcutTrigger: (callback: (id: string) => void) => void;
+      onGlobalShortcutTrigger: (callback: (id: string) => void) => () => void;
     };
   }
 }

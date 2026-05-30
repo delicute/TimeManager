@@ -88,11 +88,12 @@ function setupIPC() {
   });
 
   ipcMain.handle('settings:save', (_, data) => {
-    ensureDir(BASE_PATH);
-    fs.writeFileSync(getSettingsPath(), JSON.stringify(data, null, 2));
     if (data.dataPath && data.dataPath !== BASE_PATH) {
       BASE_PATH = data.dataPath;
+      ensureDir(BASE_PATH);
     }
+    ensureDir(BASE_PATH);
+    fs.writeFileSync(getSettingsPath(), JSON.stringify(data, null, 2));
   });
 
   // Folder picker

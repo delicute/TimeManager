@@ -17,6 +17,7 @@ const NAV_ACTIONS: HotkeyAction[] = [
   { id: 'navRecord', labelKey: 'navRecord' },
   { id: 'navReminder', labelKey: 'navReminder' },
   { id: 'navSettings', labelKey: 'navSettings' },
+  { id: 'navDebug', labelKey: 'navDebug' },
 ];
 
 const SESSION_ACTIONS: HotkeyAction[] = [

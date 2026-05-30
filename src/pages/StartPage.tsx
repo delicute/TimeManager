@@ -5,10 +5,10 @@ import { useAppStore } from '../hooks/useAppStore';
 import { TimerCard } from '../components/TimerCard';
 import type { SessionType } from '../types';
 
-const TABS: { id: SessionType; icon: typeof BookOpen; color: string; interval: number }[] = [
-  { id: 'Study', icon: BookOpen, color: 'var(--color-study)', interval: 2 },
-  { id: 'Hobby', icon: Palette, color: 'var(--color-hobby)', interval: 4 },
-  { id: 'Entertainment', icon: Gamepad2, color: 'var(--color-entertainment)', interval: 1 },
+const TABS: { id: SessionType; icon: typeof BookOpen; color: string }[] = [
+  { id: 'Study', icon: BookOpen, color: 'var(--color-study)' },
+  { id: 'Hobby', icon: Palette, color: 'var(--color-hobby)' },
+  { id: 'Entertainment', icon: Gamepad2, color: 'var(--color-entertainment)' },
 ];
 
 interface StartPageProps {
@@ -23,6 +23,8 @@ export function StartPage({ initialTab }: StartPageProps) {
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
 
   const activeTab = TABS.find(x => x.id === tab) || TABS[0];
+  const tabInterval = tab === 'Study' ? state.settings.studyWeight
+    : tab === 'Hobby' ? state.settings.hobbyWeight : 1;
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12, cursor: 'pointer', height: 32,
@@ -56,7 +58,7 @@ export function StartPage({ initialTab }: StartPageProps) {
         key={tab}
         type={activeTab.id}
         icon={<activeTab.icon size={18} />}
-        intervalSeconds={activeTab.interval}
+        intervalSeconds={tabInterval}
         accentColor={activeTab.color}
         showConsumption={activeTab.id === 'Entertainment'}
         giftedRemaining={activeTab.id === 'Entertainment' ? state.balance.dailyGiftedRemaining : undefined}

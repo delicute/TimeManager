@@ -56,7 +56,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   reminderToastSnooze: (minutes: number) => ipcRenderer.invoke('reminder:toastSnooze', minutes),
   reminderResize: (height: number) => ipcRenderer.invoke('reminder:resize', height),
   onReminderToastAction: (callback: (action: any) => void) => {
-    ipcRenderer.on('reminder:toastAction', (_event, action) => callback(action));
+    const handler = (_event: any, action: any) => callback(action);
+    ipcRenderer.on('reminder:toastAction', handler);
+    return () => ipcRenderer.removeListener('reminder:toastAction', handler);
   },
 
   // Minimize-to-tray sync
@@ -71,24 +73,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('settings:registerGlobalHotkeys', hotkeys),
   unregisterGlobalHotkeys: () => ipcRenderer.invoke('settings:unregisterGlobalHotkeys'),
   onGlobalShortcutTrigger: (callback: (id: string) => void) => {
-    ipcRenderer.on('globalShortcut:trigger', (_event, id) => callback(id));
+    const handler = (_event: any, id: string) => callback(id);
+    ipcRenderer.on('globalShortcut:trigger', handler);
+    return () => ipcRenderer.removeListener('globalShortcut:trigger', handler);
   },
 
   // ─── Tray IPC ─────────────────────────────────────
   sessionUpdateState: (state: any) => ipcRenderer.invoke('session:stateUpdate', state),
   onTrayAction: (callback: (action: any) => void) => {
-    ipcRenderer.on('tray:startSession', (_event, type) => callback({ action: 'startSession', type }));
-    ipcRenderer.on('tray:stopSession', () => callback({ action: 'stopSession' }));
-    ipcRenderer.on('tray:navSettings', () => callback({ action: 'navigate', page: 'Settings' }));
+    const h1 = (_event: any, type: string) => callback({ action: 'startSession', type });
+    const h2 = () => callback({ action: 'stopSession' });
+    const h3 = () => callback({ action: 'navigate', page: 'Settings' });
+    ipcRenderer.on('tray:startSession', h1);
+    ipcRenderer.on('tray:stopSession', h2);
+    ipcRenderer.on('tray:navSettings', h3);
+    return () => {
+      ipcRenderer.removeListener('tray:startSession', h1);
+      ipcRenderer.removeListener('tray:stopSession', h2);
+      ipcRenderer.removeListener('tray:navSettings', h3);
+    };
   },
 });
 
 // ─── Notification container bridge ──────────────────────
 contextBridge.exposeInMainWorld('containerBridge', {
   onAdd: (callback: (data: { id: string; iconSvg: string; title: string; body: string; color: string }) => void) => {
-    ipcRenderer.on('container:add', (_event, data) => callback(data));
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('container:add', handler);
+    return () => ipcRenderer.removeListener('container:add', handler);
   },
   onRemove: (callback: (id: string) => void) => {
-    ipcRenderer.on('container:remove', (_event, id) => callback(id));
+    const handler = (_event: any, id: string) => callback(id);
+    ipcRenderer.on('container:remove', handler);
+    return () => ipcRenderer.removeListener('container:remove', handler);
   },
 });
