@@ -53,17 +53,32 @@ export function DebugPage() {
 
   // Adjust time for a session type
   const adjTime = (type: SessionType, delta: number) => {
-    const sec = delta > 0 ? delta : -delta;
+    const sec = Math.abs(delta);
     const ts = Date.now();
+    const isStudy = type === 'Study';
+    const isHobby = type === 'Hobby';
+    const isEntertainment = type === 'Entertainment';
+    const weight = isStudy ? state.settings.studyWeight : state.settings.hobbyWeight;
+    // Study/Hobby: earn 1 per `weight` seconds.
+    // Entertainment: consume ~5 per second (1 per 200ms tick).
+    const raw = isEntertainment ? sec * 5 : Math.floor(sec / (weight || 1));
+    const balanceChange = delta > 0 ? raw : -raw;
+
     window.electronAPI.writeLogEntry({
       startTime: new Date(ts - sec * 1000).toISOString(),
       endTime: new Date(ts).toISOString(),
-      activityType: type, balanceChange: 0, debug: true,
+      activityType: type, balanceChange, debug: true,
     });
     window.electronAPI.getTodayLogs().then(logs => dispatch({ type: 'SET_TODAY_LOGS', payload: logs }));
+    // Update balance
+    window.electronAPI.loadBalance().then((b: any) => {
+      const updated = { ...b, earnedBalance: Math.max(0, (b.earnedBalance || 0) + balanceChange) };
+      window.electronAPI.saveBalance(updated);
+      dispatch({ type: 'SET_BALANCE', payload: updated });
+    });
     const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
     const n = Math.floor(sec / mult(unit[type]));
-    notify(`Debug: ${label}`, `${delta > 0 ? '+' : '-'}${n}${unit[type]}`);
+    notify(`Debug: ${label}`, `${delta > 0 ? '+' : '-'}${n}${unit[type]}, 余额${balanceChange > 0 ? '+' : ''}${balanceChange}`);
   };
 
   // Set balance to a specific value
