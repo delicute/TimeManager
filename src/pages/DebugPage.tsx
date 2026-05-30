@@ -80,7 +80,8 @@ export function DebugPage() {
     // Study/Hobby: earn 1 per `weight` seconds.
     // Entertainment: consume ~5 per second (1 per 200ms tick).
     const raw = isEntertainment ? sec * 5 : Math.floor(sec / (weight || 1));
-    const balanceChange = delta > 0 ? raw : -raw;
+    // Entertainment consumes balance (negative), Study/Hobby earns (positive when delta>0)
+    const balanceChange = isEntertainment ? -raw : (delta > 0 ? raw : -raw);
 
     // Compute current today total for this type (respecting existing override)
     const currentOverride = state.balance.debugTodayOverride?.[type];
@@ -109,8 +110,19 @@ export function DebugPage() {
     });
     window.electronAPI.getTodayLogs().then(logs => dispatch({ type: 'SET_TODAY_LOGS', payload: logs }));
 
-    // Update balance + milestone continuous time
+    // Update balance + milestone continuous time (entertainment has no milestones)
     window.electronAPI.loadBalance().then((b: any) => {
+      if (isEntertainment) {
+        // Entertainment only consumes balance, no milestones
+        const updated = {
+          ...b,
+          earnedBalance: Math.max(0, (b.earnedBalance || 0) + balanceChange),
+        };
+        window.electronAPI.saveBalance(updated);
+        dispatch({ type: 'SET_BALANCE', payload: { ...updated, debugTodayOverride: debugOverride } });
+        return;
+      }
+
       const m = b.milestones || { studyContinuous:0, hobbyContinuous:0, studyClaimed:0, hobbyClaimed:0 };
       const contKey = isStudy ? 'studyContinuous' : 'hobbyContinuous';
       const claimKey = isStudy ? 'studyClaimed' : 'hobbyClaimed';
