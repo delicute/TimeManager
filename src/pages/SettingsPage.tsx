@@ -81,6 +81,10 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
   };
 
   const handleClearData = () => {
+    // Stop any active session first so no stale state remains
+    if (state.session.isActive) {
+      dispatch({ type: 'SESSION_STOP' });
+    }
     window.electronAPI.clearAllLogs();
     dispatch({ type: 'SET_TODAY_LOGS', payload: [] });
     window.electronAPI.saveBalance({ earnedBalance: 0, dailyGiftedRemaining: 1800, lastDate: '' });

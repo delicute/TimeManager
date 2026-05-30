@@ -125,7 +125,31 @@ export function TimerCard({
           if (claimed & (1 << i)) return false;
           return continuous < milestones[i].threshold;
         });
-        if (activeMilestones.length === 0) return null; // all done, hide bar
+        if (activeMilestones.length === 0) {
+          // All milestones done — show bar with completion message
+          return (
+            <div className="milestone-bar-wrap" style={{ opacity: 0.45 }}>
+              <div className="milestone-bar">
+                <div className="milestone-fill" style={{ width: '100%', opacity: 0.4 }} />
+                {milestones.map((m, i) => (
+                  <div key={i} className="milestone-dot claimed"
+                    style={{ left: `${(m.threshold / maxTh) * 100}%` }} />
+                ))}
+              </div>
+              <div className="milestone-top-row">
+                <span className="milestone-current-time">{continuous < 60 ? `${Math.round(continuous)}s` : formatDuration(Math.round(continuous / 60) * 60)}</span>
+                <div className="milestone-marks">
+                  {milestones.map((m, i) => (
+                    <span key={i} style={{ left: `${(m.threshold / maxTh) * 100}%` }}>{m.label}</span>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--color-accent-teal)', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                  {t('milestoneAllClaimed')}
+                </span>
+              </div>
+            </div>
+          );
+        }
         const maxTh = milestones[milestones.length - 1].threshold;
         const progress = (continuous / maxTh) * 100;
 
