@@ -399,12 +399,21 @@ function showReminderToast(rule: any) {
     },
   });
 
-  const html = generateToastHtml(rule, audioDataUrl);
+  const html = generateToastHtml(rule);
   reminderToastWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
   // Measure content height after load, resize to fit, then show
   reminderToastWindow.webContents.on('did-finish-load', () => {
     if (!reminderToastWindow || reminderToastWindow.isDestroyed()) return;
+
+    // Play audio via JS to bypass Chromium autoplay policy
+    if (audioDataUrl) {
+      const safeUrl = audioDataUrl.replace(/'/g, "\\'");
+      reminderToastWindow.webContents.executeJavaScript(
+        `new Audio('${safeUrl}').play().catch(function(){})`
+      ).catch(() => {});
+    }
+
     reminderToastWindow.webContents.executeJavaScript('document.documentElement.scrollHeight').then(h => {
       if (!reminderToastWindow || reminderToastWindow.isDestroyed()) return;
       const clamped = Math.max(120, Math.min(200, h));
@@ -494,7 +503,7 @@ function renderTreeHtml(node: any, values: Record<string, number>, path: string,
   return '';
 }
 
-function generateToastHtml(rule: any, audioDataUrl: string): string {
+function generateToastHtml(rule: any): string {
   const urgencyColors: Record<string, string> = {
     low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
   };
@@ -540,7 +549,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;f
 </style>
 </head>
 <body>
-${audioDataUrl ? `<audio autoplay src="${audioDataUrl}"></audio>` : ''}
 <div class="ub"></div>
 <div class="bd${animClass ? ' ' + animClass : ''}">
 ${animClass ? '<div class="toast-glow"></div>' : ''}
