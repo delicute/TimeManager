@@ -78,8 +78,9 @@ export function DebugPage() {
     const isEntertainment = type === 'Entertainment';
     const weight = isStudy ? state.settings.studyWeight : state.settings.hobbyWeight;
     // Study/Hobby: earn 1 per `weight` seconds.
-    // Entertainment: consume ~5 per second (1 per 200ms tick).
-    const raw = isEntertainment ? sec * 5 : Math.floor(sec / (weight || 1));
+    // Entertainment: consume 1 per second (2 when in debt), matching real session.
+    const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
+    const raw = isEntertainment ? sec * debtRate : Math.floor(sec / (weight || 1));
     // Entertainment consumes balance (negative), Study/Hobby earns (positive when delta>0)
     const balanceChange = isEntertainment ? -raw : (delta > 0 ? raw : -raw);
 
