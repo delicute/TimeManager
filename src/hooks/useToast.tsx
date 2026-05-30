@@ -6,6 +6,7 @@ export interface ToastItem {
   id: string;
   message: string;
   type: ToastType;
+  leaving?: boolean;
 }
 
 interface ToastContextValue {
@@ -25,7 +26,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const counterRef = useRef(0);
 
   const dismissToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t));
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 250);
   }, []);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {

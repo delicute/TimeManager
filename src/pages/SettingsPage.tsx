@@ -280,7 +280,7 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
       </>}
 
       <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message}
-        confirmLabel={t('reminderConfirm')} onConfirm={confirmState.onConfirm} onCancel={()=>setConfirmState(c=>({...c,open:false}))}
+        confirmLabel={t('reminderConfirm')} cancelLabel={t('cancelLabel')} onConfirm={confirmState.onConfirm} onCancel={()=>setConfirmState(c=>({...c,open:false}))}
         danger={confirmState.danger} />
     </>
   );

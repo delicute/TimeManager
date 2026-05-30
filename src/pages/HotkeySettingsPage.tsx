@@ -291,7 +291,7 @@ export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
         open={showResetConfirm}
         title={t('hotkeyResetConfirmTitle')}
         message={t('hotkeyResetConfirmMsg')}
-        confirmLabel={t('resetAll')}
+        confirmLabel={t('resetAll')} cancelLabel={t('cancelLabel')}
         onConfirm={() => {
           updateSetting({ hotkeys: undefined });
           setRecordingId(null);

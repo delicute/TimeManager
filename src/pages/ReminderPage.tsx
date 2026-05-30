@@ -372,6 +372,7 @@ export function ReminderPage() {
       )}
 
       <ConfirmDialog open={!!deleteId} title={t('reminderDeleteConfirm')} message=""
+        confirmLabel={t('reminderConfirm')} cancelLabel={t('cancelLabel')}
         onConfirm={confirmDelete} onCancel={()=>setDeleteId(null)} danger />
     </>
   );

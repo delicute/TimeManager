@@ -11,16 +11,17 @@ const ICONS: Record<string, typeof CheckCircle> = {
 const COLORS: Record<string, string> = {
   success: 'var(--color-success, #5db872)',
   error: 'var(--color-error, #c64545)',
-  info: 'var(--color-on-dark-soft, #a09d96)',
+  info: 'var(--color-accent-teal, #5db8a6)',
 };
 
 function ToastItemView({ item, onDismiss }: { item: ToastItem; onDismiss: () => void }) {
-  const [visible, setVisible] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
+    requestAnimationFrame(() => setEntered(true));
   }, []);
 
+  const show = entered && !item.leaving;
   const Icon = ICONS[item.type] || Info;
 
   return (
@@ -34,8 +35,8 @@ function ToastItemView({ item, onDismiss }: { item: ToastItem; onDismiss: () => 
         minWidth: 240, maxWidth: 360,
         boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         cursor: 'pointer',
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(-12px)',
+        opacity: show ? 1 : 0,
+        transform: show ? 'translateY(0)' : 'translateY(-12px)',
         transition: 'opacity 220ms ease-out, transform 220ms ease-out',
         pointerEvents: 'auto',
       }}
