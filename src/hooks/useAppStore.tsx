@@ -485,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : type;
         const title = locale === 'zh' ? `已退出${typeLabel}` : `Exited ${type}`;
         const body = locale === 'zh' ? `你这次${typeLabel}了${durationStr}` : `You spent ${durationStr}`;
-        window.electronAPI.notificationShow({ type, notifType: 'info', title, body, color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        window.electronAPI.notificationShow({ type, notifType: 'notification', title, body, color: '#5db872', duration: cfg.notificationDuration ?? 5 });
       }
     } catch { /* ignore */ }
   }

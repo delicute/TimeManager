@@ -1,27 +1,51 @@
-import React, { useState } from 'react';
-import { Bug, Plus, Minus, Bell, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bug, Plus, Minus, Bell, Clock } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { todayStr } from '../utils/formatting';
 import type { SessionType } from '../types';
+
+type NotifType = 'reminder'|'urgent'|'notification'|'info';
+const NOTIF_TYPES: NotifType[] = ['reminder','urgent','notification','info'];
+const NOTIF_COLORS: Record<string,string> = { reminder:'#5db8a6', urgent:'#c64545', notification:'#5db872', info:'#a09d96' };
 
 export function DebugPage() {
   const { state, dispatch } = useAppStore();
-  const { balance, todayLogs } = state;
+  const { balance, session } = state;
   const t = useT();
+  const [, forceUpdate] = useState(0);
+
   const [includeLog, setIncludeLog] = useState(false);
+  const [customVal, setCustomVal] = useState('1');
+  const [customUnit, setCustomUnit] = useState<'m'|'h'>('m');
+  const [notifCount, setNotifCount] = useState(1);
+  const [notifType, setNotifType] = useState<NotifType>('info');
 
-  const now = new Date();
+  // Live running time
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
 
-  const adjustTime = (type: SessionType, delta: number) => {
+  const runTime = (type: SessionType) => {
+    if (session.isActive && session.currentType === type && session.startTime) {
+      return Math.floor((now - session.startTime) / 1000);
+    }
+    return 0;
+  };
+
+  // Balance: direct IPC save to bypass reducer restrictions
+  const setBalance = (val: number) => {
+    window.electronAPI.loadBalance().then((b: any) => {
+      const updated = { ...b, earnedBalance: val };
+      window.electronAPI.saveBalance(updated);
+      dispatch({ type: 'SET_BALANCE', payload: updated });
+    });
+  };
+
+  const adjustTime = (type: SessionType, seconds: number) => {
     if (!includeLog) return;
-    const total = todayLogs.filter(l => l.activityType === type && !l.debug).reduce((s, l) => s + (new Date(l.endTime).getTime() - new Date(l.startTime).getTime()) / 1000, 0);
-    const fakeEnd = new Date(now.getTime() + (delta > 0 ? delta * 1000 : 0));
-    const fakeStart = new Date(fakeEnd.getTime() - Math.abs(delta) * 1000);
+    const ts = Date.now();
     window.electronAPI.writeLogEntry({
-      startTime: fakeStart.toISOString(),
-      endTime: fakeEnd.toISOString(),
+      startTime: new Date(ts - Math.abs(seconds) * 1000).toISOString(),
+      endTime: new Date(ts).toISOString(),
       activityType: type,
       balanceChange: 0,
       debug: true,
@@ -29,108 +53,85 @@ export function DebugPage() {
     window.electronAPI.getTodayLogs().then(logs => dispatch({ type: 'SET_TODAY_LOGS', payload: logs }));
   };
 
-  const adjustBalance = (delta: number) => {
-    dispatch({ type: 'BALANCE_ADD_EARNED', payload: delta });
+  const unitMult = customUnit === "h" ? 3600 : 60;
+  const customValNum = () => Number(customVal) * unitMult;
+  const inpS: React.CSSProperties = {
+    padding:'4px 8px', borderRadius:4, border:'1px solid rgba(255,255,255,0.12)',
+    background:'rgba(255,255,255,0.06)', color:'#ffffff', fontSize:12, height:28,
+    boxSizing:'border-box',
   };
-
-  const setBalance = (val: number) => {
-    const current = balance.earnedBalance;
-    dispatch({ type: 'BALANCE_ADD_EARNED', payload: val - current });
-  };
-
-  const sendNotif = (count: number) => {
-    const cfg = state.settings;
-    for (let i = 0; i < count; i++) {
-      window.electronAPI.notificationShow({
-        type: 'debug',
-        notifType: 'info',
-        title: `Debug ${i + 1}/${count}`,
-        body: t('debugTag'),
-        color: '#a09d96',
-        duration: cfg.notificationDuration ?? 5,
-      });
-    }
-  };
-
-  const debugLogs = todayLogs.filter(l => l.debug);
-
-  const inputS: React.CSSProperties = {
-    padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)',
-    background: 'rgba(255,255,255,0.06)', color: '#faf9f5', fontSize: 12, height: 28, width: 70,
-    boxSizing: 'border-box',
-  };
-  const btnS: React.CSSProperties = {
-    ...inputS, height: 28, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3, width: 'auto', padding: '4px 10px',
+  const btn: React.CSSProperties = {
+    ...inpS, height:28, cursor:'pointer', display:'inline-flex', alignItems:'center',
+    gap:3, padding:'4px 10px', color:'#ffffff',
   };
 
   return (
     <>
-      <h1 className="page-title"><span className="title-icon"><Bug size={24} /></span> {t('debugTitle')}</h1>
+      <h1 className="page-title" style={{color:'#ffffff',fontWeight:700}}><span className="title-icon"><Bug size={24}/></span> {t('debugTitle')}</h1>
 
-      {/* Record toggle */}
-      <div className="card" style={{ padding: '10px 14px', marginBottom: 8 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-          <input type="checkbox" checked={includeLog} onChange={e => setIncludeLog(e.target.checked)} style={{ accentColor: '#5db8a6' }} />
-          <Save size={14} /> {t('debugIncludeLog')}
+      {/* Include in Logs */}
+      <div className="card" style={{padding:'6px 12px',marginBottom:8}}>
+        <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#ffffff'}}>
+          <input type="checkbox" checked={includeLog} onChange={e=>setIncludeLog(e.target.checked)} style={{accentColor:'#5db8a6'}} />
+          <Clock size={14}/> {t('debugIncludeLog')}
         </label>
       </div>
 
       {/* Time adjustment */}
-      <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{t('debugTitle')}</div>
-        {(['Study', 'Hobby', 'Entertainment'] as SessionType[]).map(type => (
-          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12 }}>
-            <span style={{ width: 80, flexShrink: 0 }}>{t(type === 'Study' ? 'navStudy' : type === 'Hobby' ? 'navHobby' : 'navEntertainment')}</span>
-            <button onClick={() => adjustTime(type, -1)} style={btnS}><Minus size={12} />1{t('debugMinutes')}</button>
-            <button onClick={() => adjustTime(type, -5)} style={btnS}><Minus size={12} />5</button>
-            <button onClick={() => adjustTime(type, -10)} style={btnS}><Minus size={12} />10</button>
-            <span style={{ color: 'var(--color-on-dark-soft)' }}>|</span>
-            <button onClick={() => adjustTime(type, 1)} style={btnS}><Plus size={12} />1{t('debugMinutes')}</button>
-            <button onClick={() => adjustTime(type, 5)} style={btnS}><Plus size={12} />5</button>
-            <button onClick={() => adjustTime(type, 10)} style={btnS}><Plus size={12} />10</button>
+      <div className="card" style={{padding:12,marginBottom:8}}>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'#ffffff'}}>{t('debugTitle')}</div>
+        {(['Study','Hobby','Entertainment'] as SessionType[]).map(type => (
+          <div key={type} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6,fontSize:12}}>
+            <span style={{width:80,flexShrink:0,color:'#ffffff'}}>{t(type==='Study'?'navStudy':type==='Hobby'?'navHobby':'navEntertainment')}</span>
+            <span style={{color:'var(--color-accent-teal)',fontSize:11,width:50}}>
+              {session.isActive && session.currentType===type ? `${Math.floor(runTime(type)/60)}m` : '-'}
+            </span>
+            <button onClick={()=>adjustTime(type, -customValNum())} style={btn}><Minus size={12}/></button>
+            <button onClick={()=>adjustTime(type, customValNum())} style={btn}><Plus size={12}/></button>
           </div>
         ))}
+        {/* Custom value + unit */}
+        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4,fontSize:12}}>
+          <input type="number" value={customVal} onChange={e=>setCustomVal(e.target.value)} style={{...inpS,width:70}} min={0} />
+          {(['m','h'] as const).map(u => (
+            <button key={u} onClick={()=>setCustomUnit(u)}
+              style={{...btn, padding:'2px 10px', height:24,
+                border: customUnit===u ? '1.5px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',
+                background: customUnit===u ? 'rgba(93,184,166,0.15)' : 'transparent',
+                color: customUnit===u ? 'var(--color-accent-teal)' : '#ffffff',
+              }}>{u}</button>
+          ))}
+        </div>
       </div>
 
-      {/* Balance adjustment */}
-      <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{t('debugBalance')}: {balance.earnedBalance}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
-          <button onClick={() => adjustBalance(10)} style={btnS}><Plus size={12} />10</button>
-          <button onClick={() => adjustBalance(100)} style={btnS}><Plus size={12} />100</button>
-          <button onClick={() => adjustBalance(1000)} style={btnS}><Plus size={12} />1000</button>
-          <span style={{ color: 'var(--color-on-dark-soft)' }}>|</span>
-          <button onClick={() => adjustBalance(-10)} style={btnS}><Minus size={12} />10</button>
-          <button onClick={() => adjustBalance(-100)} style={btnS}><Minus size={12} />100</button>
-          <button onClick={() => adjustBalance(-1000)} style={btnS}><Minus size={12} />1000</button>
-          <span style={{ color: 'var(--color-on-dark-soft)' }}>|</span>
-          <input type="number" id="balSet" defaultValue={0} style={{ ...inputS, width: 80 }} />
-          <button onClick={() => { const v = Number((document.getElementById('balSet') as HTMLInputElement)?.value || 0); setBalance(v); }} style={btnS}>{t('debugSet')}</button>
+      {/* Balance */}
+      <div className="card" style={{padding:12,marginBottom:8}}>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'#ffffff'}}>{t('debugBalance')}: <span style={{color:'var(--color-accent-teal)'}}>{balance.earnedBalance}</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12}}>
+          <span style={{color:'#ffffff'}}>{t('debugSet')}</span>
+          <input type="number" id="balVal" defaultValue={0} style={{...inpS,width:100}} />
+          <button onClick={()=>{const v=Number((document.getElementById('balVal')as HTMLInputElement)?.value||0);setBalance(v);}} style={btn}>{t('debugSet')}</button>
         </div>
       </div>
 
       {/* Send notification */}
-      <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{t('debugSendNotification')}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-          <input type="number" id="notifCount" defaultValue={1} min={1} style={{ ...inputS, width: 70 }} />
-          <button onClick={() => { const c = Number((document.getElementById('notifCount') as HTMLInputElement)?.value || 1); sendNotif(c); }} style={btnS}><Bell size={12} />{t('debugSendNotification')}</button>
+      <div className="card" style={{padding:12,marginBottom:8}}>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'#ffffff'}}>{t('debugSendNotification')}</div>
+        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,flexWrap:'wrap'}}>
+          <span style={{color:'#ffffff'}}>{t('debugAmount')}</span>
+          <input type="number" value={notifCount} onChange={e=>setNotifCount(Math.max(1,Number(e.target.value)))} style={{...inpS,width:60}} min={1} />
+          {NOTIF_TYPES.map(nt => (
+            <button key={nt} onClick={()=>setNotifType(nt)}
+              style={{...btn, padding:'2px 8px',height:24,
+                border: notifType===nt ? `1.5px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
+                background: notifType===nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
+                color: notifType===nt ? NOTIF_COLORS[nt] : '#ffffff',
+              }}>{nt}</button>
+          ))}
+          <button onClick={()=>{for(let i=0;i<notifCount;i++)window.electronAPI.notificationShow({type:'debug',notifType,title:`Debug ${i+1}/${notifCount}`,body:'',color:NOTIF_COLORS[notifType],duration:state.settings.notificationDuration??5});}}
+            style={btn}><Bell size={12}/> {t('debugSendNotification')}</button>
         </div>
       </div>
-
-      {/* Debug logs */}
-      {debugLogs.length > 0 && (
-        <div className="card" style={{ padding: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{t('debugTitle')} Logs</div>
-          {debugLogs.slice(-10).reverse().map((log, i) => (
-            <div key={i} style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', marginBottom: 2 }}>
-              {log.activityType} {new Date(log.startTime).toLocaleTimeString()} {t('debugTag')}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <ConfirmDialog open={false} title="" message="" onConfirm={() => {}} onCancel={() => {}} />
     </>
   );
 }
