@@ -154,6 +154,8 @@ export const en: Translations = {
   reminderDisabled: 'Off',
   reminderSaved: 'Reminder saved',
   reminderReordered: 'Reminders reordered',
+  reminderSearchPlaceholder: 'Search reminders…',
+  reminderFilterAll: 'All',
   reminderUpdated: 'Reminder updated',
   reminderDeleted: 'Reminder deleted',
   settingsSaved: 'Settings saved',

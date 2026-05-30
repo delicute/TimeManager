@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, AlertTriangle, MessageCircle, Plus, Trash2, FileText, Shuffle, ToggleLeft } from 'lucide-react';
+import { Bell, AlertTriangle, MessageCircle, Plus, Trash2, FileText, Shuffle, ToggleLeft, Search } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -206,6 +206,15 @@ export function ReminderPage() {
   const [deleteId, setDeleteId] = useState<string|null>(null);
   const [dragIndex, setDragIndex] = useState<number|null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number|null>(null);
+  const [filterText, setFilterText] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all'|'enabled'|'disabled'>('all');
+
+  const filteredRules = reminderRules.filter(rule => {
+    if (filterStatus==='enabled' && !rule.enabled) return false;
+    if (filterStatus==='disabled' && rule.enabled) return false;
+    if (filterText.trim()) { const l=filterText.toLowerCase(); const mt=rule.title.toLowerCase().includes(l); const mc=(rule.content||'').toLowerCase().includes(l); if (!mt && !mc) return false; }
+    return true;
+  });
 
   const handleDragStart = (index:number) => (e:React.DragEvent) => { setDragIndex(index); e.dataTransfer.effectAllowed='move'; (e.target as HTMLElement).style.opacity='0.3'; };
   const handleDragEnd = (e:React.DragEvent) => { setDragIndex(null); setDragOverIndex(null); (e.target as HTMLElement).style.opacity=''; };
@@ -281,9 +290,30 @@ export function ReminderPage() {
       ) : (
         <>
           <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
-          {reminderRules.length===0
+
+          {/* Search & Filter */}
+          <div style={{marginTop:12,marginBottom:8}}>
+            <div style={{position:'relative',marginBottom:6}}>
+              <Search size={14} style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',color:'var(--color-on-dark-soft)'}} />
+              <input type="text" value={filterText} onChange={e=>setFilterText(e.target.value)} placeholder={t('reminderSearchPlaceholder')}
+                style={{width:'100%',height:30,padding:'4px 8px 4px 28px',borderRadius:6,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontSize:12,fontFamily:'inherit',outline:'none'}} />
+            </div>
+            <div style={{display:'flex',gap:4}}>
+              {(['all','enabled','disabled'] as const).map(status => (
+                <button key={status} onClick={()=>setFilterStatus(status)}
+                  style={{padding:'3px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:24,
+                    border:filterStatus===status?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                    background:filterStatus===status?'rgba(93,184,166,0.15)':'transparent',
+                    color:filterStatus===status?'var(--color-accent-teal)':'#faf9f5',
+                    fontFamily:'inherit',fontWeight:filterStatus===status?600:400,
+                  }}>{t(status==='all'?'reminderFilterAll':status==='enabled'?'reminderEnabled':'reminderDisabled')}</button>
+              ))}
+            </div>
+          </div>
+
+          {filteredRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
-            : <div style={{marginTop:16,columnCount:2,columnGap:6}}>{reminderRules.map((rule, index)=>(
+            : <div style={{marginTop:4,columnCount:2,columnGap:6}}>{filteredRules.map((rule, index)=>(
                 <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:dragIndex===index?0.3:(rule.enabled?1:0.5),border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
