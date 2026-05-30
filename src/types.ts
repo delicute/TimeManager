@@ -48,6 +48,8 @@ export const DEFAULT_HOTKEYS: Record<string, string> = {
   sessionHobby: 'Ctrl+Shift+H',
   sessionEntertainment: 'Ctrl+Shift+E',
   sessionStop: 'Ctrl+Shift+X',
+  sessionPause: 'Ctrl+Shift+P',
+  sessionPrint: 'Ctrl+Shift+L',
   recordingConfirm: 'Enter',
   recordingCancel: 'Escape',
 };

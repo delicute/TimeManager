@@ -24,6 +24,8 @@ const SESSION_ACTIONS: HotkeyAction[] = [
   { id: 'sessionHobby', labelKey: 'start' },
   { id: 'sessionEntertainment', labelKey: 'start' },
   { id: 'sessionStop', labelKey: 'stop' },
+  { id: 'sessionPause', labelKey: 'timerPause' },
+  { id: 'sessionPrint', labelKey: 'debugTitle' },
 ];
 
 const RECORDING_ACTIONS: HotkeyAction[] = [
@@ -36,6 +38,8 @@ const LABEL_EN: Record<string, string> = {
   sessionHobby: 'Start Hobby',
   sessionEntertainment: 'Start Entertainment',
   sessionStop: 'Stop Timer',
+  sessionPause: 'Pause / Resume',
+  sessionPrint: 'Print Status',
   recordingConfirm: 'Confirm Key',
   recordingCancel: 'Cancel Key',
 };
@@ -45,6 +49,8 @@ const LABEL_ZH: Record<string, string> = {
   sessionHobby: '开始爱好',
   sessionEntertainment: '开始娱乐',
   sessionStop: '停止计时',
+  sessionPause: '暂停 / 继续',
+  sessionPrint: '打印状态',
   recordingConfirm: '确认键',
   recordingCancel: '取消键',
 };
@@ -100,7 +106,7 @@ export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Global hotkeys: only register Session Control shortcuts
-  const SESSION_HOTKEY_IDS = ['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop'];
+  const SESSION_HOTKEY_IDS = ['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop', 'sessionPause', 'sessionPrint'];
 
   useEffect(() => {
     if (state.settings.globalHotkeys) {

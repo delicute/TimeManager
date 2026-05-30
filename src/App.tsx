@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from './hooks/useAppStore';
 import { Sidebar } from './components/Sidebar';
 import { StartPage } from './pages/StartPage';
@@ -7,15 +7,21 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ReminderPage } from './pages/ReminderPage';
 import { DebugPage } from './pages/DebugPage';
 import { DEFAULT_HOTKEYS, type SessionType } from './types';
+import { formatDurationFull, formatDuration } from './utils/formatting';
 import { ToastProvider } from './hooks/useToast';
 import { ToastContainer } from './components/Toast';
 
 export function App() {
   const [currentPage, setCurrentPage] = useState('Start');
   const [startTab, setStartTab] = useState<SessionType>('Study');
-  const { state, loadInitialData, startSession, stopSession } = useAppStore();
+  const { state, loadInitialData, startSession, stopSession, dispatch } = useAppStore();
   const hotkeys = state.settings.hotkeys;
   const session = state.session;
+  const balance = state.balance;
+  const sessionRef = useRef(session);
+  const balanceRef = useRef(balance);
+  sessionRef.current = session;
+  balanceRef.current = balance;
 
   // Sync session state to main process for tray menu
   useEffect(() => {
@@ -54,9 +60,36 @@ export function App() {
         case 'sessionHobby': startSession('Hobby'); return;
         case 'sessionEntertainment': startSession('Entertainment'); return;
         case 'sessionStop': stopSession(); return;
+        case 'sessionPause': {
+          const s = sessionRef.current;
+          if (!s.isActive) return;
+          if (s.isPaused) dispatch({ type: 'SESSION_RESUME' });
+          else dispatch({ type: 'SESSION_PAUSE' });
+          return;
+        }
+        case 'sessionPrint': {
+          const s = sessionRef.current;
+          const b = balanceRef.current;
+          const elapsed = s.isActive && s.startTime ? Math.floor((Date.now() - s.startTime) / 1000) : 0;
+          const debtInfo = b.earnedBalance < 0 ? ` 负债中(×2)` : '';
+          const elapsedStr = s.isActive ? formatDurationFull(elapsed) : '--';
+          const pausedLabel = s.isPaused ? ' [已暂停]' : '';
+          const status = s.isActive
+            ? `[${s.currentType}] ${elapsedStr}${pausedLabel}${debtInfo}`
+            : '无活动会话';
+          const giftInfo = formatDuration(b.dailyGiftedRemaining);
+          const earnedInfo = formatDuration(Math.abs(b.earnedBalance));
+          const debtLabel = b.earnedBalance < 0 ? ` 负债` : '';
+          const body = `${status}\n赠送: ${giftInfo} | 赚取: ${earnedInfo}${debtLabel}`;
+          window.electronAPI.notificationShow({
+            type: 'debug', notifType: 'info', title: '当前状态', body,
+            color: '#a09d96', duration: 8,
+          });
+          return;
+        }
       }
     });
-  }, [startSession, stopSession]);
+  }, [startSession, stopSession, dispatch]);
 
   // ─── Hotkeys ──────────────────────────────────────────
   useEffect(() => {
@@ -100,6 +133,33 @@ export function App() {
         case 'sessionHobby': startSession('Hobby'); return;
         case 'sessionEntertainment': startSession('Entertainment'); return;
         case 'sessionStop': stopSession(); return;
+        case 'sessionPause': {
+          const s = sessionRef.current;
+          if (!s.isActive) return;
+          if (s.isPaused) dispatch({ type: 'SESSION_RESUME' });
+          else dispatch({ type: 'SESSION_PAUSE' });
+          return;
+        }
+        case 'sessionPrint': {
+          const s = sessionRef.current;
+          const b = balanceRef.current;
+          const elapsed = s.isActive && s.startTime ? Math.floor((Date.now() - s.startTime) / 1000) : 0;
+          const elapsedStr = s.isActive ? formatDurationFull(elapsed) : '--';
+          const debtInfo = b.earnedBalance < 0 ? ` 负债中(×2)` : '';
+          const pausedLabel = s.isPaused ? ' [已暂停]' : '';
+          const status = s.isActive
+            ? `[${s.currentType}] ${elapsedStr}${pausedLabel}${debtInfo}`
+            : '无活动会话';
+          const giftInfo = formatDuration(b.dailyGiftedRemaining);
+          const earnedInfo = formatDuration(Math.abs(b.earnedBalance));
+          const debtLabel = b.earnedBalance < 0 ? ` 负债` : '';
+          const body = `${status}\n赠送: ${giftInfo} | 赚取: ${earnedInfo}${debtLabel}`;
+          window.electronAPI.notificationShow({
+            type: 'debug', notifType: 'info', title: '当前状态', body,
+            color: '#a09d96', duration: 8,
+          });
+          return;
+        }
       }
     };
 
