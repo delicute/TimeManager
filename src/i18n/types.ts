@@ -176,6 +176,7 @@ export interface Translations {
   recordDateTo: string;
   recordEarned: string;
   recordConsumed: string;
+  recordLoading: string;
   confirmLabel: string;
   cancelLabel: string;
   resetAll: string;

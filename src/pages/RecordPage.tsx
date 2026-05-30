@@ -119,6 +119,17 @@ export function RecordPage() {
   const [calYear, setCalYear] = useState(now().getFullYear());
   const [calMonth, setCalMonth] = useState(now().getMonth());
   const [hoverSeg, setHoverSeg] = useState<string | null>(null);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Scroll listener for scroll-to-top button
+  useEffect(() => {
+    const container = document.querySelector('.content-area');
+    if (!container) return;
+    const handleScroll = () => setShowScrollTop(container.scrollTop > 300);
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Custom date calendar target ('from' | 'to')
   const [calTarget, setCalTarget] = useState<'from' | 'to'>('from');
@@ -131,6 +142,8 @@ export function RecordPage() {
   useEffect(() => {
     async function load() {
       if (preset === 'today') { setLogs(state.todayLogs); return; }
+      setLoadingLogs(true);
+      try {
       let from: Date, to: Date;
       switch (preset) {
         case 'yesterday': from = daysAgo(1); to = daysAgo(1); break;
@@ -154,6 +167,9 @@ export function RecordPage() {
       }));
       for (const r of results) all.push(...r);
       setLogs(all);
+      } finally {
+        setLoadingLogs(false);
+      }
     }
     load();
   }, [preset, customFrom, customTo, state.todayLogs]);
@@ -373,6 +389,12 @@ export function RecordPage() {
       )}
 
       {/* Timeline */}
+      {loadingLogs ? (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'20px 0'}}>
+          <div className="loading-spinner" />
+          <span style={{fontSize:12,color:'var(--color-on-dark-soft)'}}>{t('recordLoading')}</span>
+        </div>
+      ) : (
       <div className="timeline-card">
         <div className="timeline-header"><h3>{t('recordTimeline')}</h3></div>
         {timeline.length === 0 ? <div className="empty-hint">{t('recordEmpty')}</div> : timeline.map((item, i) => (
@@ -384,6 +406,22 @@ export function RecordPage() {
           </div>
         ))}
       </div>
+      )}
+      {timeline.length > 15 && showScrollTop && (
+        <button
+          onClick={() => document.querySelector('.content-area')?.scrollTo({ top: 0, behavior: 'smooth' })}
+          style={{
+            position:'sticky', bottom:16, left:'100%',
+            width:36, height:36, borderRadius:'50%',
+            background:'var(--color-surface-dark-elevated)',
+            border:'1px solid rgba(255,255,255,0.12)',
+            color:'#faf9f5', cursor:'pointer',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            boxShadow:'0 2px 12px rgba(0,0,0,0.3)',
+            zIndex:10, marginLeft:'auto', marginTop:8,
+          }}
+        >↑</button>
+      )}
     </>
   );
 }

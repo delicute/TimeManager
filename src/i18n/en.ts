@@ -195,6 +195,7 @@ export const en: Translations = {
   recordDateTo: 'To',
   recordEarned: 'Earned',
   recordConsumed: 'Consumed',
+  recordLoading: 'Loading…',
   confirmLabel: 'Confirm',
   cancelLabel: 'Cancel',
   resetAll: 'Reset',

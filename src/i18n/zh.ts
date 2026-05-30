@@ -195,6 +195,7 @@ export const zh: Translations = {
   recordDateTo: '到',
   recordEarned: '获得',
   recordConsumed: '消耗',
+  recordLoading: '加载中…',
   confirmLabel: '确定',
   cancelLabel: '取消',
   resetAll: '重置',
