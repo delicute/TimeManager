@@ -136,6 +136,19 @@ function setupIPC() {
     fs.writeFileSync(filePath, JSON.stringify(entries, null, 2));
   });
 
+  ipcMain.handle('logs:clearAll', () => {
+    const logsPath = getLogsPath();
+    try {
+      if (fs.existsSync(logsPath)) {
+        const files = fs.readdirSync(logsPath);
+        for (const file of files) {
+          const filePath = path.join(logsPath, file);
+          try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+        }
+      }
+    } catch { /* ignore */ }
+  });
+
   // Notifications
   ipcMain.handle('notify:show', (_, { title, body }) => {
     if (Notification.isSupported()) {

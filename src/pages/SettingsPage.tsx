@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, RotateCcw, FolderOpen, Trash2 } from 'lucide-react';
+import { Settings, RotateCcw, FolderOpen, Trash2, BellOff } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, useLocale } from '../hooks/useI18n';
 import { formatWeight } from '../utils/formatting';
@@ -56,7 +56,6 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
     const updated = { ...s, ...partial };
     dispatch({ type: 'SET_SETTINGS', payload: updated });
     window.electronAPI.saveSettings(updated);
-    showToast(t('settingsSaved'), 'success');
   };
 
   const showConfirm = (title:string, message:string, onConfirm:()=>void, danger?:boolean) => {
@@ -74,13 +73,16 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
     setHobbyMax(String(DEFAULTS.hobbyWeightMax));
     setHobbyStep(String(DEFAULTS.hobbyWeightStep));
     setConfirmState(c=>({...c,open:false}));
+    showToast(t('settingsReset') + ' ✓', 'success');
   };
 
   const handleClearData = () => {
+    window.electronAPI.clearAllLogs();
     dispatch({ type: 'SET_TODAY_LOGS', payload: [] });
     window.electronAPI.saveBalance({ earnedBalance: 0, dailyGiftedRemaining: 1800, lastDate: '' });
     dispatch({ type: 'SET_BALANCE', payload: { earnedBalance: 0, dailyGiftedRemaining: 1800, lastDate: '' } });
     setConfirmState(c=>({...c,open:false}));
+    showToast(t('settingsClear') + ' ✓', 'success');
   };
 
   const handleOpenFolder = () => {
@@ -272,8 +274,13 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
               <label className="toggle"><input type="checkbox" checked={!!s.debug} onChange={e=>{
                 const next = e.target.checked;
                 showConfirm(t('settingsConfirmDebugTitle'),next ? t('debugConfirmEnable') : t('debugConfirmDisable'),
-                  ()=>{updateSetting({debug:next});setConfirmState(c=>({...c,open:false}));},false);
+                  ()=>{updateSetting({debug:next});setConfirmState(c=>({...c,open:false}));showToast(next?t('debugEnable'):t('debugDisable'),'info');},false);
               }}/><span className="toggle-slider"/></label>
+            </div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>{t('reminderDeleteAll')}</span>
+              <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
+                onClick={()=>showConfirm(t('reminderDeleteAll'),t('reminderDeleteAllConfirm'),()=>{window.electronAPI.remindersSave([]);dispatch({type:'REMINDER_LOAD_RULES',payload:[]});showToast(t('reminderDeleted'),'success');setConfirmState(c=>({...c,open:false}));},true)}><BellOff size={12}/> {t('reminderDeleteAll')}</button>
             </div>
           </>}
         </div>

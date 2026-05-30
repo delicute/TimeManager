@@ -139,6 +139,8 @@ export interface Translations {
   reminderSoundSelected: string;
   reminderUpdated: string;
   reminderDeleted: string;
+  reminderDeleteAll: string;
+  reminderDeleteAllConfirm: string;
   settingsSaved: string;
 
   // Hotkey settings

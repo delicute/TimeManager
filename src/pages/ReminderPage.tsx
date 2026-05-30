@@ -240,7 +240,7 @@ export function ReminderPage() {
   const saveRule = () => {
     if (!form.title.trim()) return;
     if (editingId==='__new__') { const nr={...form,id:genId()}; dispatch({type:'REMINDER_ADD_RULE',payload:nr}); window.electronAPI.remindersSave([...reminderRules,nr]); showToast(t('reminderSaved'),'success'); }
-    else if (editingId) { dispatch({type:'REMINDER_UPDATE_RULE',payload:form}); window.electronAPI.remindersSave(reminderRules.map(r=>r.id===form.id?form:r)); showToast(t('reminderUpdated'),'success'); }
+    else if (editingId) { dispatch({type:'REMINDER_UPDATE_RULE',payload:form}); window.electronAPI.remindersSave(reminderRules.map(r=>r.id===form.id?form:r)); showToast(t('reminderUpdated'),'info'); }
     setEditingId(null);
   };
   const confirmDelete = () => {
@@ -345,7 +345,7 @@ export function ReminderPage() {
           {filteredRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
             : <div style={{marginTop:4,columnCount:2,columnGap:6}}>{filteredRules.map((rule, index)=>(
-                <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:dragIndex===index?0.3:(rule.enabled?1:0.5),border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined}}>
+                <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:dragIndex===index?0.3:(rule.enabled?1:0.55),filter:rule.enabled?'none':'grayscale(0.65)',border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
                       <div style={{width:3,height:20,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
@@ -364,7 +364,7 @@ export function ReminderPage() {
                   {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4}}>{rule.content}</div>}
                   <div style={{marginTop:6,display:'flex',gap:6}}>
                     <button className="btn btn-secondary" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
-                    <button className="btn btn-secondary" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>
+                    <button className="btn btn-danger" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>
                   </div>
                 </div>
             ))}</div>}

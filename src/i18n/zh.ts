@@ -163,6 +163,8 @@ export const zh: Translations = {
   reminderSoundSelected: '音效已选择',
   reminderUpdated: '提醒已更新',
   reminderDeleted: '提醒已删除',
+  reminderDeleteAll: '删除所有提醒',
+  reminderDeleteAllConfirm: '确定删除所有提醒？此操作不可撤销。',
   settingsSaved: '设置已保存',
 
   // Hotkey settings

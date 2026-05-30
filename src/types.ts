@@ -189,6 +189,7 @@ declare global {
       getTodayLogs: () => Promise<TimeLogEntry[]>;
       getLogsForDate: (dateStr: string) => Promise<TimeLogEntry[]>;
       writeLogEntry: (entry: TimeLogEntry) => Promise<void>;
+      clearAllLogs: () => Promise<void>;
       showNotification: (title: string, body: string) => Promise<void>;
       minimizeToTray: () => Promise<void>;
       restoreWindow: () => Promise<void>;

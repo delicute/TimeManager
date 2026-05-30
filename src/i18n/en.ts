@@ -163,6 +163,8 @@ export const en: Translations = {
   reminderSoundSelected: 'Sound selected',
   reminderUpdated: 'Reminder updated',
   reminderDeleted: 'Reminder deleted',
+  reminderDeleteAll: 'Delete All Reminders',
+  reminderDeleteAllConfirm: 'Delete all reminders? This action cannot be undone.',
   settingsSaved: 'Settings saved',
 
   // Hotkey settings
