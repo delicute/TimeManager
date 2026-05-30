@@ -540,15 +540,14 @@ function createNotificationContainer() {
   win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
   win.once('ready-to-show', () => {
     containerReady = true;
+    // Show immediately (transparent + ignore mouse events) so it never triggers taskbar flash
+    win.showInactive();
+    win.setIgnoreMouseEvents(true);
     // Flush queued notifications
     for (const item of notifQueue) {
       win.webContents.send('container:add', item);
     }
     notifQueue = [];
-    // Only show if there are already notifications
-    if (containerNotifs.length > 0) {
-      win.showInactive();
-    }
   });
   notifContainer = win;
 }

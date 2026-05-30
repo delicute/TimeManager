@@ -29,34 +29,27 @@ function PieSVG({ data, size = 140, hovered, onHover }: {
   const circ = 2 * Math.PI * r;
   let offset = 0;
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:'block'}}>
       <g transform={`translate(${size/2},${size/2}) rotate(-90)`}>
         {data.map((d, i) => {
           const pct = d.value / total;
           const dash = pct * circ;
-          const seg = (
-            <circle key={i} r={r} fill="none" stroke={hovered === d.label ? d.color : `${d.color}cc`}
-              strokeWidth={hovered === d.label ? 8 : 6}
-              strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset}
-              style={{transition:'stroke-width .12s,stroke .12s',cursor:'pointer'}}
-              onMouseEnter={() => onHover(d.label)} onMouseLeave={() => onHover(null)} />
+          const g = (
+            <g key={i} style={{cursor:'pointer'}}
+              onMouseEnter={() => onHover(d.label)} onMouseLeave={() => onHover(null)}>
+              {/* Invisible wide stroke for hit detection */}
+              <circle r={r} fill="none" stroke="transparent" strokeWidth={16}
+                strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset} />
+              {/* Visible colored stroke - pointerEvents:none so events fall through to invisible one */}
+              <circle r={r} fill="none" stroke={hovered === d.label ? d.color : `${d.color}cc`}
+                strokeWidth={hovered === d.label ? 8 : 6}
+                strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset}
+                style={{transition:'stroke-width .12s,stroke .12s',pointerEvents:'none'}} />
+            </g>
           );
           offset += dash;
-          return seg;
+          return g;
         })}
-        {/* Invisible larger circles for hover hit area */}
-        {(() => { let hOff = 0; return data.map((d, i) => {
-          const pct = d.value / total;
-          const dash = pct * circ;
-          const seg = (
-            <circle key={`h-${i}`} r={r} fill="none" stroke="transparent" strokeWidth={14}
-              strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-hOff}
-              style={{cursor:'pointer'}}
-              onMouseEnter={() => onHover(d.label)} onMouseLeave={() => onHover(null)} />
-          );
-          hOff += dash;
-          return seg;
-        })})()}
       </g>
       {/* Center text */}
       <text x={size/2} y={size/2+4} textAnchor="middle" fill="#faf9f5" fontSize={13} fontWeight={600}>
