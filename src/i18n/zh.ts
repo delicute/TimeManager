@@ -151,6 +151,10 @@ export const zh: Translations = {
   reminderRemoveCondition: '移除条件',
   reminderBackToList: '返回列表',
   reminderCancel: '取消',
+  reminderSaved: '提醒已保存',
+  reminderUpdated: '提醒已更新',
+  reminderDeleted: '提醒已删除',
+  settingsSaved: '设置已保存',
 
   // Hotkey settings
   navHotkey: '快捷键',

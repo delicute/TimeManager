@@ -213,6 +213,7 @@ body {
   background: var(--color-surface-dark-soft);
   overflow-y: auto;
   min-height: 0;
+  position: relative;
 }
 
 .content-inner {

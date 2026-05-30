@@ -5,6 +5,7 @@ import { useT, useLocale } from '../hooks/useI18n';
 import { formatWeight } from '../utils/formatting';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { HotkeySettingsPage } from './HotkeySettingsPage';
+import { useToast } from '../hooks/useToast';
 import type { AppSettings } from '../types';
 
 const DEFAULTS: AppSettings = {
@@ -27,6 +28,8 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
   const s = state.settings;
   const t = useT();
   const [locale, setLocale] = useLocale();
+
+  const { showToast } = useToast();
 
   const [studyMin, setStudyMin] = useState(String(s.studyWeightMin));
   const [studyMax, setStudyMax] = useState(String(s.studyWeightMax));
@@ -53,6 +56,7 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
     const updated = { ...s, ...partial };
     dispatch({ type: 'SET_SETTINGS', payload: updated });
     window.electronAPI.saveSettings(updated);
+    showToast(t('settingsSaved'), 'success');
   };
 
   const showConfirm = (title:string, message:string, onConfirm:()=>void, danger?:boolean) => {

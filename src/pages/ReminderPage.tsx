@@ -4,6 +4,7 @@ import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator, SessionType } from '../types';
+import { useToast } from '../hooks/useToast';
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
@@ -199,6 +200,7 @@ export function ReminderPage() {
   const { state, dispatch } = useAppStore();
   const { reminderRules } = state;
   const t = useT();
+  const { showToast } = useToast();
   const [editingId, setEditingId] = useState<string|null>(null);
   const [form, setForm] = useState<ReminderRule>({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true});
   const [deleteId, setDeleteId] = useState<string|null>(null);
@@ -208,8 +210,8 @@ export function ReminderPage() {
   const cancelEdit = () => setEditingId(null);
   const saveRule = () => {
     if (!form.title.trim()) return;
-    if (editingId==='__new__') { const nr={...form,id:genId()}; dispatch({type:'REMINDER_ADD_RULE',payload:nr}); window.electronAPI.remindersSave([...reminderRules,nr]); }
-    else if (editingId) { dispatch({type:'REMINDER_UPDATE_RULE',payload:form}); window.electronAPI.remindersSave(reminderRules.map(r=>r.id===form.id?form:r)); }
+    if (editingId==='__new__') { const nr={...form,id:genId()}; dispatch({type:'REMINDER_ADD_RULE',payload:nr}); window.electronAPI.remindersSave([...reminderRules,nr]); showToast(t('reminderSaved'),'success'); }
+    else if (editingId) { dispatch({type:'REMINDER_UPDATE_RULE',payload:form}); window.electronAPI.remindersSave(reminderRules.map(r=>r.id===form.id?form:r)); showToast(t('reminderUpdated'),'success'); }
     setEditingId(null);
   };
   const confirmDelete = () => {
@@ -217,6 +219,7 @@ export function ReminderPage() {
     dispatch({type:'REMINDER_DELETE_RULE',payload:deleteId}); window.electronAPI.remindersSave(reminderRules.filter(r=>r.id!==deleteId));
     if (editingId===deleteId) setEditingId(null);
     setDeleteId(null);
+    showToast(t('reminderDeleted'),'success');
   };
   const toggleEnabled = (rule:ReminderRule) => {
     const upd={...rule,enabled:!rule.enabled}; dispatch({type:'REMINDER_UPDATE_RULE',payload:upd}); window.electronAPI.remindersSave(reminderRules.map(r=>r.id===rule.id?upd:r));

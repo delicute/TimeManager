@@ -127,6 +127,10 @@ export interface Translations {
   reminderRemoveCondition: string;
   reminderBackToList: string;
   reminderCancel: string;
+  reminderSaved: string;
+  reminderUpdated: string;
+  reminderDeleted: string;
+  settingsSaved: string;
 
   // Hotkey settings
   navHotkey: string;

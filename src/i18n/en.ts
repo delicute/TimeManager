@@ -151,6 +151,10 @@ export const en: Translations = {
   reminderRemoveCondition: 'Remove Condition',
   reminderBackToList: 'Back to list',
   reminderCancel: 'Cancel',
+  reminderSaved: 'Reminder saved',
+  reminderUpdated: 'Reminder updated',
+  reminderDeleted: 'Reminder deleted',
+  settingsSaved: 'Settings saved',
 
   // Hotkey settings
   navHotkey: 'Hotkeys',

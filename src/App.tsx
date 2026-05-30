@@ -7,6 +7,8 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ReminderPage } from './pages/ReminderPage';
 import { DebugPage } from './pages/DebugPage';
 import { DEFAULT_HOTKEYS, type SessionType } from './types';
+import { ToastProvider } from './hooks/useToast';
+import { ToastContainer } from './components/Toast';
 
 export function App() {
   const [currentPage, setCurrentPage] = useState('Start');
@@ -125,9 +127,12 @@ export function App() {
     <div className="app-layout">
       <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
       <main className="content-area">
-        <div className="content-inner">
-          {renderPage()}
-        </div>
+        <ToastProvider>
+          <div className="content-inner" key={currentPage}>
+            {renderPage()}
+          </div>
+          <ToastContainer />
+        </ToastProvider>
       </main>
     </div>
   );
