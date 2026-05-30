@@ -223,7 +223,7 @@ export function RecordPage() {
     color: active ? 'var(--color-accent-teal)' : '#faf9f5', fontFamily: 'inherit',
   });
 
-  const TYPE_LABELS: Record<string, string> = { Study: '学习', Hobby: '爱好', Entertainment: '娱乐' };
+  const typeLabel = (label: string) => label === 'other' ? '其他' : t(navKeyMap[label] || label);
 
   return (
     <>
@@ -321,12 +321,12 @@ export function RecordPage() {
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         <div className="card" style={{ flex: 1, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <TrendingUp size={14} style={{ color: 'var(--color-accent-teal)' }} />
-          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>赚取</span>
+          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>Earned</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent-teal)' }}>{totalBalEarned}</span>
         </div>
         <div className="card" style={{ flex: 1, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <TrendingDown size={14} style={{ color: 'var(--color-error)' }} />
-          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>消耗</span>
+          <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>Consumed</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-error)' }}>{totalBalConsumed}</span>
         </div>
       </div>
@@ -345,15 +345,15 @@ export function RecordPage() {
                 <div style={{ fontSize: 12, color: '#faf9f5', lineHeight: 1.6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <div style={{ width: 10, height: 10, borderRadius: 3, background: hoverItem.color }} />
-                    <span style={{ fontWeight: 600 }}>{TYPE_LABELS[hoverItem.label] || hoverItem.label}</span>
+                    <span style={{ fontWeight: 600 }}>{typeLabel(hoverItem.label)}</span>
                   </div>
                   <div style={{ color: 'var(--color-on-dark-soft)' }}>
-                    <div>时长：{formatDuration(hoverItem.value)}</div>
-                    <div>占比：{hoverPct}%</div>
+                    <div>{t('recordDuration')}{formatDuration(hoverItem.value)}</div>
+                    <div>{t('recordPercentage')}{hoverPct}%</div>
                   </div>
                 </div>
               ) : (
-                <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', fontStyle: 'italic' }}>悬停查看详情</div>
+                <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', fontStyle: 'italic' }}>{t('recordHoverHint')}</div>
               )}
             </div>
           </div>
@@ -363,7 +363,7 @@ export function RecordPage() {
               <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', padding: '2px 6px', borderRadius: 4, background: hoverSeg === d.label ? 'rgba(255,255,255,0.06)' : 'transparent' }}
                 onMouseEnter={() => setHoverSeg(d.label)} onMouseLeave={() => setHoverSeg(null)}>
                 <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                <span style={{ color: hoverSeg === d.label ? '#faf9f5' : 'var(--color-on-dark-soft)' }}>{TYPE_LABELS[d.label] || d.label}</span>
+                <span style={{ color: hoverSeg === d.label ? '#faf9f5' : 'var(--color-on-dark-soft)' }}>{typeLabel(d.label)}</span>
               </div>
             ))}
           </div>

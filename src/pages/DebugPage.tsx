@@ -163,7 +163,7 @@ export function DebugPage() {
                   border: notifType===nt ? `1.5px solid ${NOTIF_COLORS[nt]}` : '1px solid rgba(255,255,255,0.12)',
                   background: notifType===nt ? `${NOTIF_COLORS[nt]}22` : 'transparent',
                   color: notifType===nt ? NOTIF_COLORS[nt] : '#ffffff',
-                }}>{nt}</button>
+                }}>{t(`reminderNotifType${nt.charAt(0).toUpperCase()+nt.slice(1)}` as any)}</button>
             ))}
             <button onClick={()=>{for(let i=0;i<notifCount;i++)window.electronAPI.notificationShow({type:'debug',notifType,title:notifTitle||'Debug',body:notifBody,color:NOTIF_COLORS[notifType],duration:state.settings.notificationDuration??5});}}
               style={{...btn,marginLeft:'auto'}}><Bell size={12}/> {t('debugSend')}</button>

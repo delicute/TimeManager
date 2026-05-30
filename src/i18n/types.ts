@@ -31,6 +31,9 @@ export interface Translations {
   todayEntertainment: string;
   recordTitle: string;
   recordTimeline: string;
+  recordDuration: string;
+  recordPercentage: string;
+  recordHoverHint: string;
   recordEmpty: string;
   recordInProgress: string;
   recordNow: string;

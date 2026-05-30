@@ -47,6 +47,9 @@ export const en: Translations = {
   recordEmpty: 'No records yet today',
   recordInProgress: 'In Progress',
   recordNow: 'now',
+  recordDuration: 'Duration: ',
+  recordPercentage: 'Percent: ',
+  recordHoverHint: 'Hover over chart for details',
 
   // Settings
   settingsTitle: 'Settings',

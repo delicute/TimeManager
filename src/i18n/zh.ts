@@ -47,6 +47,9 @@ export const zh: Translations = {
   recordEmpty: '今天还没有记录',
   recordInProgress: '进行中',
   recordNow: '现在',
+  recordDuration: '时长：',
+  recordPercentage: '占比：',
+  recordHoverHint: '悬停查看详情',
 
   // Settings
   settingsTitle: '设置',

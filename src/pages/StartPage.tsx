@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Play, BookOpen, Palette, Gamepad2 } from 'lucide-react';
-import { useT } from '../hooks/useI18n';
+import { useT, timerKeyMap } from '../hooks/useI18n';
 import { useAppStore } from '../hooks/useAppStore';
 import { TimerCard } from '../components/TimerCard';
 import type { SessionType } from '../types';
 
-const TABS: { id: SessionType; icon: typeof BookOpen; color: string; interval: number; label: string }[] = [
-  { id: 'Study', icon: BookOpen, color: 'var(--color-study)', interval: 2, label: '学习' },
-  { id: 'Hobby', icon: Palette, color: 'var(--color-hobby)', interval: 4, label: '爱好' },
-  { id: 'Entertainment', icon: Gamepad2, color: 'var(--color-entertainment)', interval: 1, label: '娱乐' },
+const TABS: { id: SessionType; icon: typeof BookOpen; color: string; interval: number }[] = [
+  { id: 'Study', icon: BookOpen, color: 'var(--color-study)', interval: 2 },
+  { id: 'Hobby', icon: Palette, color: 'var(--color-hobby)', interval: 4 },
+  { id: 'Entertainment', icon: Gamepad2, color: 'var(--color-entertainment)', interval: 1 },
 ];
 
 interface StartPageProps {
@@ -46,7 +46,7 @@ export function StartPage({ initialTab }: StartPageProps) {
           const isActive = tab === tabItem.id;
           return (
             <button key={tabItem.id} onClick={() => setTab(tabItem.id)} style={tabStyle(isActive)}>
-              <Icon size={15} /> {tabItem.label}
+              <Icon size={15} /> {t(timerKeyMap[tabItem.id])}
             </button>
           );
         })}
