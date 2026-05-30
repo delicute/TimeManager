@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { List, BookOpen, Palette, Gamepad2, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { List, BookOpen, Palette, Gamepad2, Calendar, Clock, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, navKeyMap } from '../hooks/useI18n';
 import { formatDuration } from '../utils/formatting';
@@ -134,20 +134,23 @@ export function RecordPage() {
         case 'yesterday': from = daysAgo(1); to = daysAgo(1); break;
         case 'week': from = weekStart(); to = now(); break;
         case 'month': from = monthStart(); to = now(); break;
-        case 'all': from = new Date(0); to = now(); break;
+        case 'all': from = daysAgo(365); to = now(); break;
         case 'custom': from = new Date(customFrom); to = new Date(customTo + 'T23:59:59'); break;
         default: setLogs([]); return;
       }
       const all: any[] = [];
+      const dateStrs: string[] = [];
       let d = new Date(from);
       while (d <= to) {
-        const ds = fmt(d);
-        try {
-          if (ds === todayDateStr) { all.push(...state.todayLogs); }
-          else { const l = await window.electronAPI.getLogsForDate(ds); all.push(...(l || [])); }
-        } catch {}
+        dateStrs.push(fmt(d));
         d.setDate(d.getDate() + 1);
       }
+      // Load all dates in parallel
+      const results = await Promise.all(dateStrs.map(async ds => {
+        if (ds === todayDateStr) return state.todayLogs;
+        try { return await window.electronAPI.getLogsForDate(ds) || []; } catch { return []; }
+      }));
+      for (const r of results) all.push(...r);
       setLogs(all);
     }
     load();
@@ -186,13 +189,16 @@ export function RecordPage() {
   const hoverPct = hoverItem ? Math.round(hoverItem.value / totalTime * 100) : 0;
 
   // Timeline
+  const isSingleDay = preset === 'today' || preset === 'yesterday' || (preset === 'custom' && customFrom === customTo);
   const minSec = state.settings.minSessionLogEnabled ? (state.settings.minSessionLogSec ?? 10) : 0;
   const timeline = filteredLogs.filter(l => { if (!minSec || l.debug) return true; const d = Math.floor((new Date(l.endTime).getTime() - new Date(l.startTime).getTime()) / 1000); return d >= minSec; }).slice().sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).map(log => {
     const TypeIcon = ACTIVITY_ICONS[log.activityType] || BookOpen;
     return {
       icon: <TypeIcon size={16} />,
       name: t(navKeyMap[log.activityType] || log.activityType) + (log.debug ? ' (Debug)' : ''),
-      timeRange: `${fmtTime(log.startTime)} - ${fmtTime(log.endTime)}`,
+      timeRange: isSingleDay
+        ? `${fmtTime(log.startTime)} - ${fmtTime(log.endTime)}`
+        : `${fmtShortDate(log.startTime)} ${fmtTime(log.startTime)} - ${fmtTime(log.endTime)}`,
       duration: formatDuration(Math.floor((new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000)),
       balanceText: log.balanceChange !== 0 ? `${log.balanceChange > 0 ? '+' : ''}${log.balanceChange}` : '',
       isNegative: log.balanceChange < 0,
@@ -223,13 +229,17 @@ export function RecordPage() {
     <>
       <div className="page-title-row">
         <h1 className="page-title"><span className="title-icon"><List size={24} /></span> {t('recordTitle')}</h1>
-        <button className="btn-date-picker" onClick={() => setShowCalendar(v => !v)} title={todayDateStr}><Calendar size={18} /></button>
-        {showCalendar && (
-          <CalendarPopup calYear={calYear} calMonth={calMonth}
-            setCalYear={setCalYear} setCalMonth={setCalMonth}
-            onSelectDate={(y, m, d) => { const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; setCustomFrom(ds); setCustomTo(ds); setPreset('custom'); setShowCalendar(false); }}
-            onClose={() => setShowCalendar(false)} />
-        )}
+        <div style={{ position: 'relative' }}>
+          <button className="btn-date-picker" onClick={() => { setShowCalendar(v => !v); setShowPicker(false); }} title={todayDateStr}><Calendar size={18} /></button>
+          {showCalendar && (
+            <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: 4 }}>
+              <CalendarPopup calYear={calYear} calMonth={calMonth}
+                setCalYear={setCalYear} setCalMonth={setCalMonth}
+                onSelectDate={(y, m, d) => { const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; setCustomFrom(ds); setCustomTo(ds); setPreset('custom'); setShowCalendar(false); }}
+                onClose={() => setShowCalendar(false)} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Date presets */}
@@ -298,9 +308,12 @@ export function RecordPage() {
             </div>
           );
         })}
-        <div className="card" style={{ flex: '0 0 auto', padding: '8px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ fontSize: 10, color: 'var(--color-on-dark-soft)' }}>总时间</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#faf9f5' }}>{formatDuration(totalTime)}</div>
+        <div className="card" style={{ flex: 1, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Clock size={16} style={{ color: '#faf9f5', flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--color-on-dark-soft)', lineHeight: 1.2 }}>总时间</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#faf9f5', lineHeight: 1.3 }}>{formatDuration(totalTime)}</div>
+          </div>
         </div>
       </div>
 
@@ -321,13 +334,13 @@ export function RecordPage() {
       {/* Pie chart with hover detail + legend */}
       {pieData.length > 0 && (
         <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center' }}>
             {/* Pie */}
             <div style={{ textAlign: 'center' }}>
-              <PieSVG data={pieData} size={120} hovered={hoverSeg} onHover={setHoverSeg} />
+              <PieSVG data={pieData} size={160} hovered={hoverSeg} onHover={setHoverSeg} />
             </div>
             {/* Hover detail panel */}
-            <div style={{ flex: 1, minHeight: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ minWidth: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {hoverItem ? (
                 <div style={{ fontSize: 12, color: '#faf9f5', lineHeight: 1.6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -340,12 +353,12 @@ export function RecordPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', fontStyle: 'italic' }}>悬停在饼图区域查看详情</div>
+                <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', fontStyle: 'italic' }}>悬停查看详情</div>
               )}
             </div>
           </div>
           {/* Legend */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, justifyContent: 'center' }}>
             {pieData.map(d => (
               <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', padding: '2px 4px', borderRadius: 4, background: hoverSeg === d.label ? 'rgba(255,255,255,0.06)' : 'transparent' }}
                 onMouseEnter={() => setHoverSeg(d.label)} onMouseLeave={() => setHoverSeg(null)}>
@@ -376,4 +389,9 @@ export function RecordPage() {
 function fmtTime(iso: string | number): string {
   const d = typeof iso === 'number' ? new Date(iso) : new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function fmtShortDate(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }

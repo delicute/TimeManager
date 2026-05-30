@@ -1,4 +1,4 @@
-import { Play, BarChart3, Bell, Keyboard, Settings } from 'lucide-react';
+import { Play, BarChart3, Bell, Keyboard, Settings, BookOpen, Palette, Gamepad2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, navKeyMap } from '../hooks/useI18n';
 import { Bug } from "lucide-react";
@@ -17,10 +17,10 @@ const navItems = [
   { id: 'Settings', icon: Settings },
 ];
 
-const ACTIVITY_ICONS: Record<string, typeof Play> = {
-  Study: Play,
-  Hobby: Play,
-  Entertainment: Play,
+const ACTIVITY_ICONS: Record<string, typeof BookOpen> = {
+  Study: BookOpen,
+  Hobby: Palette,
+  Entertainment: Gamepad2,
 };
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
@@ -61,11 +61,6 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}
           {' | '} {t('balanceEarned')}: {formatDuration(balance.earnedBalance)}
         </div>
-        {balance.earnedBalance < 0 && (
-          <div className="balance-debt-hint">
-            {t('balanceDebtLabel')}: {formatDuration(Math.abs(balance.earnedBalance))}
-          </div>
-        )}
       </div>
 
       {/* Navigation */}

@@ -50,8 +50,9 @@ export function TimerCard({
     ? Math.floor(elapsedSeconds / intervalSeconds)
     : 0;
 
+  const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
   const sessionConsumed = isActive && type === 'Entertainment'
-    ? elapsedSeconds
+    ? elapsedSeconds * debtRate
     : 0;
 
   const canStart = true;

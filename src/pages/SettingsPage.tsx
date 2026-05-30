@@ -212,23 +212,24 @@ export function SettingsPage() {
       {section === 'other' && <>
         <div className="card" style={{...cardStyle,border:'1px solid rgba(198,69,69,0.3)'}}>
           <div style={{fontSize:14,fontWeight:600,color:'var(--color-error)',marginBottom:6}}>危险设置</div>
-          <div style={{display:'flex',flexDirection:'column',gap:4}}>
-            <button className="btn btn-danger" style={{width:'100%',padding:'5px 12px',height:30,fontSize:12,display:'flex',alignItems:'center',gap:4,justifyContent:'center'}}
-              onClick={()=>showConfirm('重置设置','确定将所有设置重置为默认值？此操作将丢失所有自定义设置。',handleReset,true)}><RotateCcw size={13}/> 重置设置选项</button>
-            <button className="btn btn-danger" style={{width:'100%',padding:'5px 12px',height:30,fontSize:12,display:'flex',alignItems:'center',gap:4,justifyContent:'center'}}
-              onClick={()=>showConfirm('清除所有数据','确定清除所有本地数据？包括所有记录和余额。此操作不可撤销。',handleClearData,true)}><Trash2 size={13}/> 清除所有数据</button>
-            <button style={{width:'100%',padding:'5px 12px',height:30,fontSize:12,borderRadius:4,cursor:'pointer',display:'flex',alignItems:'center',gap:4,justifyContent:'center',
-              border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontFamily:'inherit'}}
-              onClick={()=>{
-                const next = !s.debug;
-                showConfirm(next?'开启调试面板':'关闭调试面板',next?'开启后将显示调试导航项。':'关闭后调试导航项将隐藏。',
-                  ()=>{updateSetting({debug:next});setConfirmState(c=>({...c,open:false}));},false);
-              }}>调试面板（{s.debug ? '开' : '关'}）</button>
+          <div style={rowStyle}>
+            <span style={labelStyle}>重置设置选项</span>
+            <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
+              onClick={()=>showConfirm('重置设置','确定将所有设置重置为默认值？此操作将丢失所有自定义设置。',handleReset,true)}><RotateCcw size={12}/> 重置</button>
           </div>
-        </div>
-
-        <div style={{textAlign:'center',fontSize:11,color:'var(--color-on-dark-soft)',marginTop:12}}>
-          {t('hintMinimize')}
+          <div style={rowStyle}>
+            <span style={labelStyle}>清除所有数据</span>
+            <button className="btn btn-danger" style={{padding:'3px 12px',height:28,fontSize:11,borderRadius:4,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}
+              onClick={()=>showConfirm('清除数据','确定清除所有本地数据？包括所有记录和余额。此操作不可撤销。',handleClearData,true)}><Trash2 size={12}/> 清除</button>
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>调试面板</span>
+            <label className="toggle"><input type="checkbox" checked={!!s.debug} onChange={e=>{
+              const next = e.target.checked;
+              showConfirm(next?'开启调试面板':'关闭调试面板',next?'开启后将显示调试导航项。':'关闭后调试导航项将隐藏。',
+                ()=>{updateSetting({debug:next});setConfirmState(c=>({...c,open:false}));},false);
+            }}/><span className="toggle-slider"/></label>
+          </div>
         </div>
       </>}
 

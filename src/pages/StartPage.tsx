@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Play, BookOpen, Palette, Gamepad2 } from 'lucide-react';
 import { useT } from '../hooks/useI18n';
 import { useAppStore } from '../hooks/useAppStore';
@@ -19,6 +19,8 @@ export function StartPage({ initialTab }: StartPageProps) {
   const { state } = useAppStore();
   const t = useT();
   const [tab, setTab] = useState<SessionType>(initialTab || 'Study');
+  // Sync tab when initialTab changes (e.g. from keyboard shortcut)
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
 
   const activeTab = TABS.find(x => x.id === tab) || TABS[0];
 

@@ -714,7 +714,7 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     width: 830,
-    height: 650,
+    height: 600,
     minWidth: 650,
     minHeight: 400,
     title: 'TimeManager',
