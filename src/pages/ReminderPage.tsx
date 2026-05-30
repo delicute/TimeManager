@@ -254,24 +254,24 @@ export function ReminderPage() {
           <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
           {reminderRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
-            : <div style={{marginTop:16,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>{reminderRules.map(rule=>(
-                <div key={rule.id} className="card" style={{padding:'10px 12px',margin:0}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:rule.content?4:0}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div style={{width:3,height:24,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
-                      <span style={{fontWeight:700,fontSize:15,color:'#ffffff'}}>{rule.title}</span>
-                      <span style={{fontSize:10,color:NOTIF_COLORS[rule.urgency]||'#888',background:(NOTIF_COLORS[rule.urgency]||'#888')+'22',padding:'1px 6px',borderRadius:4}}>
+            : <div style={{marginTop:16,columns:'2 280px',columnGap:6}}>{reminderRules.map(rule=>(
+                <div key={rule.id} className="card" style={{padding:'8px 10px',margin:'0 0 6px',breakInside:'avoid'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
+                      <div style={{width:3,height:20,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
+                      <span style={{fontWeight:600,fontSize:13,color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{rule.title}</span>
+                      <span style={{fontSize:9,color:NOTIF_COLORS[rule.urgency]||'#888',background:(NOTIF_COLORS[rule.urgency]||'#888')+'22',padding:'1px 5px',borderRadius:3,flexShrink:0}}>
                         {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()+rule.urgency.slice(1)}` as any)||rule.urgency}
                       </span>
                     </div>
-                    <label className="toggle" onClick={e=>e.stopPropagation()}>
+                    <label className="toggle" onClick={e=>e.stopPropagation()} style={{flexShrink:0}}>
                       <input type="checkbox" checked={rule.enabled} onChange={()=>toggleEnabled(rule)}/><span className="toggle-slider"/>
                     </label>
                   </div>
-                  {rule.content && <div style={{fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{rule.content}</div>}
-                  <div style={{marginTop:8,display:'flex',gap:8}}>
-                    <button className="btn btn-secondary" style={{padding:'4px 12px',height:28,fontSize:12}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
-                    <button className="btn-text-link" onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>
+                  {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4}}>{rule.content}</div>}
+                  <div style={{marginTop:4,display:'flex',gap:4}}>
+                    <button className="btn btn-secondary" style={{padding:'2px 8px',height:24,fontSize:11}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
+                    <button className="btn-text-link" style={{padding:'2px 6px',height:24,fontSize:11}} onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>
                   </div>
                 </div>
             ))}</div>}
