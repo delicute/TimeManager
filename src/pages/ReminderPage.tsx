@@ -9,7 +9,7 @@ function genId() { return Date.now().toString(36) + Math.random().toString(36).s
 
 const NOTIF_TYPES = ['reminder', 'urgent', 'notification', 'info'] as const;
 const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c64545', notification: '#5db872', info: '#a09d96' };
-const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: MessageCircle, info: Info };
+const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: MessageCircle, info: FileText };
 
 const metricKeys: ReminderMetric[] = [
   'entertainmentBalance','dailyGiftedBalance','earnedBalance',
