@@ -125,6 +125,7 @@ export function TimerCard({
           if (claimed & (1 << i)) return false;
           return continuous < milestones[i].threshold;
         });
+        const maxTh = milestones[milestones.length - 1].threshold;
         if (activeMilestones.length === 0) {
           // All milestones done — show bar with completion message
           return (
@@ -150,7 +151,6 @@ export function TimerCard({
             </div>
           );
         }
-        const maxTh = milestones[milestones.length - 1].threshold;
         const progress = (continuous / maxTh) * 100;
 
         return (
