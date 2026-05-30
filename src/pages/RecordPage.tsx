@@ -1,47 +1,69 @@
 import { useState, useEffect, useRef } from 'react';
-import { List, BookOpen, Palette, Gamepad2, Calendar } from 'lucide-react';
+import { List, BookOpen, Palette, Gamepad2, Calendar, Clock, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, navKeyMap } from '../hooks/useI18n';
-import {
-  formatDuration,
-  formatBalance,
-} from '../utils/formatting';
+import { formatDuration } from '../utils/formatting';
 
-const ACTIVITY_ICONS: Record<string, typeof BookOpen> = {
-  Study: BookOpen,
-  Hobby: Palette,
-  Entertainment: Gamepad2,
-};
-
+const ACTIVITY_ICONS: Record<string, typeof BookOpen> = { Study: BookOpen, Hobby: Palette, Entertainment: Gamepad2 };
 const ACTIVITY_TYPES = ['Study', 'Hobby', 'Entertainment'] as const;
+const TYPE_COLORS: Record<string, string> = { Study: '#5db872', Hobby: '#5db8a6', Entertainment: '#e8a55a' };
+const COLORS = ['#5db872','#5db8a6','#e8a55a','#cc785c','#c64545','#a09d96'];
 
-function todayStr(): string {
-  const d = new Date();
+type RangePreset = 'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom';
+
+function fmt(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function now() { return new Date(); }
+function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate()-n); return d; }
+function weekStart() { const d = new Date(); d.setDate(d.getDate()-d.getDay()); return d; }
+function monthStart() { return new Date(now().getFullYear(), now().getMonth(), 1); }
+
+function PieSVG({ data, size = 140 }: { data: {label:string;value:number;color:string}[]; size?:number }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return <div style={{width:size,height:size,borderRadius:'50%',background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'var(--color-on-dark-soft)'}}>—</div>;
+  const r = size / 2 - 10;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <g transform={`translate(${size/2},${size/2}) rotate(-90)`}>
+        {data.map((d, i) => {
+          const pct = d.value / total;
+          const dash = pct * circ;
+          const seg = (
+            <circle key={i} r={r} fill="none" stroke={d.color} strokeWidth="6"
+              strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset} />
+          );
+          offset += dash;
+          return seg;
+        })}
+      </g>
+      {data.length > 0 && data.length <= 3 && (
+        <text x={size/2} y={size/2+4} textAnchor="middle" fill="#faf9f5" fontSize={13} fontWeight={600}>
+          {formatDuration(total)}
+        </text>
+      )}
+    </svg>
+  );
 }
 
 export function RecordPage() {
   const { state } = useAppStore();
   const { session } = state;
   const t = useT();
-
-  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const [preset, setPreset] = useState<RangePreset>('today');
+  const [customFrom, setCustomFrom] = useState(() => fmt(daysAgo(7)));
+  const [customTo, setCustomTo] = useState(() => fmt(now()));
   const [logs, setLogs] = useState<any[]>([]);
-
-  // Calendar popup
   const calendarRef = useRef<HTMLDivElement>(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const now = new Date();
-  const [calYear, setCalYear] = useState(now.getFullYear());
-  const [calMonth, setCalMonth] = useState(now.getMonth());
+  const [calYear, setCalYear] = useState(now().getFullYear());
+  const [calMonth, setCalMonth] = useState(now().getMonth());
 
   useEffect(() => {
     if (!showCalendar) return;
-    const handler = (e: MouseEvent) => {
-      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
-        setShowCalendar(false);
-      }
-    };
+    const handler = (e: MouseEvent) => { if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) setShowCalendar(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showCalendar]);
@@ -49,183 +71,213 @@ export function RecordPage() {
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const firstDayIndex = new Date(calYear, calMonth, 1).getDay();
   const weekDayLabels = ['日','一','二','三','四','五','六'];
-  const todayDateStr = todayStr();
+  const todayDateStr = fmt(now());
   const calCells: (number | null)[] = Array(firstDayIndex).fill(null);
   for (let d = 1; d <= daysInMonth; d++) calCells.push(d);
 
   function selectDate(year: number, month: number, day: number) {
-    setSelectedDate(`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
-    setShowCalendar(false);
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    setCustomFrom(ds); setCustomTo(ds); setPreset('custom'); setShowCalendar(false);
   }
 
-  function prevMonth() {
-    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); }
-    else { setCalMonth(m => m - 1); }
-  }
-
-  function nextMonth() {
-    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0); }
-    else { setCalMonth(m => m + 1); }
-  }
-
-  function prevYear() { setCalYear(y => y - 1); }
-  function nextYear() { setCalYear(y => y + 1); }
-
-  // Load logs for selected date
+  // Load logs
   useEffect(() => {
-    if (selectedDate === todayStr()) {
-      setLogs(state.todayLogs);
-    } else {
-      window.electronAPI.getLogsForDate(selectedDate).then(setLogs).catch(() => setLogs([]));
+    async function load() {
+      if (preset === 'today') { setLogs(state.todayLogs); return; }
+      let from: Date, to: Date;
+      switch (preset) {
+        case 'yesterday': from = daysAgo(1); to = daysAgo(1); break;
+        case 'week': from = weekStart(); to = now(); break;
+        case 'month': from = monthStart(); to = now(); break;
+        case 'all': from = new Date(0); to = now(); break;
+        case 'custom': from = new Date(customFrom); to = new Date(customTo + 'T23:59:59'); break;
+        default: setLogs([]); return;
+      }
+      const all: any[] = [];
+      let d = new Date(from);
+      while (d <= to) {
+        const ds = fmt(d);
+        try {
+          if (ds === todayDateStr) { all.push(...state.todayLogs); }
+          else { const l = await window.electronAPI.getLogsForDate(ds); all.push(...(l || [])); }
+        } catch {}
+        d.setDate(d.getDate() + 1);
+      }
+      setLogs(all);
     }
-  }, [selectedDate, state.todayLogs]);
+    load();
+  }, [preset, customFrom, customTo, state.todayLogs]);
 
-  // Compute totals
+  // Filter logs within range (for custom where from/to differ)
+  const filteredLogs = preset === 'custom'
+    ? logs.filter(l => {
+        const t = new Date(l.startTime).getTime();
+        return t >= new Date(customFrom).getTime() && t <= new Date(customTo + 'T23:59:59').getTime();
+      })
+    : logs;
+
+  // Totals
   const totals: Record<string, number> = { Study: 0, Hobby: 0, Entertainment: 0 };
-  for (const log of logs) {
-    const sec = Math.floor(
-      (new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000
-    );
-    totals[log.activityType] = (totals[log.activityType] || 0) + sec;
+  let totalBalEarned = 0, totalBalConsumed = 0;
+  for (const log of filteredLogs) {
+    if (!log.debug) {
+      const sec = Math.floor((new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000);
+      totals[log.activityType] = (totals[log.activityType] || 0) + sec;
+      if (log.balanceChange > 0) totalBalEarned += log.balanceChange;
+      else if (log.balanceChange < 0) totalBalConsumed += Math.abs(log.balanceChange);
+    }
   }
-
-  // Add active session (only for today)
-  if (selectedDate === todayStr() && session.isActive && session.currentType !== 'None' && session.startTime) {
+  if (preset === 'today' && session.isActive && session.currentType !== 'None' && session.startTime) {
     const elapsed = Math.floor((Date.now() - session.startTime) / 1000);
     totals[session.currentType] = (totals[session.currentType] || 0) + elapsed;
   }
+  const totalTime = Object.values(totals).reduce((a, b) => a + b, 0);
 
-  // Build timeline (sorted newest first)
-  const timeline = logs
-    .slice()
-    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-    .map(log => {
-      const TypeIcon = ACTIVITY_ICONS[log.activityType] || BookOpen;
-      return {
+  // Pie data: top N items + "other"
+  const pieRaw = ACTIVITY_TYPES.map(t => ({ label: t, value: totals[t], color: TYPE_COLORS[t] })).filter(d => d.value > 0);
+  pieRaw.sort((a, b) => b.value - a.value);
+  const mainPie = pieRaw.length > 2 ? [...pieRaw.slice(0, 2), { label: 'other', value: pieRaw.slice(2).reduce((s, d) => s + d.value, 0), color: '#a09d96' }] : pieRaw;
+  const otherRaw = pieRaw.slice(2).length > 0 ? pieRaw.slice(2) : [];
+
+  // Timeline
+  const timeline = filteredLogs.slice().sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).map(log => {
+    const TypeIcon = ACTIVITY_ICONS[log.activityType] || BookOpen;
+    return {
       icon: <TypeIcon size={16} />,
-      name: t(navKeyMap[log.activityType] || log.activityType),
+      name: t(navKeyMap[log.activityType] || log.activityType) + (log.debug ? ' (Debug)' : ''),
       timeRange: `${fmtTime(log.startTime)} - ${fmtTime(log.endTime)}`,
-      duration: formatDuration(
-        Math.floor(
-          (new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000
-        )
-      ),
-      balanceText: formatBalance(log.balanceChange),
+      duration: formatDuration(Math.floor((new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000)),
+      balanceText: log.balanceChange !== 0 ? `${log.balanceChange > 0 ? '+' : ''}${log.balanceChange}` : '',
       isNegative: log.balanceChange < 0,
-    }});
-
-  // Active session at top (today only)
-  if (selectedDate === todayStr() && session.isActive && session.currentType !== 'None' && session.startTime) {
+    };
+  });
+  if (preset === 'today' && session.isActive && session.currentType !== 'None' && session.startTime) {
     const elapsed = Math.floor((Date.now() - session.startTime) / 1000);
     const ActiveIcon = ACTIVITY_ICONS[session.currentType] || BookOpen;
-    timeline.unshift({
-      icon: <ActiveIcon size={16} />,
-      name: `${t(navKeyMap[session.currentType])} (${t('recordInProgress')})`,
-      timeRange: `${fmtTime(session.startTime)} - ${t('recordNow')}`,
-      duration: formatDuration(elapsed),
-      balanceText: '',
-      isNegative: false,
-    });
+    timeline.unshift({ icon: <ActiveIcon size={16} />, name: `${t(navKeyMap[session.currentType])} (${t('recordInProgress')})`, timeRange: `${fmtTime(session.startTime)} - ${t('recordNow')}`, duration: formatDuration(elapsed), balanceText: '', isNegative: false });
   }
+
+  const presetBtns: {id:RangePreset;label:string}[] = [
+    {id:'today',label:'今天'},{id:'yesterday',label:'昨天'},{id:'week',label:'本周'},{id:'month',label:'本月'},{id:'all',label:'总时长'},
+  ];
 
   return (
     <>
       <div className="page-title-row">
-        <h1 className="page-title">
-          <span className="title-icon"><List size={24} /></span> {t('recordTitle')}
-        </h1>
+        <h1 className="page-title"><span className="title-icon"><List size={24}/></span> {t('recordTitle')}</h1>
         <div className="calendar-btn-wrap" ref={calendarRef}>
-          <button
-            className="btn-date-picker"
-            onClick={() => setShowCalendar(v => !v)}
-            title={selectedDate}
-          >
-            <Calendar size={18} />
-          </button>
-          {showCalendar && (
-            <div className="calendar-popup">
-              <div className="cal-header">
-                <button className="cal-nav cal-nav-year" onClick={prevYear} title="前一年">&laquo;</button>
-                <button className="cal-nav" onClick={prevMonth}>&lsaquo;</button>
-                <span className="cal-title">{calYear}年{calMonth + 1}月</span>
-                <button className="cal-nav" onClick={nextMonth}>&rsaquo;</button>
-                <button className="cal-nav cal-nav-year" onClick={nextYear} title="后一年">&raquo;</button>
-              </div>
-              <div className="cal-weekdays">
-                {weekDayLabels.map(d => <span key={d} className="cal-wd">{d}</span>)}
-              </div>
-              <div className="cal-grid">
-                {calCells.map((day, i) => {
-                  if (day === null) return <div key={i} className="cal-day empty" />;
-                  const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                  return (
-                    <button
-                      key={i}
-                      className={`cal-day${dateStr === selectedDate ? ' selected' : ''}${dateStr === todayDateStr ? ' today' : ''}`}
-                      onClick={() => selectDate(calYear, calMonth, day)}
-                    >
-                      {day}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <button className="btn-date-picker" onClick={() => setShowCalendar(v => !v)} title={preset === 'custom' ? `${customFrom}~${customTo}` : todayDateStr}><Calendar size={18}/></button>
+          {showCalendar && <div className="calendar-popup"><div className="cal-header">
+            <button className="cal-nav cal-nav-year" onClick={()=>setCalYear(y=>y-1)}>&laquo;</button>
+            <button className="cal-nav" onClick={()=>{if(calMonth===0){setCalYear(y=>y-1);setCalMonth(11)}else setCalMonth(m=>m-1)}}>&lsaquo;</button>
+            <span className="cal-title">{calYear}年{calMonth+1}月</span>
+            <button className="cal-nav" onClick={()=>{if(calMonth===11){setCalYear(y=>y+1);setCalMonth(0)}else setCalMonth(m=>m+1)}}>&rsaquo;</button>
+            <button className="cal-nav cal-nav-year" onClick={()=>setCalYear(y=>y+1)}>&raquo;</button>
+          </div><div className="cal-weekdays">{weekDayLabels.map(d=><span key={d} className="cal-wd">{d}</span>)}</div>
+          <div className="cal-grid">{calCells.map((day,i)=>{
+            if(day===null) return <div key={i} className="cal-day empty"/>;
+            const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            return <button key={i} className={`cal-day${ds===todayDateStr?' today':''}`} onClick={()=>selectDate(calYear,calMonth,day)}>{day}</button>;
+          })}</div></div>}
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="record-cards">
-        {([
-          { type: 'Study', icon: BookOpen, label: t(navKeyMap['Study']), value: totals.Study || 0, color: 'var(--color-study)' },
-          { type: 'Hobby', icon: Palette, label: t(navKeyMap['Hobby']), value: totals.Hobby || 0, color: 'var(--color-hobby)' },
-          { type: 'Entertainment', icon: Gamepad2, label: t(navKeyMap['Entertainment']), value: totals.Entertainment || 0, color: 'var(--color-entertainment)' },
-        ] as const).map(item => {
-          const CardIcon = item.icon;
+      {/* Date range presets + custom */}
+      <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
+        {presetBtns.map(p => (
+          <button key={p.id} onClick={()=>setPreset(p.id)}
+            style={{padding:'3px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:26,
+              border:preset===p.id?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+              background:preset===p.id?'rgba(93,184,166,0.15)':'transparent',
+              color:preset===p.id?'var(--color-accent-teal)':'#faf9f5'}}>{p.label}</button>
+        ))}
+        <span style={{fontSize:11,color:'var(--color-on-dark-soft)',margin:'0 4px'}}>|</span>
+        <span style={{fontSize:11,color:'var(--color-on-dark-soft)'}}>自定义:</span>
+        <input type="date" value={customFrom} onChange={e=>{setCustomFrom(e.target.value);setPreset('custom')}} style={{padding:'2px 6px',borderRadius:4,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontSize:11,height:26}} />
+        <span style={{fontSize:11,color:'var(--color-on-dark-soft)'}}>~</span>
+        <input type="date" value={customTo} onChange={e=>{setCustomTo(e.target.value);setPreset('custom')}} style={{padding:'2px 6px',borderRadius:4,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontSize:11,height:26}} />
+      </div>
+
+      {/* Summary row — compact */}
+      <div style={{display:'flex',gap:6,marginBottom:8}}>
+        {(['Study','Hobby','Entertainment'] as const).map(type => {
+          const Icon = ACTIVITY_ICONS[type];
           return (
-          <div key={item.type} className="record-card">
-            <div className="card-icon"><CardIcon size={24} /></div>
-            <div className="card-label">{item.label}</div>
-            <div className="card-value" style={{ color: item.color }}>
-              {formatDuration(item.value)}
+            <div key={type} className="card" style={{flex:1,padding:'8px 10px',display:'flex',alignItems:'center',gap:6}}>
+              <Icon size={16} style={{color:TYPE_COLORS[type],flexShrink:0}}/>
+              <div>
+                <div style={{fontSize:10,color:'var(--color-on-dark-soft)',lineHeight:1.2}}>{t(navKeyMap[type])}</div>
+                <div style={{fontSize:13,fontWeight:600,color:TYPE_COLORS[type],lineHeight:1.3}}>{formatDuration(totals[type] || 0)}</div>
+              </div>
             </div>
-          </div>
           );
         })}
+        <div className="card" style={{flex:'0 0 auto',padding:'8px 10px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+          <div style={{fontSize:10,color:'var(--color-on-dark-soft)'}}>{t('recordTitle')}</div>
+          <div style={{fontSize:13,fontWeight:600,color:'#faf9f5'}}>{formatDuration(totalTime)}</div>
+        </div>
       </div>
 
-      {/* Timeline */}
-      <div className="timeline-card">
-        <div className="timeline-header">
-          <h3>{t('recordTimeline')}</h3>
+      {/* Balance summary */}
+      <div style={{display:'flex',gap:6,marginBottom:8}}>
+        <div className="card" style={{flex:1,padding:'6px 10px',display:'flex',alignItems:'center',gap:4}}>
+          <TrendingUp size={14} style={{color:'var(--color-accent-teal)'}}/>
+          <span style={{fontSize:11,color:'var(--color-on-dark-soft)'}}>赚取</span>
+          <span style={{fontSize:12,fontWeight:600,color:'var(--color-accent-teal)'}}>{totalBalEarned}</span>
         </div>
-        {timeline.length === 0 ? (
-          <div className="empty-hint">{t('recordEmpty')}</div>
-        ) : (
-          timeline.map((item, i) => (
-            <div key={i} className="timeline-item">
-              <div className="item-icon">{item.icon}</div>
-              <div>
-                <div className="item-name">{item.name}</div>
-                <div className="item-time">{item.timeRange}</div>
-              </div>
-              <div className="item-duration">{item.duration}</div>
-              <div
-                className={`item-balance ${
-                  item.balanceText ? (item.isNegative ? 'negative' : 'positive') : ''
-                }`}
-              >
-                {item.balanceText}
-              </div>
+        <div className="card" style={{flex:1,padding:'6px 10px',display:'flex',alignItems:'center',gap:4}}>
+          <TrendingDown size={14} style={{color:'var(--color-error)'}}/>
+          <span style={{fontSize:11,color:'var(--color-on-dark-soft)'}}>消耗</span>
+          <span style={{fontSize:12,fontWeight:600,color:'var(--color-error)'}}>{totalBalConsumed}</span>
+        </div>
+      </div>
+
+      {/* Compound pie chart */}
+      {pieRaw.length > 0 && (
+        <div className="card" style={{padding:12,marginBottom:8}}>
+          <div style={{display:'flex',alignItems:'center',gap:16,justifyContent:'center'}}>
+            <div style={{textAlign:'center'}}>
+              <PieSVG data={mainPie} size={120} />
+              <div style={{marginTop:4,fontSize:9,color:'var(--color-on-dark-soft)'}}>主</div>
             </div>
-          ))
-        )}
+            {(otherRaw.length > 0) && (
+              <>
+                <div style={{width:1,height:60,background:'rgba(255,255,255,0.08)'}} />
+                <div style={{textAlign:'center'}}>
+                  <PieSVG data={otherRaw} size={80} />
+                  <div style={{marginTop:4,fontSize:9,color:'var(--color-on-dark-soft)'}}>其他</div>
+                </div>
+              </>
+            )}
+            <div style={{display:'flex',flexDirection:'column',gap:2}}>
+              {[...mainPie, ...otherRaw].filter((_,i,a)=>!(i<mainPie.length&&i<3)).map((d,i) => (
+                <div key={i} style={{display:'flex',alignItems:'center',gap:4,fontSize:10}}>
+                  <div style={{width:8,height:8,borderRadius:2,background:d.color}} />
+                  <span style={{color:'var(--color-on-dark-soft)'}}>{d.label}</span>
+                  <span style={{color:'#faf9f5',fontWeight:600}}>{Math.round(d.value/totalTime*100)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline */}
+      <div className="timeline-card"><div className="timeline-header"><h3>{t('recordTimeline')}</h3></div>
+        {timeline.length===0?<div className="empty-hint">{t('recordEmpty')}</div>:timeline.map((item,i)=>(
+          <div key={i} className="timeline-item">
+            <div className="item-icon">{item.icon}</div>
+            <div><div className="item-name">{item.name}</div><div className="item-time">{item.timeRange}</div></div>
+            <div className="item-duration">{item.duration}</div>
+            <div className={`item-balance${item.balanceText?(item.isNegative?' negative':' positive'):''}`}>{item.balanceText}</div>
+          </div>
+        ))}
       </div>
     </>
   );
 }
 
-function fmtTime(iso: string | number): string {
-  const d = typeof iso === 'number' ? new Date(iso) : new Date(iso);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+function fmtTime(iso:string|number):string {
+  const d=typeof iso==='number'?new Date(iso):new Date(iso);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
