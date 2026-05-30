@@ -109,7 +109,7 @@ export function DebugPage() {
         <div style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#ffffff'}}>{t('debugValueEdit')}</div>
         {[...SESSION_TYPES, 'balance' as const].map(key => {
           const isBal = key === 'balance';
-          const label = isBal ? '余额' : (key === 'Study' ? '学习' : key === 'Hobby' ? '爱好' : '娱乐');
+          const label = isBal ? t('debugBalance') : t(`timer${key}` as any);
           return (
             <div key={key} style={{display:'flex',alignItems:'center',gap:4,marginBottom:4,fontSize:12,flexWrap:'wrap'}}>
               <span style={{width:36,flexShrink:0,color:'#ffffff'}}>{label}</span>

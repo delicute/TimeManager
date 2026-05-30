@@ -210,10 +210,10 @@ export function RecordPage() {
     timeline.unshift({ icon: <ActiveIcon size={16} />, name: `${t(navKeyMap[session.currentType])} (${t('recordInProgress')})`, timeRange: `${fmtTime(session.startTime)} - ${t('recordNow')}`, duration: formatDuration(elapsed), balanceText: '', isNegative: false });
   }
 
-  const presetBtns: { id: RangePreset; label: string }[] = [
-    { id: 'today', label: '今天' }, { id: 'yesterday', label: '昨天' },
-    { id: 'week', label: '本周' }, { id: 'month', label: '本月' },
-    { id: 'all', label: '总时长' },
+  const presetBtns: { id: RangePreset; key: string }[] = [
+    { id: 'today', key: 'recordPresetToday' }, { id: 'yesterday', key: 'recordPresetYesterday' },
+    { id: 'week', key: 'recordPresetWeek' }, { id: 'month', key: 'recordPresetMonth' },
+    { id: 'all', key: 'recordPresetAll' },
   ];
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
@@ -245,11 +245,11 @@ export function RecordPage() {
       {/* Date presets */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {presetBtns.map(p => (
-          <button key={p.id} onClick={() => setPreset(p.id)} style={btnStyle(preset === p.id)}>{p.label}</button>
+          <button key={p.id} onClick={() => setPreset(p.id)} style={btnStyle(preset === p.id)}>{t(p.key as any)}</button>
         ))}
-        {/* 自定义 preset button */}
+        {/* Custom preset button */}
         <button onClick={() => setPreset(preset === 'custom' ? 'today' : 'custom')} style={btnStyle(preset === 'custom')}>
-          自定义
+          {t('recordCustom')}
         </button>
         {/* Custom date range (expanded when 'custom' is selected) */}
         {preset === 'custom' && (
@@ -311,7 +311,7 @@ export function RecordPage() {
         <div className="card" style={{ flex: 1, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
           <Clock size={16} style={{ color: '#faf9f5', flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: 10, color: 'var(--color-on-dark-soft)', lineHeight: 1.2 }}>总时间</div>
+            <div style={{ fontSize: 10, color: 'var(--color-on-dark-soft)', lineHeight: 1.2 }}>{t('recordTotalTime')}</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#faf9f5', lineHeight: 1.3 }}>{formatDuration(totalTime)}</div>
           </div>
         </div>

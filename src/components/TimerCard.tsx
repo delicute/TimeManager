@@ -170,7 +170,7 @@ export function TimerCard({
             <button className={`btn ${paused ? 'btn-start' : 'btn-secondary'}`} onClick={handlePause}
               style={{ flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
               {paused ? <Play size={16} /> : <Pause size={16} />}
-              {paused ? '恢复' : '暂停'}
+              {paused ? t('timerResume') : t('timerPause')}
             </button>
           </div>
         ) : (
