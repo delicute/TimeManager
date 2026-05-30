@@ -70,9 +70,21 @@ export function DebugPage() {
       activityType: type, balanceChange, debug: true,
     });
     window.electronAPI.getTodayLogs().then(logs => dispatch({ type: 'SET_TODAY_LOGS', payload: logs }));
-    // Update balance
+
+    // Update balance + milestone continuous time
     window.electronAPI.loadBalance().then((b: any) => {
-      const updated = { ...b, earnedBalance: Math.max(0, (b.earnedBalance || 0) + balanceChange) };
+      const m = b.milestones || { studyContinuous:0, hobbyContinuous:0, studyClaimed:0, hobbyClaimed:0 };
+      const contKey = isStudy ? 'studyContinuous' : 'hobbyContinuous';
+      const claimKey = isStudy ? 'studyClaimed' : 'hobbyClaimed';
+      // Update continuous time (respect delta direction: + adds, - subtracts but never below 0)
+      const newCont = Math.max(0, (m[contKey] || 0) + (delta > 0 ? sec : -sec));
+      const milestones = { ...m, [contKey]: newCont };
+
+      const updated = {
+        ...b,
+        earnedBalance: Math.max(0, (b.earnedBalance || 0) + balanceChange),
+        milestones,
+      };
       window.electronAPI.saveBalance(updated);
       dispatch({ type: 'SET_BALANCE', payload: updated });
     });
