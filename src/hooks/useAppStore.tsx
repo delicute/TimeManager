@@ -485,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : type;
         const title = locale === 'zh' ? `已退出${typeLabel}` : `Exited ${type}`;
         const body = locale === 'zh' ? `你这次${typeLabel}了${durationStr}` : `You spent ${durationStr}`;
-        window.electronAPI.notificationShow({ type, notifType: 'notification', title, body, color: '#5db872', duration: cfg.notificationDuration ?? 5 });
+        window.electronAPI.notificationShow({ type, notifType: 'info', title, body, color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
       }
     } catch { /* ignore */ }
   }
@@ -549,6 +549,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const desc = locale === 'zh' ? `连续大于${threshDisplay}，获得${rewardMin}min的余额` : `Continuous >${threshDisplay}, earned ${rewardMin}min balance`;
               window.electronAPI.notificationShow({
                 type: activeType,
+                notifType: 'milestone',
                 title: label,
                 body: desc,
                 color: '#e8a55a',
@@ -594,8 +595,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (activeType === 'Study' || activeType === 'Hobby') {
           const w = activeType === 'Study' ? bc.studyWeight : bc.hobbyWeight;
           const earned = Math.floor(elapsed / w);
-          window.electronAPI.notificationShow({ type: activeType, notifType: 'notification', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#5db872', duration: bc.notificationDuration ?? 5 });
-        } else window.electronAPI.notificationShow({ type: activeType, notifType: 'notification', title: bl === 'zh' ? `消耗 ${ticks} 余额` : `Consumed ${ticks}`, body: '', color: '#5db872', duration: bc.notificationDuration ?? 5 });
+          window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#a09d96', duration: bc.notificationDuration ?? 5 });
+        } else window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${ticks} 余额` : `Consumed ${ticks}`, body: '', color: '#a09d96', duration: bc.notificationDuration ?? 5 });
       } catch { /* ignore */ }
     } else {
       dispatch({ type: 'SESSION_STOP' });
