@@ -131,6 +131,10 @@ export interface Translations {
   notifDurationUnit: string;
   navDebug: string;
   debugTitle: string;
+  settingsTabGeneral: string;
+  settingsTabWeight: string;
+  settingsTabData: string;
+  settingsTabOther: string;
   debugEnable: string;
   debugDisable: string;
   debugConfirmEnable: string;

@@ -13,6 +13,10 @@ export const en: Translations = {
   navRecord: 'Records',
   navSettings: 'Settings',
   navDebug: 'Debug',
+  settingsTabGeneral: 'General',
+  settingsTabWeight: 'Weights',
+  settingsTabData: 'Data',
+  settingsTabOther: 'Other',
 
   // Status
   statusIdle: 'Idle',

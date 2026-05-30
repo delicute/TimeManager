@@ -13,6 +13,10 @@ export const zh: Translations = {
   navRecord: '记录',
   navSettings: '设置',
   navDebug: '调试',
+  settingsTabGeneral: '通用',
+  settingsTabWeight: '权重',
+  settingsTabData: '数据',
+  settingsTabOther: '其他',
 
   // Status
   statusIdle: '空闲中',

@@ -14,10 +14,10 @@ const DEFAULTS: AppSettings = {
 };
 
 const SECTION_TABS = [
-  { id: 'general', label: '通用' },
-  { id: 'weight', label: '权重' },
-  { id: 'data', label: '数据' },
-  { id: 'other', label: '其他' },
+  { id: 'general', key: 'settingsTabGeneral' as const },
+  { id: 'weight', key: 'settingsTabWeight' as const },
+  { id: 'data', key: 'settingsTabData' as const },
+  { id: 'other', key: 'settingsTabOther' as const },
 ];
 
 export function SettingsPage() {
@@ -99,7 +99,7 @@ export function SettingsPage() {
       <div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>
         {SECTION_TABS.map(sec => (
           <button key={sec.id} onClick={()=>setSection(sec.id)}
-            style={section===sec.id ? navTabActive : navTab}>{sec.label}</button>
+            style={section===sec.id ? navTabActive : navTab}>{t(sec.key)}</button>
         ))}
       </div>
 
