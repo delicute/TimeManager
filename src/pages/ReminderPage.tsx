@@ -246,8 +246,8 @@ export function ReminderPage() {
             ))}</div>
           </div>
           <div style={{display:'flex',gap:8}}>
-            <button className="btn btn-primary" onClick={saveRule}>{t('reminderConfirm')}</button>
-            <button className="btn btn-secondary" onClick={cancelEdit}>{t('reminderCancel')}</button>
+            <button className="btn btn-primary" style={{height:28,fontSize:12,padding:'4px 14px'}} onClick={saveRule}>{t('reminderConfirm')}</button>
+            <button className="btn btn-secondary" style={{height:28,fontSize:12,padding:'4px 14px'}} onClick={cancelEdit}>{t('reminderCancel')}</button>
           </div>
         </div>
       ) : (
@@ -265,14 +265,14 @@ export function ReminderPage() {
                         {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()+rule.urgency.slice(1)}` as any)||rule.urgency}
                       </span>
                     </div>
-                    <label className="toggle toggle-lg" onClick={e=>e.stopPropagation()} style={{flexShrink:0}}>
+                    <label className="toggle" onClick={e=>e.stopPropagation()} style={{flexShrink:0}}>
                       <input type="checkbox" checked={rule.enabled} onChange={()=>toggleEnabled(rule)}/><span className="toggle-slider"/>
                     </label>
                   </div>
                   {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4}}>{rule.content}</div>}
                   <div style={{marginTop:6,display:'flex',gap:6}}>
-                    <button className="btn btn-secondary" style={{flex:1,padding:'4px 8px',height:30,fontSize:12}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
-                    <button className="btn-text-link" style={{padding:'4px 8px',height:30,fontSize:12}} onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>
+                    <button className="btn btn-secondary" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
+                    <button className="btn btn-secondary" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>
                   </div>
                 </div>
             ))}</div>}

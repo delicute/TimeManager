@@ -98,7 +98,6 @@ export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
   const [pendingCombo, setPendingCombo] = useState<string | null>(null);
   const [conflictId, setConflictId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [globalConflicts, setGlobalConflicts] = useState<Record<string, boolean>>({});
 
   // Global hotkeys: only register Session Control shortcuts
   const SESSION_HOTKEY_IDS = ['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop'];
@@ -109,10 +108,9 @@ export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
       for (const id of SESSION_HOTKEY_IDS) {
         if (currentHotkeys[id]) sessionOnly[id] = currentHotkeys[id];
       }
-      window.electronAPI.registerGlobalHotkeys(sessionOnly).then(setGlobalConflicts);
+      window.electronAPI.registerGlobalHotkeys(sessionOnly);
     } else {
       window.electronAPI.unregisterGlobalHotkeys();
-      setGlobalConflicts({});
     }
   }, [state.settings.globalHotkeys, state.settings.hotkeys]);
 
@@ -236,7 +234,7 @@ export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
             {t('hotkeyConflict')}
           </span>
         )}
-        <kbd className={`hotkey-kbd${globalConflicts[action.id] ? ' hotkey-global-conflict' : ''}`} onClick={() => { setRecordingId(action.id); setConflictId(null); }} style={globalConflicts[action.id] ? {borderColor:'var(--color-error)',color:'var(--color-error)'} : {}}>
+        <kbd className="hotkey-kbd" onClick={() => { setRecordingId(action.id); setConflictId(null); }}>
           {currentHotkeys[action.id]}
         </kbd>
       </div>
@@ -304,9 +302,6 @@ export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
         danger
       />
 
-      <div className="hint-text" style={{ marginTop: 16 }}>
-        {t('hotkeyHint')}
-      </div>
     </div>
   );
 }
