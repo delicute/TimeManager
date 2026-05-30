@@ -289,6 +289,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { todayLogsRef.current = state.todayLogs; }, [state.todayLogs]);
   useEffect(() => { reminderRulesRef.current = state.reminderRules; }, [state.reminderRules]);
 
+  // ─── Save balance synchronously before app quit ─────────
+  useEffect(() => {
+    const handler = () => {
+      try {
+        window.electronAPI.saveBalanceSync(balanceRef.current);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
+
   // ─── IPC helpers ─────────────────────────────────────────
   const loadInitialData = useCallback(async () => {
     try {

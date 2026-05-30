@@ -186,6 +186,7 @@ declare global {
     electronAPI: {
       loadBalance: () => Promise<BalanceState>;
       saveBalance: (data: BalanceState) => Promise<void>;
+      saveBalanceSync: (data: BalanceState) => void;
       loadSettings: () => Promise<AppSettings | null>;
       saveSettings: (data: AppSettings) => Promise<void>;
       getTodayLogs: () => Promise<TimeLogEntry[]>;

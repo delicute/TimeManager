@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Balance
   loadBalance: () => ipcRenderer.invoke('balance:load'),
   saveBalance: (data: any) => ipcRenderer.invoke('balance:save', data),
+  saveBalanceSync: (data: any) => ipcRenderer.sendSync('balance:saveSync', data),
 
   // Settings
   loadSettings: () => ipcRenderer.invoke('settings:load'),

@@ -55,6 +55,12 @@ function debugLog(msg: string) {
 
 function setupIPC() {
   // Balance
+  ipcMain.on('balance:saveSync', (event, data) => {
+    ensureDir(BASE_PATH);
+    fs.writeFileSync(getBalancePath(), JSON.stringify(data));
+    event.returnValue = true;
+  });
+
   ipcMain.handle('balance:load', () => {
     try {
       const p = getBalancePath();
