@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Play, Square, Pause } from 'lucide-react';
+import { Play, Square, Gift, Pause } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
 import { formatDurationFull, formatDuration } from '../utils/formatting';
@@ -122,6 +122,14 @@ export function TimerCard({
           // All milestones claimed — show bar with completion message
           return (
             <div className="milestone-bar-wrap" style={{ opacity: 0.45 }}>
+              <div className="milestone-rewards-row">
+                {milestones.map((m, i) => (
+                  <div key={i} className="milestone-reward claimed" style={{ left: `${(m.threshold / maxTh) * 100}%` }}>
+                    <Gift size={10} />
+                    <span>+{formatDuration(m.reward)}</span>
+                  </div>
+                ))}
+              </div>
               <div className="milestone-bar">
                 <div className="milestone-fill" style={{ width: '100%', opacity: 0.4 }} />
                 {milestones.map((m, i) => (
@@ -148,6 +156,15 @@ export function TimerCard({
 
         return (
           <div className="milestone-bar-wrap">
+            {/* Rewards above each milestone node */}
+            <div className="milestone-rewards-row">
+              {activeMilestones.map((m, i) => (
+                <div key={i} className="milestone-reward" style={{ left: `${(m.threshold / maxTh) * 100}%` }}>
+                  <Gift size={10} />
+                  <span>+{formatDuration(m.reward)}</span>
+                </div>
+              ))}
+            </div>
             {/* Bar */}
             <div className="milestone-bar">
               <div className="milestone-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
