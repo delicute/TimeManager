@@ -51,6 +51,29 @@ function debugLog(msg: string) {
   } catch { /* ignore */ }
 }
 
+// ─── Global Hotkey Registration (module-level) ────────────
+const DEFAULT_SESSION_SHORTCUTS: Record<string, string> = {
+  sessionStudy: 'Ctrl+Shift+S',
+  sessionHobby: 'Ctrl+Shift+H',
+  sessionEntertainment: 'Ctrl+Shift+E',
+  sessionStop: 'Ctrl+Shift+X',
+  sessionPause: 'Ctrl+Shift+P',
+  sessionPrint: 'Ctrl+Shift+L',
+};
+
+function registerSessionHotkeys(settings: any) {
+  if (!settings?.globalHotkeys) return;
+  const userHotkeys = settings.hotkeys || {};
+  for (const [id, defaultCombo] of Object.entries(DEFAULT_SESSION_SHORTCUTS)) {
+    const combo = userHotkeys[id] || defaultCombo;
+    try {
+      globalShortcut.register(combo as string, () => {
+        mainWindow?.webContents.send('globalShortcut:trigger', id);
+      });
+    } catch { /* ignore failed registration */ }
+  }
+}
+
 // ─── IPC Handlers ─────────────────────────────────────────────
 
 function setupIPC() {
@@ -959,12 +982,16 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
-    // Check for custom data path in settings
+    // Check for custom data path and global hotkey settings
     try {
       const p = getSettingsPath();
       if (fs.existsSync(p)) {
         const s = JSON.parse(fs.readFileSync(p, 'utf-8'));
         if (s.dataPath) BASE_PATH = s.dataPath;
+        // Register global shortcuts NOW, before renderer mounts.
+        // Renderer will re-register later when it loads settings, but this
+        // ensures shortcuts work immediately — even before loadInitialData.
+        if (s.globalHotkeys) registerSessionHotkeys(s);
       }
     } catch { /* ignore */ }
 
