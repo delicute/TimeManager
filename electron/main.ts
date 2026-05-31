@@ -685,10 +685,19 @@ function showContainerNotification(data: { type: string; notifType?: string; tit
   const iconSvg = NOTIF_SVGS[nt] || NOTIF_SVGS.info;
   const payload = { id, iconSvg, title: data.title, body: data.body, color: data.color };
   if (containerReady) {
-    notifContainer.webContents.send('container:add', payload);
-    if (!notifContainer.isVisible()) {
-      notifContainer.showInactive();
-      notifContainer.setIgnoreMouseEvents(true);
+    try {
+      notifContainer.webContents.send('container:add', payload);
+      if (!notifContainer.isVisible()) {
+        notifContainer.showInactive();
+        notifContainer.setIgnoreMouseEvents(true);
+      }
+    } catch {
+      // Send failed (dev mode container state corrupted) — recreate container
+      debugLog('Notification container send failed, recreating...');
+      try { notifContainer?.destroy(); } catch {}
+      notifContainer = null;
+      containerReady = false;
+      createNotificationContainer();
     }
   } else {
     notifQueue.push(payload);
@@ -707,7 +716,11 @@ function dismissContainerNotification(id: string) {
   containerNotifs.splice(idx, 1);
 
   if (notifContainer && !notifContainer.isDestroyed()) {
-    notifContainer.webContents.send('container:remove', id);
+    try {
+      notifContainer.webContents.send('container:remove', id);
+    } catch {
+      debugLog('Notification container remove send failed');
+    }
   }
 }
 
