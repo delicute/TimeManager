@@ -42,6 +42,26 @@ function PieSVG({ data, size = 140, hovered, onHover }: {
   const swHov = 10;
   const innerR = r - sw / 2, outerR = r + sw / 2;
   const innerRH = r - swHov / 2, outerRH = r + swHov / 2;
+  const isSingle = data.length === 1;
+  if (isSingle) {
+    // Single sector: render as a full circle (0→360° arc is degenerate in SVG)
+    const d = data[0];
+    const isHov = hovered === d.label;
+    const rOuter = isHov ? outerRH : outerR;
+    const rInner = isHov ? innerRH : innerR;
+    const fill = isHov ? d.color : `${d.color}cc`;
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:'block'}}>
+        <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={fill} strokeWidth={rOuter - rInner}
+          style={{cursor:'pointer', transition:'fill .12s'}}
+          onMouseEnter={() => onHover(d.label)}
+          onMouseLeave={() => onHover(null)} />
+        <text x={cx} y={cy+4} textAnchor="middle" fill="#faf9f5" fontSize={13} fontWeight={600}>
+          {formatDuration(total)}
+        </text>
+      </svg>
+    );
+  }
   let degOffset = 0;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:'block'}}>

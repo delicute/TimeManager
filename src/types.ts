@@ -76,6 +76,8 @@ export type ReminderMetric =
   | 'hobbyDuration'
   | 'entertainmentDuration'
   | 'continuousEntertainment'
+  | 'continuousStudy'
+  | 'continuousHobby'
   | 'totalAvailableBalance'
   | 'debtAmount';
 

@@ -15,7 +15,8 @@ const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTri
 const metricKeys: ReminderMetric[] = [
   'entertainmentBalance','dailyGiftedBalance','earnedBalance',
   'studyDuration','hobbyDuration','entertainmentDuration',
-  'continuousEntertainment','totalAvailableBalance','debtAmount',
+  'continuousEntertainment','continuousStudy','continuousHobby',
+  'totalAvailableBalance','debtAmount',
 ];
 const operatorKeys: ReminderOperator[] = ['lt','gt','gte','lte','eq'];
 const sessionTypes: SessionType[] = ['Study','Hobby','Entertainment'];
@@ -190,7 +191,7 @@ function displayTree(node:ConditionNode, t:ReturnType<typeof useT>, wrap=false):
   }
   if (node.type==='bool') {
     const label = node.boolValue==='Study'?t('navStudy'):node.boolValue==='Hobby'?t('navHobby'):t('navEntertainment');
-    return `${t('navReminder')} = ${label} (${node.expected?'True':'False'})`;
+    return `${t('navReminder')} = ${label} (${node.expected?t('reminderBoolTrue'):t('reminderBoolFalse')})`;
   }
   const inner = node.nodes.map(n => displayTree(n, t, true)).join(` ${t(node.logic==='and'?'reminderAnd':'reminderOr')} `);
   return wrap ? `(${inner})` : inner;

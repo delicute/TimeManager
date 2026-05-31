@@ -220,12 +220,14 @@ function renderLeafSummary(node: ConditionNode, metrics: Record<string, number>,
   const labels: Record<string, string> = locale === 'zh' ? {
     entertainmentBalance: '余额', dailyGiftedBalance: '赠送余额', earnedBalance: '赚取余额',
     studyDuration: '今日学习', hobbyDuration: '今日爱好', entertainmentDuration: '今日娱乐',
-    continuousEntertainment: '连续娱乐', totalAvailableBalance: '可用总额', debtAmount: '债务金额',
+    continuousEntertainment: '连续娱乐', continuousStudy: '连续学习', continuousHobby: '连续爱好',
+    totalAvailableBalance: '可用总额', debtAmount: '债务金额',
     Study: '学习', Hobby: '爱好', Entertainment: '娱乐',
   } : {
     entertainmentBalance: 'Balance', dailyGiftedBalance: 'Gifted', earnedBalance: 'Earned',
     studyDuration: 'Study', hobbyDuration: 'Hobby', entertainmentDuration: 'Entertainment',
-    continuousEntertainment: 'Continuous', totalAvailableBalance: 'Available', debtAmount: 'Debt',
+    continuousEntertainment: 'Continuous', continuousStudy: 'Continuous Study', continuousHobby: 'Continuous Hobby',
+    totalAvailableBalance: 'Available', debtAmount: 'Debt',
     Study: 'Study', Hobby: 'Hobby', Entertainment: 'Entertainment',
   };
   function walk(n: ConditionNode) {
@@ -235,7 +237,7 @@ function renderLeafSummary(node: ConditionNode, metrics: Record<string, number>,
       parts.push(`${labels[n.metric] || n.metric} ${opMap[n.operator] || n.operator} ${n.value} (${val})`);
     } else if (n.type === 'bool') {
       const stateLabel = labels[n.boolValue] || n.boolValue;
-      const expLabel = n.expected ? (locale === 'zh' ? 'True' : 'True') : (locale === 'zh' ? 'False' : 'False');
+      const expLabel = n.expected ? (locale === 'zh' ? '是' : 'True') : (locale === 'zh' ? '否' : 'False');
       parts.push(`${locale === 'zh' ? '当前状态' : 'State'} = ${stateLabel} (${expLabel})`);
     } else {
       n.nodes.forEach(walk);
@@ -491,6 +493,14 @@ function simulateEntertainmentConsumption(
           ? (Date.now() - s.startTime) / 1000
           : 0;
 
+        const continuousStudy = s.isActive && s.currentType === 'Study' && s.startTime
+          ? (Date.now() - s.startTime) / 1000
+          : (bal.milestones?.studyContinuous || 0);
+
+        const continuousHobby = s.isActive && s.currentType === 'Hobby' && s.startTime
+          ? (Date.now() - s.startTime) / 1000
+          : (bal.milestones?.hobbyContinuous || 0);
+
         const available = Math.max(0, bal.earnedBalance) + bal.dailyGiftedRemaining;
         const debtAmount = bal.earnedBalance < 0 ? Math.abs(bal.earnedBalance) : 0;
 
@@ -503,6 +513,8 @@ function simulateEntertainmentConsumption(
           hobbyDuration: todaySec.Hobby,
           entertainmentDuration: todaySec.Entertainment,
           continuousEntertainment,
+          continuousStudy,
+          continuousHobby,
           totalAvailableBalance: available,
           debtAmount,
         };

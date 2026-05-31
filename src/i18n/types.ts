@@ -89,6 +89,8 @@ export interface Translations {
   reminderMetricHobbyDuration: string;
   reminderMetricEntertainmentDuration: string;
   reminderMetricContinuousEntertainment: string;
+  reminderMetricContinuousStudy: string;
+  reminderMetricContinuousHobby: string;
   reminderMetricTotalAvailableBalance: string;
   reminderMetricDebtAmount: string;
   reminderUrgencyLow: string;
@@ -117,6 +119,8 @@ export interface Translations {
   reminderGroup: string;
   reminderBoolVar: string;
   reminderBool: string;
+  reminderBoolTrue: string;
+  reminderBoolFalse: string;
   reminderUnitS: string;
   reminderUnitM: string;
   reminderUnitH: string;
