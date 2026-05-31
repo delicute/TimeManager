@@ -785,7 +785,7 @@ function removeNotif(id){
       e.remove();
       // FLIP: filter for elements still in DOM, matching oldTops per-element
       var valid=[],validOld=[];
-      for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
+      for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st && !sib[i].classList.contains('leaving')){valid.push(sib[i]);validOld.push(oldTops[i]);}}
       if(valid.length>0){
         var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
         valid.forEach(function(s,i){
