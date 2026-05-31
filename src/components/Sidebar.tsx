@@ -75,7 +75,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         </div>
         <div className="balance-detail">
           {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}
-          {' | '} {t('balanceEarned')}: {formatDuration(balance.earnedBalance)}
+          {' | '} {t('balanceEarned')}: {balance.earnedBalance < 0 ? `-${formatDuration(Math.abs(balance.earnedBalance))}` : formatDuration(balance.earnedBalance)}
         </div>
       </div>
 
