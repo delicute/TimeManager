@@ -990,12 +990,14 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
-    // Check for custom data path and global hotkey settings
+    // Check for custom data path, silent start, and global hotkey settings
     try {
       const p = getSettingsPath();
       if (fs.existsSync(p)) {
         const s = JSON.parse(fs.readFileSync(p, 'utf-8'));
         if (s.dataPath) BASE_PATH = s.dataPath;
+        // Silent start: command line --silent takes precedence, else use setting
+        if (!startSilent && s.silentStart) startSilent = true;
         // Register global shortcuts NOW, before renderer mounts.
         // Renderer will re-register later when it loads settings, but this
         // ensures shortcuts work immediately — even before loadInitialData.
