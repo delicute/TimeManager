@@ -434,15 +434,16 @@ function simulateEntertainmentConsumption(
           dispatch({ type: 'BALANCE_ADD_EARNED', payload: delta });
         }
       } else if (s.currentType === 'Entertainment') {
-        const now = Date.now();
         const key = 'entertainment';
-        const last = lastTickTimeRef.current[key] || s.startTime!;
-        const elapsedSinceLastTick = Math.floor((now - last) / 1000);
-        if (elapsedSinceLastTick >= 1) {
-          lastTickTimeRef.current[key] = now;
-          // Dispatch for each missed second (catches up when Chromium throttles
-          // setInterval in background tabs — same pattern as Study/Hobby ref-based timing)
-          for (let i = 0; i < elapsedSinceLastTick; i++) {
+        // Count-based approach matching Study/Hobby pattern:
+        // compute total expected consumption from session start, dispatch delta
+        const elapsed = (Date.now() - s.startTime!) / 1000;
+        const expectedConsumed = Math.floor(elapsed);
+        const lastConsumed = lastTickTimeRef.current[key] ?? 0;
+        if (expectedConsumed > lastConsumed) {
+          const delta = expectedConsumed - lastConsumed;
+          lastTickTimeRef.current[key] = expectedConsumed;
+          for (let i = 0; i < delta; i++) {
             dispatch({ type: 'BALANCE_TRY_CONSUME' });
           }
         }
@@ -590,6 +591,8 @@ function simulateEntertainmentConsumption(
     if (s.isActive && s.startTime) {
       const endTime = Date.now();
       const elapsed = (endTime - s.startTime) / 1000;
+      // Hoisted to parent scope — used both inside and after the `if (elapsed >= 1)` block
+      let startBalForNotif: BalanceState | null = null;
 
       if (elapsed >= 1) {
         const elapsedSec = Math.floor(elapsed);
@@ -620,7 +623,6 @@ function simulateEntertainmentConsumption(
         let finalBalance: BalanceState = { ...balanceRef.current };
 
         // ─── Reconciliation: correct any missed timer ticks ─
-        let startBalForNotif: BalanceState | null = null;
         if (startBalanceRef.current) {
           const startBal = startBalanceRef.current;
           if (activeType === 'Study' || activeType === 'Hobby') {

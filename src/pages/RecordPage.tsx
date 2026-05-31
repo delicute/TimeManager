@@ -191,9 +191,17 @@ export function RecordPage() {
     else if (log.balanceChange < 0) totalBalConsumed += Math.abs(log.balanceChange);
   }
   if (preset === 'today' && session.isActive && session.currentType !== 'None' && session.startTime) {
-    const now = session.isPaused && session.pausedAt ? session.pausedAt : Date.now();
-    const elapsed = Math.floor((now - session.startTime) / 1000);
+    const ts = session.isPaused && session.pausedAt ? session.pausedAt : Date.now();
+    const elapsed = Math.floor((ts - session.startTime) / 1000);
     totals[session.currentType] = (totals[session.currentType] || 0) + elapsed;
+    // Include live estimate for ongoing session in earned/consumed totals
+    if (session.currentType === 'Study' || session.currentType === 'Hobby') {
+      const w = session.currentType === 'Study' ? state.settings.studyWeight : state.settings.hobbyWeight;
+      totalBalEarned += Math.floor(elapsed / w);
+    } else if (session.currentType === 'Entertainment') {
+      const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
+      totalBalConsumed += elapsed * debtRate;
+    }
   }
 
   // Apply debug today override (for Set operation in DebugPage)
