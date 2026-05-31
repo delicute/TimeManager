@@ -775,31 +775,17 @@ function removeNotif(id){
   var e=ndb[id];
   if(!e)return;
   delete ndb[id];
-  // FLIP: snapshot positions before DOM removal
-  var sib=[];for(var i=0;i<st.children.length;i++){var c=st.children[i];if(c!==e)sib.push(c);}
-  var oldTops=sib.map(function(s){return s.getBoundingClientRect().top});
-  // Use rAF to ensure browser paints the pre-leaving frame, then add class
+  // Fix element at current screen position → out of flex flow.
+  // Other notifications reflow naturally, avoiding FLIP race conditions.
   requestAnimationFrame(function(){
+    var rect=e.getBoundingClientRect();
+    e.style.position='fixed';
+    e.style.left=rect.left+'px';
+    e.style.top=rect.top+'px';
+    e.style.width=rect.width+'px';
+    e.style.margin='0';
     e.classList.add('leaving');
-    setTimeout(function(){
-      e.remove();
-      // FLIP: filter for elements still in DOM, matching oldTops per-element
-      var valid=[],validOld=[];
-      for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st && !sib[i].classList.contains('leaving')){valid.push(sib[i]);validOld.push(oldTops[i]);}}
-      if(valid.length>0){
-        var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
-        valid.forEach(function(s,i){
-          var dy=newTops[i]-validOld[i];
-          if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
-        });
-        requestAnimationFrame(function(){requestAnimationFrame(function(){
-          valid.forEach(function(s,i){
-            var dy=newTops[i]-validOld[i];
-            if(dy!==0){s.style.transition='';s.style.transform='';}
-          });
-        })});
-      }
-    },${NOTIF_FADE_MS});
+    setTimeout(function(){e.remove()},${NOTIF_FADE_MS});
   });
 }
 function _e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
