@@ -24,8 +24,8 @@ const NOTIF_RIGHT = 20;
 const NOTIF_CARD_WIDTH = 280;
 const NOTIF_BOTTOM = 25;
 const NOTIF_GAP = 15;
-const NOTIF_FADE_MS = 200;
-const NOTIF_SLIDE_MS = 200;     // Enter animation duration
+const NOTIF_FADE_MS = 350;
+const NOTIF_SLIDE_MS = 200;
 
 let notifContainer: BrowserWindow | null = null;
 let containerReady = false;
@@ -775,27 +775,32 @@ function removeNotif(id){
   var e=ndb[id];
   if(!e)return;
   delete ndb[id];
-  // Capture siblings + take leaving out of flow → parallel fade + shift
+  // FLIP: snapshot positions before DOM removal
   var sib=[];for(var i=0;i<st.children.length;i++){var c=st.children[i];if(c!==e)sib.push(c);}
   var oldTops=sib.map(function(s){return s.getBoundingClientRect().top});
-  var er=e.getBoundingClientRect();e.style.position='fixed';e.style.left=er.left+'px';e.style.top=er.top+'px';e.style.width=er.width+'px';
-  e.classList.add('leaving');
-  var valid=[],validOld=[];
-  for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
-  if(valid.length>0){
-    var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
-    valid.forEach(function(s,i){
-      var dy=newTops[i]-validOld[i];
-      if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
-    });
-    requestAnimationFrame(function(){requestAnimationFrame(function(){
-      valid.forEach(function(s,i){
-        var dy=newTops[i]-validOld[i];
-        if(dy!==0){s.style.transition='transform 400ms ease-out';s.style.transform='';}
-      });
-    })});
-  }
-  setTimeout(function(){if(e.parentNode)e.remove()},${NOTIF_FADE_MS});
+  // Use rAF to ensure browser paints the pre-leaving frame, then add class
+  requestAnimationFrame(function(){
+    e.classList.add('leaving');
+    setTimeout(function(){
+      e.remove();
+      // FLIP: filter for elements still in DOM, matching oldTops per-element
+      var valid=[],validOld=[];
+      for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
+      if(valid.length>0){
+        var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
+        valid.forEach(function(s,i){
+          var dy=newTops[i]-validOld[i];
+          if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
+        });
+        requestAnimationFrame(function(){requestAnimationFrame(function(){
+          valid.forEach(function(s,i){
+            var dy=newTops[i]-validOld[i];
+            if(dy!==0){s.style.transition='';s.style.transform='';}
+          });
+        })});
+      }
+    },${NOTIF_FADE_MS});
+  });
 }
 function _e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
 if(window.containerBridge){
@@ -859,6 +864,11 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  // Silent mode: immediately hide and remove from taskbar
+  if (startSilent) {
+    mainWindow.setSkipTaskbar(true);
+  }
+
   mainWindow.on('close', (e) => {
     if (isQuitting || !minimizeToTrayEnabled) {
       tray?.destroy();
@@ -873,9 +883,8 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     if (!startSilent) {
       mainWindow?.show();
-    } else {
-      mainWindow?.setSkipTaskbar(true);
     }
+    // In silent mode, window stays hidden (setSkipTaskbar already called above)
   });
 }
 
@@ -990,14 +999,12 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
-    // Check for custom data path, silent start, and global hotkey settings
+    // Check for custom data path and global hotkey settings
     try {
       const p = getSettingsPath();
       if (fs.existsSync(p)) {
         const s = JSON.parse(fs.readFileSync(p, 'utf-8'));
         if (s.dataPath) BASE_PATH = s.dataPath;
-        // Silent start: command line --silent takes precedence, else use setting
-        if (!startSilent && s.silentStart) startSilent = true;
         // Register global shortcuts NOW, before renderer mounts.
         // Renderer will re-register later when it loads settings, but this
         // ensures shortcuts work immediately — even before loadInitialData.
