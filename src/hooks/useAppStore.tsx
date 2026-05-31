@@ -423,11 +423,15 @@ function simulateEntertainmentConsumption(
         const intervalSec = s.currentType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
         const now = Date.now();
         const key = s.currentType.toLowerCase();
-        const last = lastTickTimeRef.current[key] || s.startTime!;
-        // ref-based timing: no closure issue (unlike state in effect closure)
-        if ((now - last) / 1000 >= intervalSec) {
-          lastTickTimeRef.current[key] = now;
-          dispatch({ type: 'BALANCE_ADD_EARNED', payload: 1 });
+        // 基于经过总时间计算期望赚取数，避免非整数 weight 造成的精度丢失
+        // 也兼容后台节流：interval 暂停后恢复时一次补回所有丢掉的赚取
+        const elapsed = (now - s.startTime!) / 1000;
+        const expectedEarned = Math.floor(elapsed / intervalSec);
+        const lastEarned = lastTickTimeRef.current[key] ?? 0;
+        if (expectedEarned > lastEarned) {
+          const delta = expectedEarned - lastEarned;
+          lastTickTimeRef.current[key] = expectedEarned;
+          dispatch({ type: 'BALANCE_ADD_EARNED', payload: delta });
         }
       } else if (s.currentType === 'Entertainment') {
         const now = Date.now();
