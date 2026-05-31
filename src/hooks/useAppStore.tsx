@@ -25,6 +25,7 @@ const defaultSettings: AppSettings = {
   hobbyWeightStep: 0.5,
   notificationEnabled: true,
   notificationDuration: 5,
+  globalHotkeys: false,
 };
 
 const defaultState: AppState = {
@@ -84,9 +85,13 @@ function reducer(state: AppState, action: Action): AppState {
         },
       };
     case 'SESSION_PAUSE':
+      // Guard: ignore if already paused — prevents invalid state transitions
+      if (state.session.isPaused) return state;
       return { ...state, session: { ...state.session, isPaused: true, pausedAt: Date.now() } };
     case 'SESSION_RESUME': {
-      const pausedMs = state.session.pausedAt ? Date.now() - state.session.pausedAt : 0;
+      // Guard: only resume if actually paused with a valid pausedAt
+      if (!state.session.isPaused || !state.session.pausedAt) return state;
+      const pausedMs = Date.now() - state.session.pausedAt;
       const { pausedAt: _, ...rest } = state.session;
       return {
         ...state,
