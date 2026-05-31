@@ -249,19 +249,17 @@ function renderLeafSummary(node: ConditionNode, metrics: Record<string, number>,
   const parts: string[] = [];
   const labels: Record<string, string> = locale === 'zh' ? {
     entertainmentBalance: '余额', dailyGiftedBalance: '赠送余额', earnedBalance: '赚取余额',
+    debt: '债务',
     studyDuration: '今日学习', hobbyDuration: '今日爱好', entertainmentDuration: '今日娱乐',
-    continuousEntertainment: '连续娱乐', continuousStudy: '连续学习', continuousHobby: '连续爱好',
-    totalAvailableBalance: '可用总额', debtAmount: '债务金额',
-    todaySessionCount: '今日会话', currentSessionDuration: '当前时长',
+    totalAvailableBalance: '可用总额', currentSessionDuration: '当前时长',
     isDebt: '是否负债', hasActivityToday: '今日有活动', isPaused: '是否暂停',
     isMilestoneAvailable: '有里程碑',
     Study: '学习', Hobby: '爱好', Entertainment: '娱乐',
   } : {
     entertainmentBalance: 'Balance', dailyGiftedBalance: 'Gifted', earnedBalance: 'Earned',
+    debt: 'Debt',
     studyDuration: 'Study', hobbyDuration: 'Hobby', entertainmentDuration: 'Entertainment',
-    continuousEntertainment: 'Continuous', continuousStudy: 'Continuous Study', continuousHobby: 'Continuous Hobby',
-    totalAvailableBalance: 'Available', debtAmount: 'Debt',
-    todaySessionCount: 'Sessions', currentSessionDuration: 'Session Duration',
+    totalAvailableBalance: 'Available', currentSessionDuration: 'Session Duration',
     isDebt: 'In Debt', hasActivityToday: 'Has Activity', isPaused: 'Is Paused',
     isMilestoneAvailable: 'Milestone Ready',
     Study: 'Study', Hobby: 'Hobby', Entertainment: 'Entertainment',
@@ -609,18 +607,7 @@ function simulateEntertainmentConsumption(
           : (bal.milestones?.hobbyContinuous || 0);
 
         const available = Math.max(0, bal.earnedBalance) + bal.dailyGiftedRemaining;
-        const debtAmount = bal.earnedBalance < 0 ? Math.abs(bal.earnedBalance) : 0;
-
-        // Count today's sessions (completed logs only)
-        let todaySessionCount = 0;
-        const seenSessions = new Set<string>();
-        for (const log of logs) {
-          const key = log.activityType + '|' + log.startTime;
-          if (!seenSessions.has(key)) {
-            seenSessions.add(key);
-            todaySessionCount++;
-          }
-        }
+        const debt = bal.earnedBalance < 0 ? Math.abs(bal.earnedBalance) : 0;
 
         // Current session duration (0 if not active)
         const currentSessionDuration = s.isActive && s.startTime
@@ -653,15 +640,11 @@ function simulateEntertainmentConsumption(
           entertainmentBalance: bal.earnedBalance,
           dailyGiftedBalance: bal.dailyGiftedRemaining,
           earnedBalance: bal.earnedBalance,
+          debt,
           studyDuration: todaySec.Study,
           hobbyDuration: todaySec.Hobby,
           entertainmentDuration: todaySec.Entertainment,
-          continuousEntertainment,
-          continuousStudy,
-          continuousHobby,
           totalAvailableBalance: available,
-          debtAmount,
-          todaySessionCount,
           currentSessionDuration,
           _todayDurations: todaySec,
           _earnedBalance: bal.earnedBalance,
