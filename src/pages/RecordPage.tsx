@@ -395,43 +395,47 @@ export function RecordPage() {
       </div>
 
       {/* Pie chart with hover detail + legend */}
-      {pieData.length > 0 && (
-        <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center' }}>
-            {/* Pie */}
-            <div style={{ textAlign: 'center' }}>
-              <PieSVG data={pieData} size={140} hovered={hoverSeg} onHover={setHoverSeg} emptyText={t('recordEmptyToday')} />
-            </div>
-            {/* Detail panel */}
-            <div style={{ width: 175, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              {hoverItem ? (
-                <div style={{ fontSize: 12, color: '#faf9f5', lineHeight: 1.6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 3, background: hoverItem.color }} />
-                    <span style={{ fontWeight: 600 }}>{typeLabel(hoverItem.label)}</span>
-                  </div>
-                  <div style={{ color: 'var(--color-on-dark-soft)' }}>
-                    <div>{t('recordDuration')}{formatDuration(hoverItem.value)}</div>
-                    <div>{t('recordPercentage')}{hoverPct}%</div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', fontStyle: 'italic' }}>{t('recordHoverHint')}</div>
-              )}
-            </div>
+      <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center' }}>
+          {/* Pie */}
+          <div style={{ textAlign: 'center' }}>
+            <PieSVG data={pieData} size={140} hovered={hoverSeg} onHover={setHoverSeg} emptyText={t('recordEmptyToday')} />
           </div>
-          {/* Legend */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, justifyContent: 'center' }}>
-            {pieData.map(d => (
-              <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', padding: '2px 6px', borderRadius: 4, background: hoverSeg === d.label ? 'rgba(255,255,255,0.06)' : 'transparent' }}
-                onMouseEnter={() => setHoverSeg(d.label)} onMouseLeave={() => setHoverSeg(null)}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                <span style={{ color: hoverSeg === d.label ? '#faf9f5' : 'var(--color-on-dark-soft)' }}>{typeLabel(d.label)}</span>
+          {/* Detail panel */}
+          <div style={{ width: 175, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {hoverItem ? (
+              <div style={{ fontSize: 12, color: '#faf9f5', lineHeight: 1.6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: hoverItem.color }} />
+                  <span style={{ fontWeight: 600 }}>{typeLabel(hoverItem.label)}</span>
+                </div>
+                <div style={{ color: 'var(--color-on-dark-soft)' }}>
+                  <div>{t('recordDuration')}{formatDuration(hoverItem.value)}</div>
+                  <div>{t('recordPercentage')}{hoverPct}%</div>
+                </div>
               </div>
-            ))}
+            ) : (
+              <div style={{ fontSize: 11, color: 'var(--color-on-dark-soft)', fontStyle: 'italic' }}>{t('recordHoverHint')}</div>
+            )}
           </div>
         </div>
-      )}
+        {/* Legend — always show all 3 types */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, justifyContent: 'center' }}>
+          {ACTIVITY_TYPES.map(type => {
+            const d = pieData.find(x => x.label === type);
+            const value = d?.value || 0;
+            const color = TYPE_COLORS[type];
+            return (
+              <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', padding: '2px 6px', borderRadius: 4, background: hoverSeg === type ? 'rgba(255,255,255,0.06)' : 'transparent' }}
+                onMouseEnter={() => setHoverSeg(type)} onMouseLeave={() => setHoverSeg(null)}>
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+                <span style={{ color: hoverSeg === type ? '#faf9f5' : 'var(--color-on-dark-soft)' }}>{typeLabel(type)}</span>
+                <span style={{ fontSize: 10, color: 'var(--color-on-dark-soft)', opacity: value > 0 ? 0.8 : 0.35 }}>{formatDuration(value)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Timeline */}
       {loadingLogs ? (
