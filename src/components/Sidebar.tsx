@@ -2,7 +2,7 @@ import { Play, BarChart3, Bell, Settings, BookOpen, Palette, Gamepad2 } from 'lu
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, statusKeyMap, navKeyMap } from '../hooks/useI18n';
 import { Bug } from "lucide-react";
-import { formatDuration, formatGiftedRemaining, activityColor } from '../utils/formatting';
+import { formatDuration, activityColor } from '../utils/formatting';
 
 interface SidebarProps {
   currentPage: string;
@@ -74,7 +74,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             : formatDuration(totalAvailable)}
         </div>
         <div className="balance-detail">
-          {t('balanceGifted')}: {formatGiftedRemaining(balance.dailyGiftedRemaining)}
+          {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}
           {' | '} {t('balanceEarned')}: {formatDuration(balance.earnedBalance)}
         </div>
       </div>

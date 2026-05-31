@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Play, Square, Gift, Pause } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, timerKeyMap, todayKeyMap } from '../hooks/useI18n';
-import { formatDurationFull, formatDuration, formatGiftedRemaining } from '../utils/formatting';
+import { formatDurationFull, formatDuration } from '../utils/formatting';
 import type { SessionType } from '../types';
 import { STUDY_MILESTONES, HOBBY_MILESTONES } from '../constants';
 
@@ -79,7 +79,7 @@ export function TimerCard({
           </div>
           <div className="stat-item">
             <div className="stat-label">{t('giftedRemain')}</div>
-            <div className="stat-value positive">{formatGiftedRemaining(giftedRemaining ?? 0)}</div>
+            <div className="stat-value positive">{formatDuration(giftedRemaining ?? 0)}</div>
           </div>
           <div className="stat-item">
             <div className="stat-label">{t('earnedRemain')}</div>

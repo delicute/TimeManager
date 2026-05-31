@@ -615,12 +615,12 @@ function simulateEntertainmentConsumption(
         dispatch({ type: 'SET_TODAY_LOGS', payload: logs });
 
         // ─── Build finalBalance with reconciliation + milestones ─
-        // 使用最新的 balanceRef（而非 await 前捕获的 bal），避免 timer 在 await
+        // 使用最新的 balancerRef（而非 await 前捕获的 bal），避免 timer 在 await
         // writeLogEntry/getTodayLogs 期间 dispatch 的余额变更被覆盖
         let finalBalance: BalanceState = { ...balanceRef.current };
-        let actualConsumption: number | null = null; // for entertainment debt-aware notification
 
         // ─── Reconciliation: correct any missed timer ticks ─
+        let startBalForNotif: BalanceState | null = null;
         if (startBalanceRef.current) {
           const startBal = startBalanceRef.current;
           if (activeType === 'Study' || activeType === 'Hobby') {
@@ -640,11 +640,9 @@ function simulateEntertainmentConsumption(
               finalBalance.earnedBalance += earnedDiff;
               finalBalance.dailyGiftedRemaining += giftedDiff;
             }
-            // 计算实际消耗量（含负债 2× 倍率），用于结束通知
-            const startTotal = startBal.dailyGiftedRemaining + startBal.earnedBalance;
-            const endTotal = expected.dailyGiftedRemaining + expected.earnedBalance;
-            actualConsumption = startTotal - endTotal;
           }
+          // 保存快照用于结束通知计算实际消耗（含负债 2× 速率）
+          startBalForNotif = { ...startBal };
           startBalanceRef.current = null;
         }
 
@@ -719,7 +717,19 @@ function simulateEntertainmentConsumption(
           const w = activeType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
           const earned = Math.floor(elapsed / w);
           window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
-        } else window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${actualConsumption ?? ticks} 余额` : `Consumed ${actualConsumption ?? ticks}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        } else {
+          // 计算实际消耗量（含负债 2× 速率），而非简单 elapsed 秒数
+          let actualConsumed = ticks;
+          if (startBalForNotif) {
+            const expected = simulateEntertainmentConsumption(
+              startBalForNotif.earnedBalance, startBalForNotif.dailyGiftedRemaining, ticks
+            );
+            actualConsumed = (startBalForNotif.dailyGiftedRemaining + Math.max(0, startBalForNotif.earnedBalance))
+              - (expected.dailyGiftedRemaining + Math.max(0, expected.earnedBalance))
+              + Math.max(0, -expected.earnedBalance);
+          }
+          window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${actualConsumed} 余额` : `Consumed ${actualConsumed}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        }
       } catch { /* ignore */ }
     } else {
       dispatch({ type: 'SESSION_STOP' });
