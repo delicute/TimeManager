@@ -24,8 +24,8 @@ const NOTIF_RIGHT = 20;
 const NOTIF_CARD_WIDTH = 280;
 const NOTIF_BOTTOM = 25;
 const NOTIF_GAP = 15;
-const NOTIF_FADE_MS = 350;
-const NOTIF_SLIDE_MS = 200;
+const NOTIF_FADE_MS = 200;
+const NOTIF_SLIDE_MS = 200;     // Enter animation duration
 
 let notifContainer: BrowserWindow | null = null;
 let containerReady = false;
@@ -795,7 +795,7 @@ function removeNotif(id){
         requestAnimationFrame(function(){requestAnimationFrame(function(){
           valid.forEach(function(s,i){
             var dy=newTops[i]-validOld[i];
-            if(dy!==0){s.style.transition='';s.style.transform='';}
+            if(dy!==0){s.style.transition='transform 400ms ease-out';s.style.transform='';}
           });
         })});
       }
