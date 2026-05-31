@@ -93,6 +93,18 @@ export interface Translations {
   reminderMetricContinuousHobby: string;
   reminderMetricTotalAvailableBalance: string;
   reminderMetricDebtAmount: string;
+  reminderMetricTodaySessionCount: string;
+  reminderMetricCurrentSessionDuration: string;
+  reminderOperNeq: string;
+  reminderBoolCurrentState: string;
+  reminderBoolIsDebt: string;
+  reminderBoolHasActivityToday: string;
+  reminderBoolIsPaused: string;
+  reminderBoolIsMilestoneAvailable: string;
+  reminderTime: string;
+  reminderTimeBefore: string;
+  reminderTimeAfter: string;
+  reminderNot: string;
   reminderUrgencyLow: string;
   reminderUrgencyMedium: string;
   reminderUrgencyHigh: string;

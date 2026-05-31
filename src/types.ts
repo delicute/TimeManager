@@ -79,9 +79,11 @@ export type ReminderMetric =
   | 'continuousStudy'
   | 'continuousHobby'
   | 'totalAvailableBalance'
-  | 'debtAmount';
+  | 'debtAmount'
+  | 'todaySessionCount'
+  | 'currentSessionDuration';
 
-export type ReminderOperator = 'lt' | 'gt' | 'gte' | 'lte' | 'eq';
+export type ReminderOperator = 'lt' | 'gt' | 'gte' | 'lte' | 'eq' | 'neq';
 
 export type ReminderUrgency = 'low' | 'medium' | 'high' | 'critical' | 'urgent' | 'reminder' | 'notification' | 'info';
 export interface ReminderCondition {
@@ -99,10 +101,12 @@ export interface LeafCondition {
   value: number;
 }
 
+export type BoolType = 'currentState' | 'isDebt' | 'hasActivityToday' | 'isPaused' | 'isMilestoneAvailable';
+
 export interface BoolCondition {
   type: 'bool';
-  boolType: 'currentState';
-  boolValue: SessionType;
+  boolType: BoolType;
+  boolValue?: SessionType; // only used when boolType === 'currentState'
   expected: boolean;
 }
 
@@ -112,7 +116,20 @@ export interface ConditionGroup {
   nodes: ConditionNode[];
 }
 
-export type ConditionNode = LeafCondition | BoolCondition | ConditionGroup;
+export interface TimeCondition {
+  type: 'time';
+  /** 'before' = trigger before this time, 'after' = trigger after this time */
+  timeOp: 'before' | 'after';
+  /** HH:mm in 24h format, e.g. "22:00" */
+  timeValue: string;
+}
+
+export interface NotCondition {
+  type: 'not';
+  node: ConditionNode;
+}
+
+export type ConditionNode = LeafCondition | BoolCondition | ConditionGroup | TimeCondition | NotCondition;
 
 export interface ReminderRule {
   id: string;

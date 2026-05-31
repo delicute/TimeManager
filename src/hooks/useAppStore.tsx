@@ -188,7 +188,7 @@ interface AppStore {
 
 const AppContext = createContext<AppStore | null>(null);
 
-function evalNode(node: ConditionNode, metrics: Record<string, number>, session?: { isActive: boolean; currentType: string }): boolean {
+function evalNode(node: ConditionNode, metrics: Record<string, number>, session?: { isActive: boolean; currentType: string; isPaused?: boolean }): boolean {
   if (node.type === 'leaf') {
     const val = metrics[node.metric] ?? 0;
     switch (node.operator) {
@@ -197,14 +197,41 @@ function evalNode(node: ConditionNode, metrics: Record<string, number>, session?
       case 'gte': return val >= node.value;
       case 'lte': return val <= node.value;
       case 'eq': return val === node.value;
+      case 'neq': return val !== node.value;
       default: return false;
     }
   } else if (node.type === 'bool') {
-    if (!session) return false;
     if (node.boolType === 'currentState') {
+      if (!session) return false;
       return node.expected === (session.isActive && session.currentType === node.boolValue);
     }
+    if (node.boolType === 'isDebt') {
+      const bal = (metrics as any)._earnedBalance ?? 0;
+      return node.expected === (bal < 0);
+    }
+    if (node.boolType === 'hasActivityToday') {
+      const todaySec = (metrics as any)._todayDurations ?? {};
+      const total = (todaySec.Study || 0) + (todaySec.Hobby || 0) + (todaySec.Entertainment || 0);
+      return node.expected === (total > 0);
+    }
+    if (node.boolType === 'isPaused') {
+      if (!session) return false;
+      return node.expected === session.isPaused;
+    }
+    if (node.boolType === 'isMilestoneAvailable') {
+      // Simplification: check via session paused + balance milestones
+      // We pass _milestones in metrics for this
+      return node.expected === ((metrics as any)._hasUnclaimedMilestone === true);
+    }
     return false;
+  } else if (node.type === 'time') {
+    const now = new Date();
+    const [h, m] = node.timeValue.split(':').map(Number);
+    const targetMin = h * 60 + m;
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+    return node.timeOp === 'before' ? currentMin < targetMin : currentMin >= targetMin;
+  } else if (node.type === 'not') {
+    return !evalNode(node.node, metrics, session);
   } else if (node.type === 'group') {
     const results = node.nodes.map(n => evalNode(n, metrics, session));
     return node.logic === 'and' ? results.every(Boolean) : results.some(Boolean);
@@ -222,25 +249,46 @@ function renderLeafSummary(node: ConditionNode, metrics: Record<string, number>,
     studyDuration: '今日学习', hobbyDuration: '今日爱好', entertainmentDuration: '今日娱乐',
     continuousEntertainment: '连续娱乐', continuousStudy: '连续学习', continuousHobby: '连续爱好',
     totalAvailableBalance: '可用总额', debtAmount: '债务金额',
+    todaySessionCount: '今日会话', currentSessionDuration: '当前时长',
+    isDebt: '是否负债', hasActivityToday: '今日有活动', isPaused: '是否暂停',
+    isMilestoneAvailable: '有里程碑',
     Study: '学习', Hobby: '爱好', Entertainment: '娱乐',
   } : {
     entertainmentBalance: 'Balance', dailyGiftedBalance: 'Gifted', earnedBalance: 'Earned',
     studyDuration: 'Study', hobbyDuration: 'Hobby', entertainmentDuration: 'Entertainment',
     continuousEntertainment: 'Continuous', continuousStudy: 'Continuous Study', continuousHobby: 'Continuous Hobby',
     totalAvailableBalance: 'Available', debtAmount: 'Debt',
+    todaySessionCount: 'Sessions', currentSessionDuration: 'Session Duration',
+    isDebt: 'In Debt', hasActivityToday: 'Has Activity', isPaused: 'Is Paused',
+    isMilestoneAvailable: 'Milestone Ready',
     Study: 'Study', Hobby: 'Hobby', Entertainment: 'Entertainment',
   };
   function walk(n: ConditionNode) {
     if (n.type === 'leaf') {
       const val = Math.round(metrics[n.metric] ?? 0);
-      const opMap: Record<string, string> = { lt: '<', gt: '>', gte: '>=', lte: '<=', eq: '=' };
+      const opMap: Record<string, string> = { lt: '<', gt: '>', gte: '>=', lte: '<=', eq: '=', neq: '!=' };
       parts.push(`${labels[n.metric] || n.metric} ${opMap[n.operator] || n.operator} ${n.value} (${val})`);
     } else if (n.type === 'bool') {
-      const stateLabel = labels[n.boolValue] || n.boolValue;
-      const expLabel = n.expected ? (locale === 'zh' ? '是' : 'True') : (locale === 'zh' ? '否' : 'False');
-      parts.push(`${locale === 'zh' ? '当前状态' : 'State'} = ${stateLabel} (${expLabel})`);
-    } else {
-      n.nodes.forEach(walk);
+      if (n.boolType === 'currentState') {
+        const stateLabel = labels[n.boolValue!] || n.boolValue!;
+        const expLabel = n.expected ? (locale === 'zh' ? '是' : 'True') : (locale === 'zh' ? '否' : 'False');
+        parts.push(`${locale === 'zh' ? '当前状态' : 'State'} = ${stateLabel} (${expLabel})`);
+      } else {
+        const boolLabel = labels[n.boolType] || n.boolType;
+        const expLabel = n.expected ? (locale === 'zh' ? '是' : 'True') : (locale === 'zh' ? '否' : 'False');
+        parts.push(`${boolLabel} = ${expLabel}`);
+      }
+    } else if (n.type === 'time') {
+      const opLabel = n.timeOp === 'before' ? (locale === 'zh' ? '之前' : 'before') : (locale === 'zh' ? '之后' : 'after');
+      parts.push(`${locale === 'zh' ? '时间' : 'Time'} ${opLabel} ${n.timeValue}`);
+    } else if (n.type === 'not') {
+      parts.push(`${locale === 'zh' ? '非' : 'NOT'} (`);
+      walk(n.node);
+      parts.push(')');
+    } else if (n.type === 'group') {
+      const inner: string[] = [];
+      n.nodes.forEach(c => { const before = parts.length; walk(c); inner.push(parts.slice(before).join('')); parts.length = before; });
+      parts.push(inner.join(` ${n.logic === 'and' ? (locale === 'zh' ? ' 且 ' : ' AND ') : (locale === 'zh' ? ' 或 ' : ' OR ')} `));
     }
   }
   walk(node);
@@ -560,8 +608,45 @@ function simulateEntertainmentConsumption(
         const available = Math.max(0, bal.earnedBalance) + bal.dailyGiftedRemaining;
         const debtAmount = bal.earnedBalance < 0 ? Math.abs(bal.earnedBalance) : 0;
 
+        // Count today's sessions (completed logs only)
+        let todaySessionCount = 0;
+        const seenSessions = new Set<string>();
+        for (const log of logs) {
+          const key = log.activityType + '|' + log.startTime;
+          if (!seenSessions.has(key)) {
+            seenSessions.add(key);
+            todaySessionCount++;
+          }
+        }
+
+        // Current session duration (0 if not active)
+        const currentSessionDuration = s.isActive && s.startTime
+          ? ((s.isPaused && s.pausedAt ? s.pausedAt : Date.now()) - s.startTime) / 1000
+          : 0;
+
+        // Check if there are unclaimed milestones
+        const hasUnclaimedMilestone = (() => {
+          const ms = bal.milestones;
+          if (!ms) return false;
+          const studyClaimed = (ms.studyClaimed || 0) as number;
+          const hobbyClaimed = (ms.hobbyClaimed || 0) as number;
+          const studyCont = s.isActive && s.currentType === 'Study'
+            ? (Date.now() - (s.startTime || 0)) / 1000
+            : (ms.studyContinuous || 0);
+          const hobbyCont = s.isActive && s.currentType === 'Hobby'
+            ? (Date.now() - (s.startTime || 0)) / 1000
+            : (ms.hobbyContinuous || 0);
+          const studyUnclaimed = STUDY_MILESTONES.some((m, i) =>
+            !(studyClaimed & (1 << i)) && studyCont >= m.threshold
+          );
+          const hobbyUnclaimed = HOBBY_MILESTONES.some((m, i) =>
+            !(hobbyClaimed & (1 << i)) && hobbyCont >= m.threshold
+          );
+          return studyUnclaimed || hobbyUnclaimed;
+        })();
+
         // Metric values map
-        const metrics: Record<ReminderMetric, number> = {
+        const metrics: Record<string, number> & { _todayDurations?: Record<string, number>; _earnedBalance?: number; _hasUnclaimedMilestone?: boolean } = {
           entertainmentBalance: bal.earnedBalance,
           dailyGiftedBalance: bal.dailyGiftedRemaining,
           earnedBalance: bal.earnedBalance,
@@ -573,7 +658,12 @@ function simulateEntertainmentConsumption(
           continuousHobby,
           totalAvailableBalance: available,
           debtAmount,
-        };
+          todaySessionCount,
+          currentSessionDuration,
+          _todayDurations: todaySec,
+          _earnedBalance: bal.earnedBalance,
+          _hasUnclaimedMilestone: hasUnclaimedMilestone,
+        } as any;
 
         const now = Date.now();
 
@@ -590,7 +680,7 @@ function simulateEntertainmentConsumption(
           // Evaluate condition tree
           const tree = rule.conditionTree;
           if (!tree) continue;
-          const met = evalNode(tree, metrics, { isActive: s.isActive, currentType: s.currentType });
+          const met = evalNode(tree, metrics, { isActive: s.isActive, currentType: s.currentType, isPaused: s.isPaused });
 
           if (!met) {
             // Condition cleared — allow re-trigger
