@@ -337,7 +337,32 @@ function simulateEntertainmentConsumption(
   useEffect(() => {
     const handler = () => {
       try {
-        window.electronAPI.saveBalanceSync(balanceRef.current);
+        const s = sessionRef.current;
+        const bal = balanceRef.current;
+        const cfg = settingsRef.current;
+        // If there's an active session, write a log entry before quitting
+        if (s.isActive && s.currentType !== 'None' && s.startTime) {
+          const endTime = Date.now();
+          const elapsed = (endTime - s.startTime) / 1000;
+          const elapsedSec = Math.floor(elapsed);
+          let balanceDelta = 0;
+          if (elapsed >= 1) {
+            if (s.currentType === 'Study' || s.currentType === 'Hobby') {
+              const w = s.currentType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
+              balanceDelta = Math.floor(elapsed / w);
+            } else if (s.currentType === 'Entertainment') {
+              balanceDelta = -elapsedSec;
+            }
+            const entry: TimeLogEntry = {
+              startTime: new Date(s.startTime).toISOString(),
+              endTime: new Date(endTime).toISOString(),
+              activityType: s.currentType,
+              balanceChange: balanceDelta,
+            };
+            window.electronAPI.writeLogEntrySync(entry);
+          }
+        }
+        window.electronAPI.saveBalanceSync(bal);
       } catch { /* ignore */ }
     };
     window.addEventListener('beforeunload', handler);

@@ -211,6 +211,7 @@ export const en: Translations = {
   recordEarned: 'Earned',
   recordConsumed: 'Consumed',
   recordLoading: 'Loading…',
+  recordEmptyToday: 'Nothing done today. Let\'s get started!',
   confirmLabel: 'Confirm',
   cancelLabel: 'Cancel',
   resetAll: 'Reset',

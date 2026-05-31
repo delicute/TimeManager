@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTodayLogs: () => ipcRenderer.invoke('logs:getToday'),
   getLogsForDate: (dateStr: string) => ipcRenderer.invoke('logs:getForDate', dateStr),
   writeLogEntry: (entry: any) => ipcRenderer.invoke('logs:write', entry),
+  writeLogEntrySync: (entry: any) => ipcRenderer.sendSync('logs:writeSync', entry),
   clearAllLogs: () => ipcRenderer.invoke('logs:clearAll'),
 
   // Notifications

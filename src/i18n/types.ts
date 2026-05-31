@@ -192,6 +192,7 @@ export interface Translations {
   recordEarned: string;
   recordConsumed: string;
   recordLoading: string;
+  recordEmptyToday: string;
   confirmLabel: string;
   cancelLabel: string;
   resetAll: string;

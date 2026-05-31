@@ -31,11 +31,21 @@ function sectorPath(cx: number, cy: number, innerR: number, outerR: number, star
   return `M ${x1i} ${y1i} L ${x1o} ${y1o} A ${outerR} ${outerR} 0 ${large} 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${innerR} ${innerR} 0 ${large} 0 ${x1i} ${y1i} Z`;
 }
 
-function PieSVG({ data, size = 140, hovered, onHover }: {
-  data: SegData[]; size?: number; hovered: string | null; onHover: (label: string | null) => void;
+function PieSVG({ data, size = 140, hovered, onHover, emptyText }: {
+  data: SegData[]; size?: number; hovered: string | null; onHover: (label: string | null) => void; emptyText?: string;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
-  if (total === 0) return <div style={{width:size,height:size,borderRadius:'50%',background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'var(--color-on-dark-soft)'}}>—</div>;
+  if (total === 0) return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: 'rgba(255,255,255,0.04)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 12, color: 'var(--color-on-dark-soft)', textAlign: 'center',
+      padding: 20, lineHeight: 1.4,
+    }}>
+      {emptyText || '—'}
+    </div>
+  );
   const cx = size / 2, cy = size / 2;
   const r = cx - 10;
   const sw = 7;
@@ -390,7 +400,7 @@ export function RecordPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center' }}>
             {/* Pie */}
             <div style={{ textAlign: 'center' }}>
-              <PieSVG data={pieData} size={140} hovered={hoverSeg} onHover={setHoverSeg} />
+              <PieSVG data={pieData} size={140} hovered={hoverSeg} onHover={setHoverSeg} emptyText={t('recordEmptyToday')} />
             </div>
             {/* Detail panel */}
             <div style={{ width: 175, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

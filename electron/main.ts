@@ -85,6 +85,20 @@ function setupIPC() {
     event.returnValue = true;
   });
 
+  ipcMain.on('logs:writeSync', (event, entry) => {
+    ensureDir(getLogsPath());
+    const filePath = path.join(getLogsPath(), `${fmtDate(new Date(entry.startTime))}.json`);
+    let entries: any[] = [];
+    try {
+      if (fs.existsSync(filePath)) {
+        entries = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      }
+    } catch { /* ignore */ }
+    entries.push(entry);
+    fs.writeFileSync(filePath, JSON.stringify(entries, null, 2));
+    event.returnValue = true;
+  });
+
   ipcMain.handle('balance:load', () => {
     try {
       const p = getBalancePath();
