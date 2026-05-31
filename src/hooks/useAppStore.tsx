@@ -317,6 +317,7 @@ function simulateEntertainmentConsumption(
   const sessionRef = useRef(state.session);
   const settingsRef = useRef(state.settings);
   const startBalanceRef = useRef<BalanceState | null>(null); // snapshot at session start, for stopSession reconciliation
+  const lastTickTimeRef = useRef<Record<string, number>>({ study: 0, hobby: 0 }); // ref-based timer tracking (no closure issue)
   const todayLogsRef = useRef<TimeLogEntry[]>([]);
   const reminderRulesRef = useRef<ReminderRule[]>([]);
   const triggerStatesRef = useRef<Map<string, ReminderTriggerState>>(new Map());
@@ -422,9 +423,10 @@ function simulateEntertainmentConsumption(
         const intervalSec = s.currentType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
         const now = Date.now();
         const key = s.currentType.toLowerCase();
-        /* Use tickCount as a monotonic counter — dispatch BALANCE_ADD_EARNED
-           every `intervalSec` ticks (i.e. once per `intervalSec` wall seconds). */
-        if (state.session.tickCount > 0 && state.session.tickCount % intervalSec === 0) {
+        const last = lastTickTimeRef.current[key] || s.startTime!;
+        // ref-based timing: no closure issue (unlike state in effect closure)
+        if ((now - last) / 1000 >= intervalSec) {
+          lastTickTimeRef.current[key] = now;
           dispatch({ type: 'BALANCE_ADD_EARNED', payload: 1 });
         }
       } else if (s.currentType === 'Entertainment') {
@@ -434,6 +436,7 @@ function simulateEntertainmentConsumption(
 
     return () => {
       clearInterval(interval);
+      lastTickTimeRef.current = { study: 0, hobby: 0 };
     };
   }, [state.session.isActive]);
 
