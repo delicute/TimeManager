@@ -615,7 +615,9 @@ function simulateEntertainmentConsumption(
         dispatch({ type: 'SET_TODAY_LOGS', payload: logs });
 
         // ─── Build finalBalance with reconciliation + milestones ─
-        let finalBalance: BalanceState = { ...bal };
+        // 使用最新的 balancerRef（而非 await 前捕获的 bal），避免 timer 在 await
+        // writeLogEntry/getTodayLogs 期间 dispatch 的余额变更被覆盖
+        let finalBalance: BalanceState = { ...balanceRef.current };
 
         // ─── Reconciliation: correct any missed timer ticks ─
         if (startBalanceRef.current) {
