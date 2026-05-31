@@ -117,22 +117,32 @@ function reducer(state: AppState, action: Action): AppState {
         },
       };
     case 'BALANCE_TRY_CONSUME': {
-      const { earnedBalance, dailyGiftedRemaining } = state.balance;
+      let { earnedBalance, dailyGiftedRemaining } = state.balance;
       const rate = earnedBalance < 0 ? 2 : 1;
-      if (dailyGiftedRemaining >= rate) {
-        return {
-          ...state,
-          balance: { ...state.balance, dailyGiftedRemaining: dailyGiftedRemaining - rate },
-        };
+      let remaining = rate;
+
+      // 1. 优先消耗赚取余额
+      if (earnedBalance > 0) {
+        const take = Math.min(earnedBalance, remaining);
+        earnedBalance -= take;
+        remaining -= take;
       }
-      const remaining = rate - dailyGiftedRemaining;
+
+      // 2. 不够再消耗赠送余额
+      if (remaining > 0 && dailyGiftedRemaining > 0) {
+        const take = Math.min(dailyGiftedRemaining, remaining);
+        dailyGiftedRemaining -= take;
+        remaining -= take;
+      }
+
+      // 3. 还不够则进入负债
+      if (remaining > 0) {
+        earnedBalance -= remaining;
+      }
+
       return {
         ...state,
-        balance: {
-          ...state.balance,
-          dailyGiftedRemaining: 0,
-          earnedBalance: earnedBalance - remaining,
-        },
+        balance: { ...state.balance, earnedBalance, dailyGiftedRemaining },
       };
     }
     case 'BALANCE_RESET_DAILY': {
@@ -270,11 +280,42 @@ function migrateRule(rule: any): ReminderRule {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+
+// ─── Entertainment consumption simulation (用于 stopSession 统一结算) ────
+function simulateEntertainmentConsumption(
+  startEarned: number,
+  startGifted: number,
+  durationSec: number
+): { earnedBalance: number; dailyGiftedRemaining: number } {
+  let earned = startEarned;
+  let gifted = startGifted;
+  for (let i = 0; i < durationSec; i++) {
+    const rate = earned < 0 ? 2 : 1;
+    let remaining = rate;
+    // 1. 先消耗赚取余额
+    if (earned > 0) {
+      const take = Math.min(earned, remaining);
+      earned -= take;
+      remaining -= take;
+    }
+    // 2. 不够再消耗赠送
+    if (remaining > 0 && gifted > 0) {
+      const take = Math.min(gifted, remaining);
+      gifted -= take;
+      remaining -= take;
+    }
+    // 3. 还不够则负债
+    if (remaining > 0) {
+      earned -= remaining;
+    }
+  }
+  return { earnedBalance: earned, dailyGiftedRemaining: gifted };
+}
+
   const [state, dispatch] = useReducer(reducer, defaultState);
   const balanceRef = useRef(state.balance);
   const sessionRef = useRef(state.session);
   const settingsRef = useRef(state.settings);
-  const lastTickTimeRef = useRef<Record<string, number>>({ study: 0, hobby: 0 });
   const todayLogsRef = useRef<TimeLogEntry[]>([]);
   const reminderRulesRef = useRef<ReminderRule[]>([]);
   const triggerStatesRef = useRef<Map<string, ReminderTriggerState>>(new Map());
@@ -364,38 +405,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.electronAPI.setMinimizeToTray(state.settings.minimizeToTray);
   }, [state.settings, persistSettings]);
 
-  // ─── Timer (1-second heartbeat) ─────────────────────────
+  // ─── Timer (1-second heartbeat, only for UI tick display) ──
   useEffect(() => {
     if (!state.session.isActive) return;
 
     const interval = setInterval(() => {
-      if (sessionRef.current.isPaused) return; // Skip balance updates when paused
-
-      dispatch({ type: 'SESSION_TICK' });
-
-      const s = sessionRef.current;
-      const bal = balanceRef.current;
-      const cfg = settingsRef.current;
-
-      if (s.currentType === 'Study' || s.currentType === 'Hobby') {
-        const intervalSec = s.currentType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
-        const now = Date.now();
-        const key = s.currentType.toLowerCase();
-        const last = lastTickTimeRef.current[key] || s.startTime!;
-        const elapsed = (now - last) / 1000;
-
-        if (elapsed >= intervalSec) {
-          lastTickTimeRef.current[key] = now;
-          dispatch({ type: 'BALANCE_ADD_EARNED', payload: 1 });
-        }
-      } else if (s.currentType === 'Entertainment') {
-        dispatch({ type: 'BALANCE_TRY_CONSUME' });
+      if (!sessionRef.current.isPaused) {
+        dispatch({ type: 'SESSION_TICK' });
       }
     }, 1000);
 
     return () => {
       clearInterval(interval);
-      lastTickTimeRef.current = { study: 0, hobby: 0 };
     };
   }, [state.session.isActive]);
 
@@ -529,21 +550,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const stopSession = useCallback(async () => {
     const s = sessionRef.current;
     const bal = balanceRef.current;
+    const cfg = settingsRef.current;
     const activeType = s.currentType;
     if (s.isActive && s.startTime) {
       const endTime = Date.now();
       const elapsed = (endTime - s.startTime) / 1000;
 
       if (elapsed >= 1) {
-        const balanceChange = s.currentType === 'Entertainment'
-          ? -s.tickCount
-          : s.tickCount;
+        const elapsedSec = Math.floor(elapsed);
+        let balanceDelta = 0;
+        let newBalance: BalanceState;
 
+        // ─── Calculate session balance change ─────────────
+        if (activeType === 'Study' || activeType === 'Hobby') {
+          const w = activeType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
+          const earned = Math.floor(elapsed / w);
+          balanceDelta = earned;
+          newBalance = { ...bal, earnedBalance: bal.earnedBalance + earned };
+        } else if (activeType === 'Entertainment') {
+          const result = simulateEntertainmentConsumption(
+            bal.earnedBalance, bal.dailyGiftedRemaining, elapsedSec
+          );
+          const consumedTotal = (bal.earnedBalance - result.earnedBalance) +
+            (bal.dailyGiftedRemaining - result.dailyGiftedRemaining);
+          balanceDelta = -consumedTotal;
+          newBalance = { ...bal, earnedBalance: result.earnedBalance, dailyGiftedRemaining: result.dailyGiftedRemaining };
+        } else {
+          newBalance = { ...bal };
+        }
+
+        // ─── Log entry ────────────────────────────────────
         const entry: TimeLogEntry = {
           startTime: new Date(s.startTime).toISOString(),
           endTime: new Date(endTime).toISOString(),
           activityType: s.currentType,
-          balanceChange,
+          balanceChange: balanceDelta,
         };
 
         await window.electronAPI.writeLogEntry(entry);
@@ -554,7 +595,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (activeType === 'Study' || activeType === 'Hobby') {
           const milestones = bal.milestones || { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0, lastStudyEnd: 0, lastHobbyEnd: 0 };
           const isStudy = activeType === 'Study';
-          const key = isStudy ? 'study' : 'hobby';
           const contKey = isStudy ? 'studyContinuous' : 'hobbyContinuous';
           const claimKey = isStudy ? 'studyClaimed' : 'hobbyClaimed';
           const lastEndKey = isStudy ? 'lastStudyEnd' : 'lastHobbyEnd';
@@ -572,16 +612,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           let claimed = m[claimKey] || 0;
           let rewardTotal = 0;
 
-          milestoneList.forEach((m, i) => {
-            if (!(claimed & (1 << i)) && continuous >= m.threshold) {
+          milestoneList.forEach((ms, i) => {
+            if (!(claimed & (1 << i)) && continuous >= ms.threshold) {
               claimed |= (1 << i);
-              rewardTotal += m.reward;
-              const cfg = settingsRef.current;
+              rewardTotal += ms.reward;
               const locale = cfg.locale || 'zh';
-              const label = locale === 'zh' ? m.labelZH : m.labelEN;
-              const rewardMin = Math.round(m.reward / 60);
-              const threshDisplay = m.threshold >= 3600 ? `${Math.round(m.threshold / 3600)}h` : `${Math.round(m.threshold / 60)}min`;
-              const desc = locale === 'zh' ? `连续大于${threshDisplay}，获得${rewardMin}min的余额` : `Continuous >${threshDisplay}, earned ${rewardMin}min balance`;
+              const label = locale === 'zh' ? ms.labelZH : ms.labelEN;
+              const rewardMin = Math.round(ms.reward / 60);
+              const threshDisplay = ms.threshold >= 3600
+                ? `${Math.round(ms.threshold / 3600)}h`
+                : `${Math.round(ms.threshold / 60)}min`;
+              const desc = locale === 'zh'
+                ? `连续大于${threshDisplay}，获得${rewardMin}min的余额`
+                : `Continuous >${threshDisplay}, earned ${rewardMin}min balance`;
               window.electronAPI.notificationShow({
                 type: activeType,
                 notifType: 'milestone',
@@ -593,45 +636,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           });
 
-          if (rewardTotal > 0) {
-            const updatedBalance = {
-              ...bal,
-              dailyGiftedRemaining: bal.dailyGiftedRemaining + rewardTotal,
-              milestones: {
-                ...milestones,
-                [contKey]: continuous,
-                [claimKey]: claimed,
-                [lastEndKey]: endTime,
-              },
-            } as BalanceState;
-            dispatch({ type: 'SET_BALANCE', payload: updatedBalance });
-            window.electronAPI.saveBalance(updatedBalance);
-          } else {
-            // Still need to save continuous duration for progress bar
-            const updatedBalance = {
-              ...bal,
-              milestones: {
-                ...milestones,
-                [contKey]: continuous,
-                [lastEndKey]: endTime,
-              },
-            } as BalanceState;
-            dispatch({ type: 'SET_BALANCE', payload: updatedBalance });
-            window.electronAPI.saveBalance(updatedBalance);
-          }
+          // Merge milestone progress + rewards into newBalance
+          newBalance = {
+            ...newBalance,
+            dailyGiftedRemaining: newBalance.dailyGiftedRemaining + rewardTotal,
+            milestones: {
+              ...milestones,
+              [contKey]: continuous,
+              [claimKey]: claimed,
+              [lastEndKey]: endTime,
+            },
+          } as BalanceState;
         }
+
+        // ─── Apply balance (single update) ──────────────
+        dispatch({ type: 'SET_BALANCE', payload: newBalance });
+        window.electronAPI.saveBalance(newBalance);
       }
       dispatch({ type: 'SESSION_STOP' });
       notifySessionAction(activeType, 'stop', elapsed);
       try {
-        const bc = settingsRef.current;
-        const bl = bc.locale || 'zh';
+        const bl = cfg.locale || 'zh';
         const ticks = Math.floor(elapsed);
         if (activeType === 'Study' || activeType === 'Hobby') {
-          const w = activeType === 'Study' ? bc.studyWeight : bc.hobbyWeight;
+          const w = activeType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
           const earned = Math.floor(elapsed / w);
-          window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#a09d96', duration: bc.notificationDuration ?? 5 });
-        } else window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${ticks} 余额` : `Consumed ${ticks}`, body: '', color: '#a09d96', duration: bc.notificationDuration ?? 5 });
+          window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+        } else window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${ticks} 余额` : `Consumed ${ticks}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
       } catch { /* ignore */ }
     } else {
       dispatch({ type: 'SESSION_STOP' });

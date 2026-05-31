@@ -115,16 +115,28 @@ export function DebugPage() {
     // Update balance + milestone continuous time (entertainment has no milestones)
     window.electronAPI.loadBalance().then((b: any) => {
       if (isEntertainment) {
-        // Consume: dailyGiftedRemaining first, then earnedBalance (can go negative)
-        const consume = Math.abs(balanceChange);
-        const gifted = b.dailyGiftedRemaining || 0;
-        const newGifted = Math.max(0, gifted - consume);
-        const remainder = consume - (gifted - newGifted);
-        const newEarned = (b.earnedBalance || 0) - remainder;
+        // Consume: earnedBalance first, then dailyGiftedRemaining (can go negative/debt)
+        let consume = Math.abs(balanceChange);
+        let earned = b.earnedBalance || 0;
+        let gifted = b.dailyGiftedRemaining || 0;
+        // 1. consume from earned first
+        if (earned > 0) {
+          const take = Math.min(earned, consume);
+          earned -= take;
+          consume -= take;
+        }
+        // 2. then from gifted
+        if (consume > 0 && gifted > 0) {
+          const take = Math.min(gifted, consume);
+          gifted -= take;
+          consume -= take;
+        }
+        // 3. remainder goes to debt
+        if (consume > 0) earned -= consume;
         const updated = {
           ...b,
-          earnedBalance: newEarned,
-          dailyGiftedRemaining: newGifted,
+          earnedBalance: earned,
+          dailyGiftedRemaining: gifted,
         };
         window.electronAPI.saveBalance(updated);
         dispatch({ type: 'SET_BALANCE', payload: { ...updated, debugTodayOverride: debugOverride } });
