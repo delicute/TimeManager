@@ -88,8 +88,12 @@ export interface Translations {
   reminderMetricStudyDuration: string;
   reminderMetricHobbyDuration: string;
   reminderMetricEntertainmentDuration: string;
+  reminderMetricContinuousEntertainment: string;
+  reminderMetricContinuousStudy: string;
+  reminderMetricContinuousHobby: string;
   reminderMetricTotalAvailableBalance: string;
-  reminderMetricDebt: string;
+  reminderMetricDebtAmount: string;
+  reminderMetricTodaySessionCount: string;
   reminderMetricCurrentSessionDuration: string;
   reminderOperNeq: string;
   reminderBoolCurrentState: string;

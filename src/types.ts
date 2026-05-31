@@ -72,11 +72,15 @@ export type ReminderMetric =
   | 'entertainmentBalance'
   | 'dailyGiftedBalance'
   | 'earnedBalance'
-  | 'debt'
   | 'studyDuration'
   | 'hobbyDuration'
   | 'entertainmentDuration'
+  | 'continuousEntertainment'
+  | 'continuousStudy'
+  | 'continuousHobby'
   | 'totalAvailableBalance'
+  | 'debtAmount'
+  | 'todaySessionCount'
   | 'currentSessionDuration';
 
 export type ReminderOperator = 'lt' | 'gt' | 'gte' | 'lte' | 'eq' | 'neq';

@@ -14,9 +14,11 @@ const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c6
 const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: MessageCircle, info: FileText };
 
 const metricKeys: ReminderMetric[] = [
-  'entertainmentBalance','dailyGiftedBalance','earnedBalance','debt',
+  'entertainmentBalance','dailyGiftedBalance','earnedBalance',
   'studyDuration','hobbyDuration','entertainmentDuration',
-  'totalAvailableBalance','currentSessionDuration',
+  'continuousEntertainment','continuousStudy','continuousHobby',
+  'totalAvailableBalance','debtAmount',
+  'todaySessionCount','currentSessionDuration',
 ];
 const operatorKeys: ReminderOperator[] = ['lt','gt','gte','lte','eq','neq'];
 const sessionTypes: SessionType[] = ['Study','Hobby','Entertainment'];
@@ -55,19 +57,11 @@ function grp(logic: 'and'|'or' = 'and'): ConditionNode {
 function simplifyTree(node: ConditionNode): ConditionNode {
   if (node.type === 'group') {
     const simple = node.nodes.map(n => simplifyTree(n));
-    let flat = simple;
-    // Merge child groups with same logic
-    const merged: ConditionNode[] = [];
-    for (const child of flat) {
-      if (child.type === 'group' && child.logic === node.logic) {
-        merged.push(...child.nodes);
-      } else {
-        merged.push(child);
-      }
-    }
-    // Collapse single-child groups
-    if (merged.length === 1) return merged[0];
-    return { ...node, nodes: merged.length > 2 ? merged.slice(0, 2) : merged };
+    // Remove empty groups (0 children)
+    const filtered = simple.filter(n => !(n.type === 'group' && n.nodes.length === 0));
+    // Collapse single-child groups (avoids Group(onlyChild) redundancy)
+    if (filtered.length === 1) return filtered[0];
+    return { ...node, nodes: filtered.length > 2 ? filtered.slice(0, 2) : filtered };
   }
   if (node.type === 'not') {
     const inner = simplifyTree(node.node);
@@ -78,12 +72,13 @@ function simplifyTree(node: ConditionNode): ConditionNode {
   return node;
 }
 
-/** Cycle node type: leaf ↔ bool ↔ time (NOT handled by separate button) */
+/** Cycle node type: leaf → bool → time → not → leaf (not unwraps inner) */
 function nextNodeType(node: ConditionNode): ConditionNode {
   switch (node.type) {
     case 'leaf': return boolNode('hasActivityToday');
     case 'bool': return timeNode();
-    case 'time': return leaf();
+    case 'time': return notNode();
+    case 'not': return node.node; // unwrap NOT (double negation)
     default: return leaf();
   }
 }
@@ -180,7 +175,7 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
         <span style={{ fontSize:12, color:'var(--color-on-dark-soft)' }}>(</span>
         <div style={{ flex:1, minWidth:200 }}>
           <BinNode node={node.node} onChange={n=>onChange({...node, node:n})}
-            onDelete={()=>{}} />
+            onDelete={()=>{}} onConvert={()=>{}} />
         </div>
         <span style={{ fontSize:12, color:'var(--color-on-dark-soft)' }}>)</span>
       </div>
@@ -225,14 +220,15 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
   );
 }
 
-function BinNode({ node, onChange, onDelete, onCycleType, onAddLeaf, onWrapNot }: {
+function BinNode({ node, onChange, onDelete, onConvert, onCycleType, onWrapNot, onAddLeaf, onAddGroup }: {
   node:ConditionNode; onChange:(n:ConditionNode)=>void;
-  onDelete:()=>void;
-  onCycleType?:()=>void; onAddLeaf?:()=>void;
-  onWrapNot?:()=>void;
+  onDelete:()=>void; onConvert:()=>void;
+  onCycleType?:()=>void; onWrapNot?:()=>void;
+  onAddLeaf?:()=>void; onAddGroup?:()=>void;
 }) {
   const t = useT();
   const isSimple = node.type==='leaf' || node.type==='bool' || node.type==='time' || node.type==='not';
+  const nextLabel = node.type==='leaf' ? t('reminderBool') : node.type==='bool' ? t('reminderTime') : node.type==='time' ? t('reminderNot') : t('reminderBoolVar');
   return (
     <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', background:'rgba(255,255,255,0.02)' }}>
       {isSimple ? (
@@ -243,13 +239,19 @@ function BinNode({ node, onChange, onDelete, onCycleType, onAddLeaf, onWrapNot }
       <div style={{ display:'flex', gap:4, marginTop:6, flexWrap:'wrap' }}>
         {isSimple && onCycleType && (
           <button onClick={onCycleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
-            <Shuffle size={10} />{t('reminderBool')}
+            <Shuffle size={10} />{nextLabel}
           </button>
         )}
-        {onWrapNot && isSimple && (
-          <button onClick={onWrapNot} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}><Ban size={10} />{t('reminderNot')}</button>
+        {isSimple && onWrapNot && (
+          <button onClick={onWrapNot} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
+            <Ban size={10} />{t('reminderNot')}
+          </button>
+        )}
+        {node.type==='group' && onConvert && (
+          <button onClick={onConvert} style={{ ...tinyBtn }}><FileText size={10} />{t('reminderRemoveCondition')}</button>
         )}
         {onAddLeaf && <button onClick={onAddLeaf} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>}
+        {onAddGroup && <button onClick={onAddGroup} style={{ ...tinyBtn }}><Shuffle size={10} />{t('reminderGroup')}</button>}
         <button onClick={onDelete} style={{ ...tinyBtn, color:'var(--color-error)' }}><Trash2 size={10} />{t('reminderDelete')}</button>
       </div>
     </div>
@@ -260,36 +262,38 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
   const t = useT(); if (node.type!=='group') return null;
   const nc = node.nodes.length;
   const safe = (nc<1) ? [leaf()] : (nc>2 ? node.nodes.slice(0,2) : node.nodes);
-  if (safe.length!==node.nodes.length) onChange({...node, nodes:safe});
+  if (safe.length!==node.nodes.length) onChange(simplifyTree({...node, nodes:safe}));
 
   const L = safe[0]; const R = safe.length>1 ? safe[1] : null;
+  const change = (n: ConditionNode) => onChange(simplifyTree(n));
+  const setL = (n:ConditionNode) => change({...node, nodes:[n, ...(R ? [R] : [])]});
+  const setR = R ? (n:ConditionNode) => change({...node, nodes:[L, n]}) : undefined;
 
-  // Simplify the child node but keep parent group structure intact
-  const setL = (n:ConditionNode) => onChange({...node, nodes:[simplifyTree(n), ...(R ? [R] : [])]});
-  const setR = R ? (n:ConditionNode) => onChange({...node, nodes:[L, simplifyTree(n)]}) : undefined;
+  const convert = (item:ConditionNode): ConditionNode =>
+    (item.type==='group') ? item.nodes[0] : {type:'group', logic:'and', nodes:[item]};
 
-  const addSibling = (item:ConditionNode, side:'L'|'R') => {
-    const newItem = leaf();
-    if (!R) onChange({...node, nodes: side==='L' ? [L, newItem] : [newItem, L]});
+  const addSibling = (newNode: ConditionNode, side:'L'|'R') => {
+    if (!R) change({...node, nodes: side==='L' ? [L, newNode] : [newNode, L]});
     else {
-      // Use parent's logic so simplifyTree doesn't merge+truncate sub-group
-      const sub: ConditionNode = {type: 'group', logic: node.logic, nodes: [item, newItem]};
-      onChange({...node, nodes: side==='L' ? [sub, R] : [L, sub]});
+      const sub: ConditionNode = {type:'group', logic:'and', nodes:[newNode, leaf()]};
+      change({...node, nodes: side==='L' ? [sub, R] : [L, sub]});
     }
   };
 
-  const wrapNot = (item: ConditionNode): ConditionNode => {
-    if (item.type === 'not') return simplifyTree(item.node);
-    return { type: 'not', node: simplifyTree(item) };
-  };
+  const wrapNot = (item: ConditionNode) =>
+    item.type === 'not' ? item.node : { type:'not', node: item } as ConditionNode;
+
+  const group2 = (): ConditionNode => ({ type:'group', logic:'and', nodes:[leaf(), leaf()] });
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
       <BinNode node={L} onChange={setL}
-        onDelete={() => onChange({...node, nodes: R ? [R] : [leaf()]})}
-        onCycleType={() => onChange({...node, nodes:[nextNodeType(L), ...(R ? [R] : [])]})}
-        onAddLeaf={() => addSibling(L, 'L')}
-        onWrapNot={() => setL(wrapNot(L))} />
+        onDelete={() => change({...node, nodes: R ? [R] : [leaf()]})}
+        onConvert={() => change({...node, nodes:[convert(L), ...(R ? [R] : [])]})}
+        onCycleType={() => change({...node, nodes:[nextNodeType(L), ...(R ? [R] : [])]})}
+        onWrapNot={() => change({...node, nodes:[wrapNot(L), ...(R ? [R] : [])]})}
+        onAddLeaf={() => addSibling(leaf(), 'L')}
+        onAddGroup={() => addSibling(group2(), 'L')} />
 
       {R && <>
         <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0' }}>
@@ -312,10 +316,12 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
 
       {R && setR && (
         <BinNode node={R} onChange={setR}
-          onDelete={() => onChange({...node, nodes:[L]})}
-          onCycleType={() => onChange({...node, nodes:[L, nextNodeType(R)]})}
-          onAddLeaf={() => addSibling(R, 'R')}
-          onWrapNot={() => setR(wrapNot(R))} />
+          onDelete={() => change({...node, nodes:[L]})}
+          onConvert={() => change({...node, nodes:[L, convert(R)]})}
+          onCycleType={() => change({...node, nodes:[L, nextNodeType(R)]})}
+          onWrapNot={() => change({...node, nodes:[L, wrapNot(R)]})}
+          onAddLeaf={() => addSibling(leaf(), 'R')}
+          onAddGroup={() => addSibling(group2(), 'R')} />
       )}
     </div>
   );
