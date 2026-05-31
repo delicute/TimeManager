@@ -292,16 +292,16 @@ function simulateEntertainmentConsumption(
   for (let i = 0; i < durationSec; i++) {
     const rate = earned < 0 ? 2 : 1;
     let remaining = rate;
-    // 1. 先消耗赚取余额
-    if (earned > 0) {
-      const take = Math.min(earned, remaining);
-      earned -= take;
-      remaining -= take;
-    }
-    // 2. 不够再消耗赠送
-    if (remaining > 0 && gifted > 0) {
+    // 1. 先消耗赠送余额
+    if (gifted > 0) {
       const take = Math.min(gifted, remaining);
       gifted -= take;
+      remaining -= take;
+    }
+    // 2. 不够再消耗赚取余额
+    if (remaining > 0 && earned > 0) {
+      const take = Math.min(earned, remaining);
+      earned -= take;
       remaining -= take;
     }
     // 3. 还不够则负债
@@ -430,13 +430,24 @@ function simulateEntertainmentConsumption(
           dispatch({ type: 'BALANCE_ADD_EARNED', payload: 1 });
         }
       } else if (s.currentType === 'Entertainment') {
-        dispatch({ type: 'BALANCE_TRY_CONSUME' });
+        const now = Date.now();
+        const key = 'entertainment';
+        const last = lastTickTimeRef.current[key] || s.startTime!;
+        const elapsedSinceLastTick = Math.floor((now - last) / 1000);
+        if (elapsedSinceLastTick >= 1) {
+          lastTickTimeRef.current[key] = now;
+          // Dispatch for each missed second (catches up when Chromium throttles
+          // setInterval in background tabs — same pattern as Study/Hobby ref-based timing)
+          for (let i = 0; i < elapsedSinceLastTick; i++) {
+            dispatch({ type: 'BALANCE_TRY_CONSUME' });
+          }
+        }
       }
     }, 1000);
 
     return () => {
       clearInterval(interval);
-      lastTickTimeRef.current = { study: 0, hobby: 0 };
+      lastTickTimeRef.current = {};
     };
   }, [state.session.isActive]);
 
