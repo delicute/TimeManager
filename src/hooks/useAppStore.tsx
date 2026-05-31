@@ -121,17 +121,17 @@ function reducer(state: AppState, action: Action): AppState {
       const rate = earnedBalance < 0 ? 2 : 1;
       let remaining = rate;
 
-      // 1. 优先消耗赚取余额
-      if (earnedBalance > 0) {
-        const take = Math.min(earnedBalance, remaining);
-        earnedBalance -= take;
+      // 1. 先消耗赠送余额
+      if (dailyGiftedRemaining > 0) {
+        const take = Math.min(dailyGiftedRemaining, remaining);
+        dailyGiftedRemaining -= take;
         remaining -= take;
       }
 
-      // 2. 不够再消耗赠送余额
-      if (remaining > 0 && dailyGiftedRemaining > 0) {
-        const take = Math.min(dailyGiftedRemaining, remaining);
-        dailyGiftedRemaining -= take;
+      // 2. 不够再消耗赚取余额
+      if (remaining > 0 && earnedBalance > 0) {
+        const take = Math.min(earnedBalance, remaining);
+        earnedBalance -= take;
         remaining -= take;
       }
 
@@ -316,6 +316,7 @@ function simulateEntertainmentConsumption(
   const balanceRef = useRef(state.balance);
   const sessionRef = useRef(state.session);
   const settingsRef = useRef(state.settings);
+  const startBalanceRef = useRef<BalanceState | null>(null); // snapshot at session start, for stopSession reconciliation
   const todayLogsRef = useRef<TimeLogEntry[]>([]);
   const reminderRulesRef = useRef<ReminderRule[]>([]);
   const triggerStatesRef = useRef<Map<string, ReminderTriggerState>>(new Map());
@@ -405,13 +406,29 @@ function simulateEntertainmentConsumption(
     window.electronAPI.setMinimizeToTray(state.settings.minimizeToTray);
   }, [state.settings, persistSettings]);
 
-  // ─── Timer (1-second heartbeat, only for UI tick display) ──
+  // ─── Timer (1-second heartbeat: UI tick + 实时余额) ─────
   useEffect(() => {
     if (!state.session.isActive) return;
 
     const interval = setInterval(() => {
-      if (!sessionRef.current.isPaused) {
-        dispatch({ type: 'SESSION_TICK' });
+      if (sessionRef.current.isPaused) return;
+
+      dispatch({ type: 'SESSION_TICK' });
+
+      const s = sessionRef.current;
+      const cfg = settingsRef.current;
+
+      if (s.currentType === 'Study' || s.currentType === 'Hobby') {
+        const intervalSec = s.currentType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
+        const now = Date.now();
+        const key = s.currentType.toLowerCase();
+        /* Use tickCount as a monotonic counter — dispatch BALANCE_ADD_EARNED
+           every `intervalSec` ticks (i.e. once per `intervalSec` wall seconds). */
+        if (state.session.tickCount > 0 && state.session.tickCount % intervalSec === 0) {
+          dispatch({ type: 'BALANCE_ADD_EARNED', payload: 1 });
+        }
+      } else if (s.currentType === 'Entertainment') {
+        dispatch({ type: 'BALANCE_TRY_CONSUME' });
       }
     }, 1000);
 
@@ -559,27 +576,15 @@ function simulateEntertainmentConsumption(
       if (elapsed >= 1) {
         const elapsedSec = Math.floor(elapsed);
         let balanceDelta = 0;
-        let newBalance: BalanceState;
 
-        // ─── Calculate session balance change ─────────────
+        // ─── Log entry ──────────────────────────────────────
         if (activeType === 'Study' || activeType === 'Hobby') {
           const w = activeType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
-          const earned = Math.floor(elapsed / w);
-          balanceDelta = earned;
-          newBalance = { ...bal, earnedBalance: bal.earnedBalance + earned };
+          balanceDelta = Math.floor(elapsed / w);
         } else if (activeType === 'Entertainment') {
-          const result = simulateEntertainmentConsumption(
-            bal.earnedBalance, bal.dailyGiftedRemaining, elapsedSec
-          );
-          const consumedTotal = (bal.earnedBalance - result.earnedBalance) +
-            (bal.dailyGiftedRemaining - result.dailyGiftedRemaining);
-          balanceDelta = -consumedTotal;
-          newBalance = { ...bal, earnedBalance: result.earnedBalance, dailyGiftedRemaining: result.dailyGiftedRemaining };
-        } else {
-          newBalance = { ...bal };
+          balanceDelta = -elapsedSec;
         }
 
-        // ─── Log entry ────────────────────────────────────
         const entry: TimeLogEntry = {
           startTime: new Date(s.startTime).toISOString(),
           endTime: new Date(endTime).toISOString(),
@@ -591,7 +596,34 @@ function simulateEntertainmentConsumption(
         const logs = await window.electronAPI.getTodayLogs();
         dispatch({ type: 'SET_TODAY_LOGS', payload: logs });
 
-        // ─── Reward check for Study / Hobby ─────────────
+        // ─── Build finalBalance with reconciliation + milestones ─
+        let finalBalance: BalanceState = { ...bal };
+
+        // ─── Reconciliation: correct any missed timer ticks ─
+        if (startBalanceRef.current) {
+          const startBal = startBalanceRef.current;
+          if (activeType === 'Study' || activeType === 'Hobby') {
+            const w = activeType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
+            const expectedEarned = Math.floor(elapsed / w);
+            const actualEarned = finalBalance.earnedBalance - startBal.earnedBalance;
+            if (actualEarned < expectedEarned) {
+              finalBalance.earnedBalance += expectedEarned - actualEarned;
+            }
+          } else if (activeType === 'Entertainment') {
+            const expected = simulateEntertainmentConsumption(
+              startBal.earnedBalance, startBal.dailyGiftedRemaining, elapsedSec
+            );
+            const earnedDiff = expected.earnedBalance - finalBalance.earnedBalance;
+            const giftedDiff = expected.dailyGiftedRemaining - finalBalance.dailyGiftedRemaining;
+            if (earnedDiff !== 0 || giftedDiff !== 0) {
+              finalBalance.earnedBalance += earnedDiff;
+              finalBalance.dailyGiftedRemaining += giftedDiff;
+            }
+          }
+          startBalanceRef.current = null;
+        }
+
+        // ─── Reward check for Study / Hobby ───────────────
         if (activeType === 'Study' || activeType === 'Hobby') {
           const milestones = bal.milestones || { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0, lastStudyEnd: 0, lastHobbyEnd: 0 };
           const isStudy = activeType === 'Study';
@@ -636,10 +668,10 @@ function simulateEntertainmentConsumption(
             }
           });
 
-          // Merge milestone progress + rewards into newBalance
-          newBalance = {
-            ...newBalance,
-            dailyGiftedRemaining: newBalance.dailyGiftedRemaining + rewardTotal,
+          // Merge milestone progress + rewards into finalBalance
+          finalBalance = {
+            ...finalBalance,
+            dailyGiftedRemaining: finalBalance.dailyGiftedRemaining + rewardTotal,
             milestones: {
               ...milestones,
               [contKey]: continuous,
@@ -649,9 +681,9 @@ function simulateEntertainmentConsumption(
           } as BalanceState;
         }
 
-        // ─── Apply balance (single update) ──────────────
-        dispatch({ type: 'SET_BALANCE', payload: newBalance });
-        window.electronAPI.saveBalance(newBalance);
+        // ─── Apply balance (single update) ────────────────
+        dispatch({ type: 'SET_BALANCE', payload: finalBalance });
+        window.electronAPI.saveBalance(finalBalance);
       }
       dispatch({ type: 'SESSION_STOP' });
       notifySessionAction(activeType, 'stop', elapsed);
@@ -681,6 +713,8 @@ function simulateEntertainmentConsumption(
         }
         await stopSession();
       }
+      // Snapshot the balance BEFORE the new session starts (for reconciliation)
+      startBalanceRef.current = balanceRef.current;
       dispatch({ type: 'SESSION_START', payload: type });
       notifySessionAction(type, 'start');
     } finally {
