@@ -274,6 +274,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const reminderRulesRef = useRef<ReminderRule[]>([]);
   const triggerStatesRef = useRef<Map<string, ReminderTriggerState>>(new Map());
   const initialMountRef = useRef(true);
+  const startingRef = useRef(false); // Prevent re-entrance in startSession
 
   // Keep refs in sync
   useEffect(() => { balanceRef.current = state.balance; }, [state.balance]);
@@ -337,7 +338,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   }, []);
 
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Persist balance on change
   useEffect(() => {
@@ -632,16 +633,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const startSession = useCallback((type: SessionType) => {
-    if (sessionRef.current.isActive) {
-      if (sessionRef.current.currentType === type) {
-        stopSession();
-        return;
+  const startSession = useCallback(async (type: SessionType) => {
+    // Guard against re-entrance (e.g. global shortcut + keydown double-fire)
+    if (startingRef.current) return;
+    startingRef.current = true;
+    try {
+      if (sessionRef.current.isActive) {
+        if (sessionRef.current.currentType === type) {
+          await stopSession();
+          return;
+        }
+        await stopSession();
       }
-      stopSession();
+      dispatch({ type: 'SESSION_START', payload: type });
+      notifySessionAction(type, 'start');
+    } finally {
+      startingRef.current = false;
     }
-    dispatch({ type: 'SESSION_START', payload: type });
-    notifySessionAction(type, 'start');
   }, [stopSession]);
 
   return (

@@ -22,6 +22,11 @@ export function App() {
   const balanceRef = useRef(balance);
   sessionRef.current = session;
   balanceRef.current = balance;
+  const settingsRef = useRef(state.settings);
+  settingsRef.current = state.settings;
+
+  // Session action IDs that are also registered as global shortcuts
+  const SESSION_ACTIONS = new Set(['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop', 'sessionPause', 'sessionPrint']);
 
   // Sync session state to main process for tray menu
   useEffect(() => {
@@ -133,6 +138,11 @@ export function App() {
       const lookupKey = normParts.join('+');
       const action = keyMap.get(lookupKey);
       if (!action) return;
+
+      // When global hotkeys are enabled, session control is handled by
+      // OS-level shortcuts (globalShortcut.register). Skip keydown to
+      // avoid double-firing.
+      if (SESSION_ACTIONS.has(action) && settingsRef.current.globalHotkeys) return;
 
       e.preventDefault();
       switch (action) {
