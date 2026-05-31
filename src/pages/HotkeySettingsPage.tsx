@@ -106,21 +106,6 @@ export function HotkeySettingsPage({ embedded }: { embedded?: boolean }) {
   const [conflictId, setConflictId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Global hotkeys: only register Session Control shortcuts
-  const SESSION_HOTKEY_IDS = ['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop', 'sessionPause', 'sessionPrint'];
-
-  useEffect(() => {
-    if (state.settings.globalHotkeys) {
-      const sessionOnly: Record<string, string> = {};
-      for (const id of SESSION_HOTKEY_IDS) {
-        if (currentHotkeys[id]) sessionOnly[id] = currentHotkeys[id];
-      }
-      window.electronAPI.registerGlobalHotkeys(sessionOnly);
-    } else {
-      window.electronAPI.unregisterGlobalHotkeys();
-    }
-  }, [state.settings.globalHotkeys, state.settings.hotkeys]);
-
   const updateSetting = (partial: Partial<typeof state.settings>) => {
     const updated = { ...state.settings, ...partial };
     dispatch({ type: 'SET_SETTINGS', payload: updated });

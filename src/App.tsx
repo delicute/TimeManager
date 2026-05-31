@@ -51,7 +51,22 @@ export function App() {
     loadInitialData();
   }, [loadInitialData]);
 
-  // ─── Global Hotkeys ─────────────────────────────────
+  // ─── Global Hotkey Registration ──────────────────────
+  // Must be at App level (always mounted), NOT in HotkeySettingsPage
+  useEffect(() => {
+    if (state.settings.globalHotkeys) {
+      const currentHotkeys = { ...DEFAULT_HOTKEYS, ...state.settings.hotkeys };
+      const sessionOnly: Record<string, string> = {};
+      for (const id of ['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop', 'sessionPause', 'sessionPrint']) {
+        if (currentHotkeys[id]) sessionOnly[id] = currentHotkeys[id];
+      }
+      window.electronAPI.registerGlobalHotkeys(sessionOnly);
+    } else {
+      window.electronAPI.unregisterGlobalHotkeys();
+    }
+  }, [state.settings.globalHotkeys, state.settings.hotkeys]);
+
+  // ─── Global Hotkeys Listener (IPC from main process) ─
   useEffect(() => {
     const cleanup = window.electronAPI.onGlobalShortcutTrigger((id) => {
       switch (id) {
