@@ -775,32 +775,27 @@ function removeNotif(id){
   var e=ndb[id];
   if(!e)return;
   delete ndb[id];
-  // FLIP: snapshot positions before DOM removal
+  // Capture siblings + take leaving out of flow → parallel fade + shift
   var sib=[];for(var i=0;i<st.children.length;i++){var c=st.children[i];if(c!==e)sib.push(c);}
   var oldTops=sib.map(function(s){return s.getBoundingClientRect().top});
-  // Use rAF to ensure browser paints the pre-leaving frame, then add class
-  requestAnimationFrame(function(){
-    e.classList.add('leaving');
-    setTimeout(function(){
-      e.remove();
-      // FLIP: filter for elements still in DOM, matching oldTops per-element
-      var valid=[],validOld=[];
-      for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
-      if(valid.length>0){
-        var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
-        valid.forEach(function(s,i){
-          var dy=newTops[i]-validOld[i];
-          if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
-        });
-        requestAnimationFrame(function(){requestAnimationFrame(function(){
-          valid.forEach(function(s,i){
-            var dy=newTops[i]-validOld[i];
-            if(dy!==0){s.style.transition='transform 400ms ease-out';s.style.transform='';}
-          });
-        })});
-      }
-    },${NOTIF_FADE_MS});
-  });
+  var er=e.getBoundingClientRect();e.style.position='fixed';e.style.left=er.left+'px';e.style.top=er.top+'px';e.style.width=er.width+'px';
+  e.classList.add('leaving');
+  var valid=[],validOld=[];
+  for(var i=0;i<sib.length;i++){if(sib[i].parentNode===st){valid.push(sib[i]);validOld.push(oldTops[i]);}}
+  if(valid.length>0){
+    var newTops=valid.map(function(s){return s.getBoundingClientRect().top});
+    valid.forEach(function(s,i){
+      var dy=newTops[i]-validOld[i];
+      if(dy!==0){s.style.transition='none';s.style.transform='translate(0,'+(-dy)+'px)';}
+    });
+    requestAnimationFrame(function(){requestAnimationFrame(function(){
+      valid.forEach(function(s,i){
+        var dy=newTops[i]-validOld[i];
+        if(dy!==0){s.style.transition='transform 400ms ease-out';s.style.transform='';}
+      });
+    })});
+  }
+  setTimeout(function(){if(e.parentNode)e.remove()},${NOTIF_FADE_MS});
 }
 function _e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
 if(window.containerBridge){
