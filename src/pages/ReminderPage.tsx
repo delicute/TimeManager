@@ -14,11 +14,9 @@ const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c6
 const NOTIF_LU: Record<string, typeof Bell> = { reminder: Bell, urgent: AlertTriangle, notification: MessageCircle, info: FileText };
 
 const metricKeys: ReminderMetric[] = [
-  'entertainmentBalance','dailyGiftedBalance','earnedBalance',
+  'entertainmentBalance','dailyGiftedBalance','earnedBalance','debtAmount',
   'studyDuration','hobbyDuration','entertainmentDuration',
-  'continuousEntertainment','continuousStudy','continuousHobby',
-  'totalAvailableBalance','debtAmount',
-  'todaySessionCount','currentSessionDuration',
+  'totalAvailableBalance','currentSessionDuration',
 ];
 const operatorKeys: ReminderOperator[] = ['lt','gt','gte','lte','eq','neq'];
 const sessionTypes: SessionType[] = ['Study','Hobby','Entertainment'];
@@ -72,13 +70,13 @@ function simplifyTree(node: ConditionNode): ConditionNode {
   return node;
 }
 
-/** Cycle node type: leaf → bool → time → not → leaf (not unwraps inner) */
+/** Cycle node type: leaf → bool → time → leaf (NOT has its own button) */
 function nextNodeType(node: ConditionNode): ConditionNode {
   switch (node.type) {
     case 'leaf': return boolNode('hasActivityToday');
     case 'bool': return timeNode();
-    case 'time': return notNode();
-    case 'not': return node.node; // unwrap NOT (double negation)
+    case 'time': return leaf();
+    case 'not': return node.node; // unwrap NOT (cycle from NOT goes back to inner)
     default: return leaf();
   }
 }
@@ -172,12 +170,10 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
       <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' }}>
         <Ban size={13} style={{ color:'var(--color-accent-teal)', flexShrink:0 }} />
         <span style={{ fontSize:12, color:'var(--color-accent-teal)', fontWeight:600 }}>{t('reminderNot')}</span>
-        <span style={{ fontSize:12, color:'var(--color-on-dark-soft)' }}>(</span>
         <div style={{ flex:1, minWidth:200 }}>
           <BinNode node={node.node} onChange={n=>onChange({...node, node:n})}
             onDelete={()=>{}} />
         </div>
-        <span style={{ fontSize:12, color:'var(--color-on-dark-soft)' }}>)</span>
       </div>
     );
   }
@@ -226,7 +222,7 @@ function BinNode({ node, onChange, onDelete, onCycleType, onWrapNot, onAddLeaf }
 }) {
   const t = useT();
   const isSimple = node.type==='leaf' || node.type==='bool' || node.type==='time' || node.type==='not';
-  const nextLabel = node.type==='leaf' ? t('reminderBool') : node.type==='bool' ? t('reminderTime') : node.type==='time' ? t('reminderNot') : t('reminderBoolVar');
+  const nextLabel = node.type==='leaf' ? t('reminderBool') : node.type==='bool' ? t('reminderTime') : t('reminderBoolVar');
   return (
     <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', background:'rgba(255,255,255,0.02)' }}>
       {isSimple ? (
