@@ -7,6 +7,14 @@ export function formatDuration(seconds: number): string {
   return `${secs}s`;
 }
 
+/** 赠送余额专用格式：只显示小时和分钟，不显示秒 */
+export function formatGiftedRemaining(seconds: number): string {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (hrs > 0) return mins > 0 ? `${hrs}h${mins}m` : `${hrs}h`;
+  return `${mins}m`;
+}
+
 export function formatDurationFull(seconds: number): string {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
