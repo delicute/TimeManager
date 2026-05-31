@@ -136,6 +136,9 @@ export interface Translations {
   reminderConfirm: string;
   reminderAnd: string;
   reminderOr: string;
+  reminderAddCondition: string;
+  reminderAddGroup: string;
+  reminderRemoveCondition: string;
   reminderBackToList: string;
   reminderCancel: string;
   reminderDisabled: string;
