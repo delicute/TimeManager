@@ -736,7 +736,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:transparent;font-fam
 .notif{width:${NOTIF_CARD_WIDTH}px;background:#252320;border-radius:6px;padding:0 0 0 0;color:#faf9f5;font-size:13px;opacity:0;transform:translate(40px,0);transition:opacity 220ms ease-out,transform ${NOTIF_SLIDE_MS}ms ease-out;pointer-events:none;overflow:hidden}
 .notif.show{opacity:1;transform:translate(0,0)}
 .notif.leaving{opacity:0;transform:translate(30px,0);transition:opacity ${NOTIF_FADE_MS}ms ease-in,transform ${NOTIF_FADE_MS}ms ease-in}
-.notif.leaving-down{opacity:0;transform:translate(0,30px);transition:opacity ${NOTIF_FADE_MS}ms ease-in,transform ${NOTIF_FADE_MS}ms ease-in}
 .ninner{display:flex;align-items:flex-start;gap:8px;padding:8px 12px}
 .nbar{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch}
 .nh{font-size:13px;font-weight:600;color:#faf9f5;line-height:1.4}
@@ -776,14 +775,12 @@ function removeNotif(id){
   var e=ndb[id];
   if(!e)return;
   delete ndb[id];
-  // column-reverse: first DOM child = visually at the bottom
-  var isBottom = e === st.children[0];
   // FLIP: snapshot positions before DOM removal
   var sib=[];for(var i=0;i<st.children.length;i++){var c=st.children[i];if(c!==e)sib.push(c);}
   var oldTops=sib.map(function(s){return s.getBoundingClientRect().top});
   // Use rAF to ensure browser paints the pre-leaving frame, then add class
   requestAnimationFrame(function(){
-    e.classList.add(isBottom ? 'leaving-down' : 'leaving');
+    e.classList.add('leaving');
     setTimeout(function(){
       e.remove();
       // FLIP: filter for elements still in DOM, matching oldTops per-element
