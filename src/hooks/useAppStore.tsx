@@ -338,9 +338,10 @@ function simulateEntertainmentConsumption(
     const handler = () => {
       try {
         const s = sessionRef.current;
-        const bal = balanceRef.current;
+        let bal = { ...balanceRef.current };
         const cfg = settingsRef.current;
         // If there's an active session, write a log entry before quitting
+        // AND update milestones so progress bar doesn't reset on restart
         if (s.isActive && s.currentType !== 'None' && s.startTime) {
           const endTime = Date.now();
           const elapsed = (endTime - s.startTime) / 1000;
@@ -350,6 +351,36 @@ function simulateEntertainmentConsumption(
             if (s.currentType === 'Study' || s.currentType === 'Hobby') {
               const w = s.currentType === 'Study' ? cfg.studyWeight : cfg.hobbyWeight;
               balanceDelta = Math.floor(elapsed / w);
+              // Update milestone continuous time (same logic as stopSession)
+              const isStudy = s.currentType === 'Study';
+              const contKey = isStudy ? 'studyContinuous' : 'hobbyContinuous';
+              const claimKey = isStudy ? 'studyClaimed' : 'hobbyClaimed';
+              const lastEndKey = isStudy ? 'lastStudyEnd' : 'lastHobbyEnd';
+              const msList = isStudy ? STUDY_MILESTONES : HOBBY_MILESTONES;
+              const ms = bal.milestones || { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0, lastStudyEnd: 0, lastHobbyEnd: 0 };
+              let continuous = (ms[contKey] || 0) + elapsed;
+              const lastEnd = (ms[lastEndKey] || 0);
+              if (lastEnd > 0 && s.startTime - lastEnd > CONTINUITY_GAP * 1000) {
+                continuous = elapsed;
+              }
+              let claimed = (ms[claimKey] || 0) as number;
+              let rewardTotal = 0;
+              msList.forEach((mst, i) => {
+                if (!(claimed & (1 << i)) && continuous >= mst.threshold) {
+                  claimed |= (1 << i);
+                  rewardTotal += mst.reward;
+                }
+              });
+              bal = {
+                ...bal,
+                dailyGiftedRemaining: bal.dailyGiftedRemaining + rewardTotal,
+                milestones: {
+                  ...ms,
+                  [contKey]: continuous,
+                  [claimKey]: claimed,
+                  [lastEndKey]: endTime,
+                },
+              } as BalanceState;
             } else if (s.currentType === 'Entertainment') {
               balanceDelta = -elapsedSec;
             }
