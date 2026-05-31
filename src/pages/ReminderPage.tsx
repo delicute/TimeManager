@@ -29,7 +29,7 @@ const boolTypeKeys: { value: BoolType; label: (t: ReturnType<typeof useT>) => st
   { value: 'isPaused', label: (t) => t('reminderBoolIsPaused') },
   { value: 'isMilestoneAvailable', label: (t) => t('reminderBoolIsMilestoneAvailable') },
 ];
-const timeOpKeys = ['before', 'after'] as const;
+const timeOpKeys = ['before', 'after', 'at'] as const;
 
 type Unit = 's'|'m'|'h';
 const UNIT_MULT: Record<Unit,number> = { s:1, m:60, h:3600 };
@@ -51,6 +51,44 @@ function notNode(): ConditionNode {
 }
 function grp(logic: 'and'|'or' = 'and'): ConditionNode {
   return { type: 'group', logic, nodes: [leaf()] };
+}
+
+/** Auto-clean tree: collapse single-child groups, eliminate double NOT */
+function simplifyTree(node: ConditionNode): ConditionNode {
+  if (node.type === 'group') {
+    const simple = node.nodes.map(n => simplifyTree(n));
+    let flat = simple;
+    // Merge child groups with same logic
+    const merged: ConditionNode[] = [];
+    for (const child of flat) {
+      if (child.type === 'group' && child.logic === node.logic) {
+        merged.push(...child.nodes);
+      } else {
+        merged.push(child);
+      }
+    }
+    // Collapse single-child groups
+    if (merged.length === 1) return merged[0];
+    return { ...node, nodes: merged.length > 2 ? merged.slice(0, 2) : merged };
+  }
+  if (node.type === 'not') {
+    const inner = simplifyTree(node.node);
+    // Double NOT elimination
+    if (inner.type === 'not') return inner.node;
+    return { ...node, node: inner };
+  }
+  return node;
+}
+
+/** Cycle node type: leaf → bool → time → not → leaf (not unwraps inner) */
+function nextNodeType(node: ConditionNode): ConditionNode {
+  switch (node.type) {
+    case 'leaf': return boolNode('hasActivityToday');
+    case 'bool': return timeNode();
+    case 'time': return notNode();
+    case 'not': return node.node; // unwrap NOT (double negation)
+    default: return leaf();
+  }
 }
 
 const ipt: React.CSSProperties = {
@@ -122,14 +160,16 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
           options={[
             { value: 'before', label: t('reminderTimeBefore') },
             { value: 'after', label: t('reminderTimeAfter') },
+            { value: 'at', label: t('reminderTimeAt') },
           ]}
           value={node.timeOp}
-          onChange={val => onChange({...node, timeOp: val as 'before' | 'after'})}
+          onChange={val => onChange({...node, timeOp: val as 'before' | 'after' | 'at'})}
           width={80}
         />
         <input type="time" value={node.timeValue}
           onChange={e => onChange({...node, timeValue: e.target.value})}
-          style={{ ...ipt, width: 100, colorScheme:'dark' }} />
+          style={{ ...ipt, width: 100, colorScheme:'dark' }}
+          className="dark-time-input" />
       </div>
     );
   }
@@ -188,48 +228,30 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
   );
 }
 
-function BinNode({ node, onChange, onDelete, onConvert, onToggleType, onAddLeaf, onAddTime, onAddNot }: {
+function BinNode({ node, onChange, onDelete, onConvert, onCycleType, onAddLeaf }: {
   node:ConditionNode; onChange:(n:ConditionNode)=>void;
   onDelete:()=>void; onConvert:()=>void;
-  onToggleType?:()=>void; onAddLeaf?:()=>void;
-  onAddTime?:()=>void; onAddNot?:()=>void;
+  onCycleType?:()=>void; onAddLeaf?:()=>void;
 }) {
   const t = useT();
   const isSimple = node.type==='leaf' || node.type==='bool' || node.type==='time' || node.type==='not';
   return (
     <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', background:'rgba(255,255,255,0.02)' }}>
-      {node.type==='leaf' || node.type==='bool' || node.type==='time' || node.type==='not' ? (
+      {isSimple ? (
         <LeafView node={node} onChange={onChange} />
       ) : (
         <BinTree node={node} onChange={onChange} />
       )}
       <div style={{ display:'flex', gap:4, marginTop:6, flexWrap:'wrap' }}>
-        {node.type==='leaf' && onToggleType && (
-          <button onClick={onToggleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
+        {isSimple && onCycleType && (
+          <button onClick={onCycleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
             <Shuffle size={10} />{t('reminderBool')}
-          </button>
-        )}
-        {node.type==='bool' && onToggleType && (
-          <button onClick={onToggleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
-            <Shuffle size={10} />{t('reminderBoolVar')}
-          </button>
-        )}
-        {node.type==='time' && onToggleType && (
-          <button onClick={onToggleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
-            <Shuffle size={10} />{t('reminderBoolVar')}
-          </button>
-        )}
-        {node.type==='not' && onToggleType && (
-          <button onClick={onToggleType} style={{ ...tinyBtn, color:'var(--color-accent-teal)' }}>
-            <Shuffle size={10} />{t('reminderBoolVar')}
           </button>
         )}
         {node.type==='group' && onConvert && (
           <button onClick={onConvert} style={{ ...tinyBtn }}><FileText size={10} />{t('reminderRemoveCondition')}</button>
         )}
         {onAddLeaf && <button onClick={onAddLeaf} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>}
-        {onAddTime && <button onClick={onAddTime} style={{ ...tinyBtn }}><Clock size={10} />{t('reminderTime')}</button>}
-        {onAddNot && <button onClick={onAddNot} style={{ ...tinyBtn }}><Ban size={10} />{t('reminderNot')}</button>}
         <button onClick={onDelete} style={{ ...tinyBtn, color:'var(--color-error)' }}><Trash2 size={10} />{t('reminderDelete')}</button>
       </div>
     </div>
@@ -240,30 +262,32 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
   const t = useT(); if (node.type!=='group') return null;
   const nc = node.nodes.length;
   const safe = (nc<1) ? [leaf()] : (nc>2 ? node.nodes.slice(0,2) : node.nodes);
-  if (safe.length!==node.nodes.length) onChange({...node, nodes:safe});
+  if (safe.length!==node.nodes.length) onChange(simplifyTree({...node, nodes:safe}));
 
   const L = safe[0]; const R = safe.length>1 ? safe[1] : null;
-  const setL = (n:ConditionNode) => onChange({...node, nodes:[n, ...(R ? [R] : [])]});
-  const setR = R ? (n:ConditionNode) => onChange({...node, nodes:[L, n]}) : undefined;
+  const change = (n: ConditionNode) => onChange(simplifyTree(n));
+  const setL = (n:ConditionNode) => change({...node, nodes:[n, ...(R ? [R] : [])]});
+  const setR = R ? (n:ConditionNode) => change({...node, nodes:[L, n]}) : undefined;
 
   const convert = (item:ConditionNode): ConditionNode =>
     (item.type==='group') ? item.nodes[0] : {type:'group', logic:'and', nodes:[item]};
 
   const addSibling = (item:ConditionNode, side:'L'|'R') => {
-    if (!R) onChange({...node, nodes: side==='L' ? [L, leaf()] : [leaf(), L]});
-    else { const sub: ConditionNode = {type:'group', logic:'and', nodes:[item, leaf()]};
-      onChange({...node, nodes: side==='L' ? [sub, R] : [L, sub]}); }
+    const newItem = leaf();
+    if (!R) change({...node, nodes: side==='L' ? [L, newItem] : [newItem, L]});
+    else {
+      const sub: ConditionNode = {type:'group', logic:'and', nodes:[item, newItem]};
+      change({...node, nodes: side==='L' ? [sub, R] : [L, sub]});
+    }
   };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
       <BinNode node={L} onChange={setL}
-        onDelete={() => onChange({...node, nodes: R ? [R] : [leaf()]})}
-        onConvert={() => onChange({...node, nodes:[convert(L), ...(R ? [R] : [])]})}
-        onToggleType={() => onChange({...node, nodes:[L.type==='bool'?leaf():boolNode(), ...(R ? [R] : [])]})}
-        onAddLeaf={() => addSibling(L, 'L')}
-        onAddTime={() => addSibling(timeNode(), 'L')}
-        onAddNot={() => addSibling(notNode(), 'L')} />
+        onDelete={() => change({...node, nodes: R ? [R] : [leaf()]})}
+        onConvert={() => change({...node, nodes:[convert(L), ...(R ? [R] : [])]})}
+        onCycleType={() => change({...node, nodes:[nextNodeType(L), ...(R ? [R] : [])]})}
+        onAddLeaf={() => addSibling(L, 'L')} />
 
       {R && <>
         <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0' }}>
@@ -286,12 +310,10 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
 
       {R && setR && (
         <BinNode node={R} onChange={setR}
-          onDelete={() => onChange({...node, nodes:[L]})}
-          onConvert={() => onChange({...node, nodes:[L, convert(R)]})}
-          onToggleType={() => onChange({...node, nodes:[L, R.type==='bool'?leaf():boolNode()]})}
-          onAddLeaf={() => addSibling(R, 'R')}
-          onAddTime={() => addSibling(timeNode(), 'R')}
-          onAddNot={() => addSibling(notNode(), 'R')} />
+          onDelete={() => change({...node, nodes:[L]})}
+          onConvert={() => change({...node, nodes:[L, convert(R)]})}
+          onCycleType={() => change({...node, nodes:[L, nextNodeType(R)]})}
+          onAddLeaf={() => addSibling(R, 'R')} />
       )}
     </div>
   );
@@ -314,7 +336,7 @@ function displayTree(node:ConditionNode, t:ReturnType<typeof useT>, wrap=false):
     return `${t(btKey)} = ${node.expected ? t('reminderBoolTrue') : t('reminderBoolFalse')}`;
   }
   if (node.type==='time') {
-    const opLabel = node.timeOp==='before'?t('reminderTimeBefore'):t('reminderTimeAfter');
+    const opLabel = node.timeOp==='before'?t('reminderTimeBefore'):node.timeOp==='after'?t('reminderTimeAfter'):t('reminderTimeAt');
     return `${t('reminderTime')} ${opLabel} ${node.timeValue}`;
   }
   if (node.type==='not') {

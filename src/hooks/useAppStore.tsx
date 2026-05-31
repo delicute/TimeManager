@@ -229,6 +229,9 @@ function evalNode(node: ConditionNode, metrics: Record<string, number>, session?
     const [h, m] = node.timeValue.split(':').map(Number);
     const targetMin = h * 60 + m;
     const currentMin = now.getHours() * 60 + now.getMinutes();
+    if (node.timeOp === 'at') {
+      return currentMin === targetMin;
+    }
     return node.timeOp === 'before' ? currentMin < targetMin : currentMin >= targetMin;
   } else if (node.type === 'not') {
     return !evalNode(node.node, metrics, session);

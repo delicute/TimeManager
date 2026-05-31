@@ -1295,3 +1295,15 @@ body {
   height: 32px;
   font-size: 13px;
 }
+
+/* ── Dark-themed time input ── */
+.dark-time-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+.dark-time-input::-webkit-datetime-edit {
+  color: #faf9f5;
+}
+.dark-time-input::-webkit-datetime-edit-fields-wrapper {
+  color: #faf9f5;
+}

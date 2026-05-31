@@ -104,6 +104,7 @@ export interface Translations {
   reminderTime: string;
   reminderTimeBefore: string;
   reminderTimeAfter: string;
+  reminderTimeAt: string;
   reminderNot: string;
   reminderUrgencyLow: string;
   reminderUrgencyMedium: string;

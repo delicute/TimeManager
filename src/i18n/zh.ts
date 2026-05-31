@@ -146,6 +146,7 @@ export const zh: Translations = {
   reminderTime: '时间',
   reminderTimeBefore: '之前',
   reminderTimeAfter: '之后',
+  reminderTimeAt: '处于',
   reminderNot: '非',
   reminderNotifTypeLabel: '通知类型',
   reminderNotifTypeReminder: '提醒',

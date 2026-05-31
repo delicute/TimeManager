@@ -118,8 +118,8 @@ export interface ConditionGroup {
 
 export interface TimeCondition {
   type: 'time';
-  /** 'before' = trigger before this time, 'after' = trigger after this time */
-  timeOp: 'before' | 'after';
+  /** 'before' = trigger before this time, 'after' = trigger after, 'at' = trigger at this exact minute */
+  timeOp: 'before' | 'after' | 'at';
   /** HH:mm in 24h format, e.g. "22:00" */
   timeValue: string;
 }

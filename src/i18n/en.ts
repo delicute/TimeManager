@@ -146,6 +146,7 @@ export const en: Translations = {
   reminderTime: 'Time',
   reminderTimeBefore: 'Before',
   reminderTimeAfter: 'After',
+  reminderTimeAt: 'At',
   reminderNot: 'NOT',
   reminderNotifTypeLabel: 'Notification Type',
   reminderNotifTypeReminder: 'Reminder',
