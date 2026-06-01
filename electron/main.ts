@@ -774,8 +774,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:transparent;font-fam
 .notif.leaving{opacity:0;transform:translate(30px,0);transition:opacity ${NOTIF_FADE_MS}ms ease-in,transform ${NOTIF_FADE_MS}ms ease-in}
 .ninner{display:flex;align-items:flex-start;gap:8px;padding:8px 12px}
 .nbar{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch}
-.nh{font-size:13px;font-weight:600;color:#faf9f5;line-height:1.4}
-.nb{font-size:12px;color:#b0ada6;line-height:1.4;margin-top:1px}
+.nh{font-size:13px;font-weight:600;color:#faf9f5;line-height:1.4;word-break:break-word;overflow-wrap:anywhere}
+.nb{font-size:12px;color:#b0ada6;line-height:1.4;margin-top:1px;word-break:break-word;overflow-wrap:anywhere}
 .notif svg{width:14px;height:14px;display:block;flex-shrink:0}
 </style>
 </head>
