@@ -237,6 +237,7 @@ declare global {
       notificationDismiss: (id: string) => Promise<void>;
       sessionUpdateState: (state: { isActive: boolean; type: string }) => Promise<void>;
       onTrayAction: (callback: (action: { action: string; type?: string; page?: string }) => void) => () => void;
+      onSessionTick: (callback: () => void) => () => void;
       registerGlobalHotkeys: (hotkeys: Record<string, string>) => Promise<Record<string, boolean>>;
       unregisterGlobalHotkeys: () => Promise<void>;
       onGlobalShortcutTrigger: (callback: (id: string) => void) => () => void;

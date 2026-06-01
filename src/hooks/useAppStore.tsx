@@ -520,16 +520,14 @@ function simulateEntertainmentConsumption(
     window.electronAPI.setMinimizeToTray(state.settings.minimizeToTray);
   }, [state.settings, persistSettings]);
 
-  // ─── Timer (1-second heartbeat: UI tick + 实时余额) ─────
+  // ─── Main-process tick listener (不受窗口隐藏节流影响) ─────
   useEffect(() => {
-    if (!state.session.isActive) return;
-
-    const interval = setInterval(() => {
-      if (sessionRef.current.isPaused) return;
+    const cleanup = window.electronAPI.onSessionTick(() => {
+      const s = sessionRef.current;
+      if (!s.isActive || s.isPaused) return;
 
       dispatch({ type: 'SESSION_TICK' });
 
-      const s = sessionRef.current;
       const cfg = settingsRef.current;
 
       if (s.currentType === 'Study' || s.currentType === 'Hobby') {
@@ -561,12 +559,15 @@ function simulateEntertainmentConsumption(
           }
         }
       }
-    }, 1000);
+    });
+    return () => cleanup();
+  }, [dispatch]);
 
-    return () => {
-      clearInterval(interval);
+  // Reset lastTickTimeRef when session stops (准备下一轮会话从头计时)
+  useEffect(() => {
+    if (!state.session.isActive) {
       lastTickTimeRef.current = {};
-    };
+    }
   }, [state.session.isActive]);
 
   // ─── Reminder evaluation engine (10s interval) ────────

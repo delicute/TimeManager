@@ -111,7 +111,7 @@ export function App() {
             ? `[${s.currentType}] ${elapsedStr}${pausedLabel}${debtInfo}`
             : '无活动会话';
           const giftInfo = formatDuration(b.dailyGiftedRemaining);
-          const earnedInfo = formatDuration(Math.abs(b.earnedBalance));
+          const earnedInfo = b.earnedBalance < 0 ? `-${formatDuration(Math.abs(b.earnedBalance))}` : formatDuration(b.earnedBalance);
           const debtLabel = b.earnedBalance < 0 ? ` 负债` : '';
           const body = `${status}\n赠送: ${giftInfo} | 赚取: ${earnedInfo}${debtLabel}`;
           window.electronAPI.notificationShow({
@@ -202,7 +202,7 @@ export function App() {
             ? `[${s.currentType}] ${elapsedStr}${pausedLabel}${debtInfo}`
             : '无活动会话';
           const giftInfo = formatDuration(b.dailyGiftedRemaining);
-          const earnedInfo = formatDuration(Math.abs(b.earnedBalance));
+          const earnedInfo = b.earnedBalance < 0 ? `-${formatDuration(Math.abs(b.earnedBalance))}` : formatDuration(b.earnedBalance);
           const debtLabel = b.earnedBalance < 0 ? ` 负债` : '';
           const body = `${status}\n赠送: ${giftInfo} | 赚取: ${earnedInfo}${debtLabel}`;
           window.electronAPI.notificationShow({

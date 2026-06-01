@@ -81,6 +81,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ─── Tray IPC ─────────────────────────────────────
   sessionUpdateState: (state: any) => ipcRenderer.invoke('session:stateUpdate', state),
+  onSessionTick: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('session:tick', handler);
+    return () => ipcRenderer.removeListener('session:tick', handler);
+  },
   onTrayAction: (callback: (action: any) => void) => {
     const h1 = (_event: any, type: string) => callback({ action: 'startSession', type });
     const h2 = () => callback({ action: 'stopSession' });

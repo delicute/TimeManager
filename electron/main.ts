@@ -15,6 +15,26 @@ let reminderToastWindow: BrowserWindow | null = null;
 let startSilent = process.argv.includes('--silent');
 
 let currentSessionState: { isActive: boolean; type: string } = { isActive: false, type: 'None' };
+let tickInterval: ReturnType<typeof setInterval> | null = null;
+
+// ─── Main-process tick timer (不受窗口隐藏时的定时器节流影响) ───
+function updateTickTimer() {
+  if (currentSessionState.isActive && currentSessionState.type !== 'None') {
+    if (!tickInterval) {
+      tickInterval = setInterval(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('session:tick');
+        }
+      }, 1000);
+    }
+  } else {
+    if (tickInterval) {
+      clearInterval(tickInterval);
+      tickInterval = null;
+    }
+  }
+}
+
 let minimizeToTrayEnabled = true;
 let isQuitting = false;
 
@@ -393,6 +413,7 @@ function setupIPC() {
   ipcMain.handle('session:stateUpdate', (_, state) => {
     currentSessionState = state;
     rebuildTrayMenu();
+    updateTickTimer();
   });
 
   // Forward tray actions to renderer
@@ -1070,6 +1091,7 @@ if (!gotTheLock) {
   });
 
   app.on('before-quit', () => {
+    if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
     tray?.destroy();
   });
 }
