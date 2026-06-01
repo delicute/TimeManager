@@ -2,8 +2,15 @@ export function formatDuration(seconds: number): string {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.round(seconds % 60);
-  if (hrs > 0) return `${hrs}h${mins}m${secs}s`;
-  if (mins > 0) return `${mins}m${secs}s`;
+  if (hrs > 0) {
+    if (secs > 0) return `${hrs}h${mins}m${secs}s`; // h + s → 中间必须显示 0m
+    if (mins > 0) return `${hrs}h${mins}m`;
+    return `${hrs}h`;
+  }
+  if (mins > 0) {
+    if (secs > 0) return `${mins}m${secs}s`;
+    return `${mins}m`;
+  }
   return `${secs}s`;
 }
 
