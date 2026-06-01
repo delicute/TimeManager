@@ -584,7 +584,7 @@ export function ReminderPage() {
                         color:rule.enabled?'var(--color-accent-teal)':'var(--color-on-dark-soft)',
                         fontWeight:rule.enabled?600:400}}>{rule.enabled?t('reminderEnabled'):t('reminderDisabled')}</button>
                   </div>
-                  {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4}}>{rule.content}</div>}
+                  {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4,wordBreak:'break-word'}}>{rule.content}</div>}
                   <div style={{marginTop:6,display:'flex',gap:6}}>
                     <button className="btn btn-secondary" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
                     <button className="btn btn-danger" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>

@@ -684,7 +684,7 @@ function simulateEntertainmentConsumption(
           const cfg = settingsRef.current;
           const locale = cfg.locale || 'zh';
           const notifColors: Record<string, string> = { urgent: '#c64545', warning: '#e8a55a', reminder: '#5db8a6', notification: '#5db872', info: '#a09d96', low: '#a09d96', medium: '#5db872', high: '#e8a55a', critical: '#c64545' };
-          const body = rule.content || renderLeafSummary(tree, metrics, locale);
+          const body = rule.content || '';
           window.electronAPI.notificationShow({
             type: 'reminder',
             notifType: rule.urgency || 'reminder',
