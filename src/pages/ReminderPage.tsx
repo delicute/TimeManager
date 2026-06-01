@@ -70,13 +70,6 @@ function simplifyTree(node: ConditionNode): ConditionNode {
   return node;
 }
 
-/** Count simple (non-group) nodes in the tree */
-function countSimpleNodes(node: ConditionNode): number {
-  if (node.type === 'group') return node.nodes.reduce((s, n) => s + countSimpleNodes(n), 0);
-  if (node.type === 'not') return countSimpleNodes(node.node);
-  return 1; // leaf, bool, time
-}
-
 /** Cycle node type: leaf → bool → time → leaf (NOT has its own button) */
 function nextNodeType(node: ConditionNode): ConditionNode {
   switch (node.type) {
@@ -88,6 +81,13 @@ function nextNodeType(node: ConditionNode): ConditionNode {
   }
 }
 
+/** Count total leaf/bool/time nodes in the tree (not groups, not NOT) */
+function countConditions(node: ConditionNode): number {
+  if (node.type === 'group') return node.nodes.reduce((s, n) => s + countConditions(n), 0);
+  if (node.type === 'not') return countConditions(node.node);
+  return 1; // leaf, bool, time
+}
+
 const ipt: React.CSSProperties = {
   padding:'3px 6px', borderRadius:4, border:'1px solid rgba(255,255,255,0.12)',
   background:'rgba(255,255,255,0.06)', color:'#faf9f5', fontSize:12, height:28, boxSizing:'border-box',
@@ -96,7 +96,7 @@ const tinyBtn: React.CSSProperties = {
   ...ipt, height:22, fontSize:10, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3,
 };
 
-function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:ConditionNode)=>void }) {
+function LeafView({ node, onChange, totalCount }: { node:ConditionNode; onChange:(n:ConditionNode)=>void; totalCount?: number }) {
   const t = useT();
 
   // ─── Bool condition ─────────────────────────────────────────
@@ -179,7 +179,7 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
         <span style={{ fontSize:12, color:'var(--color-accent-teal)', fontWeight:600 }}>{t('reminderNot')}</span>
         <div style={{ flex:1, minWidth:200 }}>
           <BinNode node={node.node} onChange={n=>onChange({...node, node:n})}
-            onDelete={()=>{}} />
+            onDelete={()=>{}} totalCount={totalCount} />
         </div>
       </div>
     );
@@ -223,19 +223,20 @@ function LeafView({ node, onChange }: { node:ConditionNode; onChange:(n:Conditio
   );
 }
 
-function BinNode({ node, onChange, onDelete, onCycleType, onWrapNot, onAddLeaf, canDelete }: {
+function BinNode({ node, onChange, onDelete, onCycleType, onWrapNot, onAddLeaf, totalCount }: {
   node:ConditionNode; onChange:(n:ConditionNode)=>void;
-  onDelete:()=>void; onCycleType?:()=>void; onWrapNot?:()=>void; onAddLeaf?:()=>void; canDelete?:boolean;
+  onDelete:()=>void; onCycleType?:()=>void; onWrapNot?:()=>void; onAddLeaf?:()=>void; totalCount?: number;
 }) {
   const t = useT();
   const isSimple = node.type==='leaf' || node.type==='bool' || node.type==='time' || node.type==='not';
   const nextLabel = node.type==='leaf' ? t('reminderBool') : node.type==='bool' ? t('reminderTime') : t('reminderBoolVar');
+  const cannotDelete = totalCount !== undefined && totalCount <= 1;
   return (
     <div style={{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'8px 10px', background:'rgba(255,255,255,0.02)' }}>
       {isSimple ? (
-        <LeafView node={node} onChange={onChange} />
+        <LeafView node={node} onChange={onChange} totalCount={totalCount} />
       ) : (
-        <BinTree node={node} onChange={onChange} />
+        <BinTree node={node} onChange={onChange} totalCount={totalCount} />
       )}
       {isSimple && <div style={{ display:'flex', gap:4, marginTop:6, flexWrap:'wrap' }}>
         {onCycleType && (
@@ -249,13 +250,13 @@ function BinNode({ node, onChange, onDelete, onCycleType, onWrapNot, onAddLeaf, 
           </button>
         )}
         {onAddLeaf && <button onClick={onAddLeaf} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>}
-        <button onClick={onDelete} style={{ ...tinyBtn, color: canDelete !== false ? 'var(--color-error)' : 'var(--color-on-dark-soft)' }}><Trash2 size={10} />{t('reminderDelete')}</button>
+        <button onClick={onDelete} style={{ ...tinyBtn, color: cannotDelete ? 'var(--color-on-dark-soft)' : 'var(--color-error)' }}><Trash2 size={10} />{t('reminderDelete')}</button>
       </div>}
     </div>
   );
 }
 
-function BinTree({ node, onChange, canDelete }: { node:ConditionNode; onChange:(n:ConditionNode)=>void; canDelete?:boolean; }) {
+function BinTree({ node, onChange, totalCount }: { node:ConditionNode; onChange:(n:ConditionNode)=>void; totalCount?: number }) {
   const t = useT(); if (node.type!=='group') return null;
   const nc = node.nodes.length;
   const safe = (nc<1) ? [leaf()] : (nc>2 ? node.nodes.slice(0,2) : node.nodes);
@@ -283,8 +284,7 @@ function BinTree({ node, onChange, canDelete }: { node:ConditionNode; onChange:(
         onDelete={() => change({...node, nodes: R ? [R] : [leaf()]})}
         onCycleType={() => change({...node, nodes:[nextNodeType(L), ...(R ? [R] : [])]})}
         onWrapNot={() => change({...node, nodes:[wrapNot(L), ...(R ? [R] : [])]})}
-        onAddLeaf={() => addSibling(leaf(), 'L')}
-        canDelete={canDelete} />
+        onAddLeaf={() => addSibling(leaf(), 'L')} totalCount={totalCount} />
 
       {R && <>
         <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0' }}>
@@ -310,8 +310,7 @@ function BinTree({ node, onChange, canDelete }: { node:ConditionNode; onChange:(
           onDelete={() => change({...node, nodes:[L]})}
           onCycleType={() => change({...node, nodes:[L, nextNodeType(R)]})}
           onWrapNot={() => change({...node, nodes:[L, wrapNot(R)]})}
-          onAddLeaf={() => addSibling(leaf(), 'R')}
-          canDelete={canDelete} />
+          onAddLeaf={() => addSibling(leaf(), 'R')} totalCount={totalCount} />
       )}
     </div>
   );
@@ -441,8 +440,7 @@ export function ReminderPage() {
           </div>
           <div style={{marginBottom:12}}>
             <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderConditionLabel')}</label>
-            <BinTree node={form.conditionTree} onChange={n=>setForm({...form, conditionTree: n.type==='group' ? n : {type:'group', logic:'and', nodes:[n]}})}
-              canDelete={countSimpleNodes(form.conditionTree) > 1} />
+            <BinTree node={form.conditionTree} onChange={n=>setForm({...form, conditionTree: n.type==='group' ? n : {type:'group', logic:'and', nodes:[n]}})} totalCount={countConditions(form.conditionTree)} />
           </div>
           <div style={{marginBottom:12}}>
             <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderNotifTypeLabel')}</label>
@@ -569,12 +567,12 @@ export function ReminderPage() {
 
           {filteredRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
-            : <div style={{marginTop:4,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>{filteredRules.map((rule, index)=>(
-                <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',opacity:dragIndex===index?0.3:(rule.enabled?1:0.55),filter:rule.enabled?'none':'grayscale(0.65)',border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined,display:'flex',flexDirection:'column'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
+            : <div style={{marginTop:4,columnCount:2,columnGap:6}}>{filteredRules.map((rule, index)=>(
+                <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',margin:'0 0 6px',breakInside:'avoid',opacity:dragIndex===index?0.3:(rule.enabled?1:0.55),filter:rule.enabled?'none':'grayscale(0.65)',border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
                       <div style={{width:3,height:20,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
-                      <span style={{fontWeight:600,fontSize:13,color:'#ffffff',overflow:'hidden'}}>{rule.title}</span>
+                      <span style={{fontWeight:600,fontSize:13,color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{rule.title}</span>
                       <span style={{fontSize:9,color:NOTIF_COLORS[rule.urgency]||'#888',background:(NOTIF_COLORS[rule.urgency]||'#888')+'22',padding:'1px 5px',borderRadius:3,flexShrink:0}}>
                         {t(`reminderNotifType${rule.urgency.charAt(0).toUpperCase()+rule.urgency.slice(1)}` as any)||rule.urgency}
                       </span>
@@ -586,7 +584,7 @@ export function ReminderPage() {
                         color:rule.enabled?'var(--color-accent-teal)':'var(--color-on-dark-soft)',
                         fontWeight:rule.enabled?600:400}}>{rule.enabled?t('reminderEnabled'):t('reminderDisabled')}</button>
                   </div>
-                  <div style={{fontSize:11,color:'var(--color-on-dark-soft)',lineHeight:1.4,flex:1,minHeight:'1em'}}>{rule.content || ''}</div>
+                  {rule.content && <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4,lineHeight:1.4}}>{rule.content}</div>}
                   <div style={{marginTop:6,display:'flex',gap:6}}>
                     <button className="btn btn-secondary" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>startEdit(rule)}>{t('reminderEdit')}</button>
                     <button className="btn btn-danger" style={{padding:'4px 10px',height:26,fontSize:11}} onClick={()=>setDeleteId(rule.id)}>{t('reminderDelete')}</button>

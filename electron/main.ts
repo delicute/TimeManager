@@ -417,20 +417,7 @@ function showReminderToast(rule: any) {
   closeReminderToast();
 
   // Read audio per rule's sound setting
-  let audioDataUrl = '';
-  const soundSetting = rule.sound || '';
-  if (soundSetting.startsWith('builtin:')) {
-    const name = soundSetting.slice(8);
-    const audioPath = getAssetPath(`assets/audio/${name}.wav`);
-    try {
-      if (fs.existsSync(audioPath)) {
-        const buf = fs.readFileSync(audioPath);
-        audioDataUrl = `data:audio/wav;base64,${buf.toString('base64')}`;
-      }
-    } catch { /* ignore */ }
-  } else if (soundSetting.startsWith('file:')) {
-    audioDataUrl = soundSetting.slice(5);
-  }
+  const audioDataUrl = resolveAudioDataUrl(rule.sound || '');
 
   reminderToastWindow = new BrowserWindow({
     width: 335,
@@ -554,7 +541,7 @@ function renderTreeHtml(node: any, values: Record<string, number>, path: string,
 
 function generateToastHtml(rule: any): string {
   const urgencyColors: Record<string, string> = {
-    reminder: '#5db8a6', urgent: '#c64545', notification: '#5db872', info: '#a09d96',
+    low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
   };
   const barColor = urgencyColors[rule.urgency] || '#e8a55a';
   const animClass = rule.urgency === 'critical' ? 'toast-alert' : rule.urgency === 'high' ? 'toast-pulse' : '';
@@ -693,12 +680,42 @@ const NOTIF_SVGS: Record<string, string> = {
   milestone:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
 };
 
-function showContainerNotification(data: { type: string; notifType?: string; title: string; body: string; color: string; duration: number }) {
+function resolveAudioDataUrl(soundSetting: string): string {
+  if (!soundSetting) return '';
+  if (soundSetting.startsWith('builtin:')) {
+    const name = soundSetting.slice(8);
+    const audioPath = getAssetPath(`assets/audio/${name}.wav`);
+    try {
+      if (fs.existsSync(audioPath)) {
+        const buf = fs.readFileSync(audioPath);
+        return `data:audio/wav;base64,${buf.toString('base64')}`;
+      }
+    } catch { /* ignore */ }
+  } else if (soundSetting.startsWith('file:')) {
+    return soundSetting.slice(5);
+  }
+  return '';
+}
+
+function showContainerNotification(data: { type: string; notifType?: string; title: string; body: string; color: string; duration: number; sound?: string }) {
   if (!notifContainer || notifContainer.isDestroyed()) return;
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
   const expireTimer = setTimeout(() => dismissContainerNotification(id), data.duration * 1000);
   containerNotifs.push({ id, expireTimer });
+
+  // Play audio if sound setting provided
+  if (data.sound) {
+    const audioUrl = resolveAudioDataUrl(data.sound);
+    if (audioUrl) {
+      const safeUrl = audioUrl.replace(/'/g, "\\'");
+      try {
+        notifContainer.webContents.executeJavaScript(
+          `new Audio('${safeUrl}').play().catch(function(){})`
+        ).catch(() => {});
+      } catch { /* ignore */ }
+    }
+  }
 
   const nt = data.notifType || 'info';
   const iconSvg = NOTIF_SVGS[nt] || NOTIF_SVGS.info;
