@@ -26,6 +26,7 @@ export function Select<T extends string>({
   placeholder,
 }: SelectProps<T>) {
   const [open, setOpen] = useState(false);
+  const [upward, setUpward] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find(o => o.value === value);
 
@@ -38,6 +39,19 @@ export function Select<T extends string>({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Auto-flip: measure space when opening
+  useEffect(() => {
+    if (!open || !ref.current) return;
+    const btn = ref.current.firstChild as HTMLElement | null;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    // Need ~220px ideally, but use estimate based on option count
+    const needed = Math.min(options.length * 32 + 8, 220);
+    setUpward(spaceBelow < needed && spaceAbove >= needed);
+  }, [open, options.length]);
 
   const handleSelect = useCallback((val: T) => {
     onChange(val);
@@ -80,7 +94,7 @@ export function Select<T extends string>({
           style={{
             flexShrink: 0,
             transition: 'transform 0.15s',
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transform: open ? (upward ? 'rotate(0deg)' : 'rotate(180deg)') : 'rotate(0deg)',
             color: 'var(--color-on-dark-soft, #a09d96)',
           }}
         />
@@ -90,10 +104,8 @@ export function Select<T extends string>({
         <div
           style={{
             position: 'absolute',
-            top: '100%',
             left: 0,
             right: 0,
-            marginTop: 2,
             zIndex: 1000,
             maxHeight: 220,
             overflowY: 'auto',
@@ -101,6 +113,7 @@ export function Select<T extends string>({
             border: '1px solid rgba(255,255,255,0.12)',
             background: '#252320',
             boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            ...(upward ? { bottom: '100%', marginBottom: 2 } : { top: '100%', marginTop: 2 }),
           }}
         >
           {options.map(opt => (
