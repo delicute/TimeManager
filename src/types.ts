@@ -241,5 +241,6 @@ declare global {
       unregisterGlobalHotkeys: () => Promise<void>;
       onGlobalShortcutTrigger: (callback: (id: string) => void) => () => void;
     };
+    __saveActiveSession__?: () => void;
   }
 }

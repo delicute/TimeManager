@@ -216,7 +216,8 @@ function setupIPC() {
     mainWindow?.focus();
   });
 
-  ipcMain.handle('window:quit', () => {
+  ipcMain.handle('window:quit', async () => {
+    try { if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.webContents.executeJavaScript('window.__saveActiveSession__()'); } catch {}
     tray?.destroy();
     app.quit();
   });
@@ -995,8 +996,8 @@ function rebuildTrayMenu() {
     { type: 'separator' },
     { label: '设置', click: () => { showWindow(); mainWindow?.webContents.send('tray:navSettings'); } },
     { type: 'separator' },
-    { label: '重启', click: () => { isQuitting = true; app.relaunch(); app.quit(); } },
-    { label: '退出', click: () => { isQuitting = true; tray?.destroy(); app.quit(); } },
+    { label: '重启', click: async () => { isQuitting = true; try { if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.webContents.executeJavaScript('window.__saveActiveSession__()'); } catch {} app.relaunch(); app.quit(); } },
+    { label: '退出', click: async () => { isQuitting = true; try { if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.webContents.executeJavaScript('window.__saveActiveSession__()'); } catch {} tray?.destroy(); app.quit(); } },
   ]));
 }
 
