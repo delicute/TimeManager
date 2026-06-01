@@ -49,3 +49,6 @@ fix_*.py
 CLAUDE.md
 run.bat
 run-debug.bat
+
+# Audio assets with unclear copyright — excluded from GitHub
+/assets/audio/

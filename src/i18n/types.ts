@@ -153,6 +153,7 @@ export interface Translations {
   reminderSoundCustom: string;
   reminderSoundCustomSelected: string;
   reminderSoundSelected: string;
+  reminderSoundPreview: string;
   reminderUpdated: string;
   reminderDeleted: string;
   reminderDeleteAll: string;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, AlertTriangle, MessageCircle, Plus, Trash2, FileText, Shuffle, ToggleLeft, Search, Clock, Ban, Filter } from 'lucide-react';
+import { Bell, AlertTriangle, MessageCircle, Plus, Trash2, FileText, Shuffle, ToggleLeft, Search, Clock, Ban, Filter, Volume2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -458,22 +458,32 @@ export function ReminderPage() {
           {/* Sound selector */}
           <div style={{marginBottom:12}}>
             <label style={{display:'block',fontSize:12,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('reminderSoundLabel')}</label>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-              <button onClick={()=>setForm({...form,sound:''})}
-                style={{padding:'4px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:26,
-                  border:!form.sound?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
-                  background:!form.sound?'rgba(93,184,166,0.15)':'transparent',
-                  color:!form.sound?'var(--color-accent-teal)':'#faf9f5',fontFamily:'inherit',fontWeight:!form.sound?600:400,
-                }}>{t('reminderSoundNone')}</button>
-              {Object.keys(builtinSounds).map(name => (
-                <button key={name} onClick={()=>setForm({...form,sound:`builtin:${name}`})}
-                  style={{padding:'4px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:26,
-                    border:form.sound===`builtin:${name}`?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
-                    background:form.sound===`builtin:${name}`?'rgba(93,184,166,0.15)':'transparent',
-                    color:form.sound===`builtin:${name}`?'var(--color-accent-teal)':'#faf9f5',
-                    fontFamily:'inherit',fontWeight:form.sound===`builtin:${name}`?600:400,textTransform:'capitalize',
-                  }}>{name}</button>
-              ))}
+            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <Select
+                options={[
+                  { value: '', label: t('reminderSoundNone') },
+                  ...Object.keys(builtinSounds).map(name => ({ value: `builtin:${name}`, label: name.charAt(0).toUpperCase() + name.slice(1) }))
+                ]}
+                value={form.sound?.startsWith('builtin:') ? form.sound : ''}
+                onChange={v => setForm({...form, sound: v})}
+                width={140}
+              />
+              <button onClick={() => {
+                  let url = '';
+                  if (form.sound?.startsWith('builtin:')) {
+                    url = builtinSounds[form.sound.slice(8)] || '';
+                  } else if (form.sound?.startsWith('file:')) {
+                    url = form.sound.slice(5);
+                  }
+                  if (url) { new Audio(url).play().catch(() => {}); }
+                }}
+                style={{padding:'4px 8px',borderRadius:4,fontSize:11,cursor:form.sound?'pointer':'default',height:26,
+                  border:'1px solid rgba(255,255,255,0.12)',background:'transparent',
+                  color:form.sound?'var(--color-accent-teal)':'var(--color-on-dark-soft)',
+                  fontFamily:'inherit',display:'flex',alignItems:'center',gap:4,
+                  opacity:form.sound?1:0.4,
+                }}
+              ><Volume2 size={12} />{t('reminderSoundPreview')}</button>
               <button onClick={async()=>{const p=await window.electronAPI.selectAudioFile();if(p){const d=await window.electronAPI.readAudioFile(p);if(d){setForm({...form,sound:`file:${d}`});showToast(t('reminderSoundSelected'),'success');}}}}
                 style={{padding:'4px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:26,
                   border:form.sound?.startsWith('file:')?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',

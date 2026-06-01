@@ -177,6 +177,7 @@ export const zh: Translations = {
   reminderSoundCustom: '选择文件…',
   reminderSoundCustomSelected: '自定义',
   reminderSoundSelected: '音效已选择',
+  reminderSoundPreview: '试听',
   reminderUpdated: '提醒已更新',
   reminderDeleted: '提醒已删除',
   reminderDeleteAll: '删除所有提醒',

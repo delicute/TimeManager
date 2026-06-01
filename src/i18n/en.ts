@@ -177,6 +177,7 @@ export const en: Translations = {
   reminderSoundCustom: 'Browse…',
   reminderSoundCustomSelected: 'Custom',
   reminderSoundSelected: 'Sound selected',
+  reminderSoundPreview: 'Preview',
   reminderUpdated: 'Reminder updated',
   reminderDeleted: 'Reminder deleted',
   reminderDeleteAll: 'Delete All Reminders',
