@@ -170,6 +170,8 @@ export const en: Translations = {
   reminderReordered: 'Reminders reordered',
   reminderSearchPlaceholder: 'Search reminders…',
   reminderFilterAll: 'All',
+  reminderSortByType: 'By Type',
+  reminderSortByStatus: 'By Status',
   reminderSoundLabel: 'Sound',
   reminderSoundNone: 'None',
   reminderSoundCustom: 'Browse…',

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, AlertTriangle, MessageCircle, Plus, Trash2, FileText, Shuffle, ToggleLeft, Search, Clock, Ban } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bell, AlertTriangle, MessageCircle, Plus, Trash2, FileText, Shuffle, ToggleLeft, Search, Clock, Ban, Filter } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT } from '../hooks/useI18n';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -262,7 +262,7 @@ function BinTree({ node, onChange }: { node:ConditionNode; onChange:(n:Condition
   const addSibling = (newNode: ConditionNode, side:'L'|'R') => {
     if (!R) change({...node, nodes: side==='L' ? [L, newNode] : [newNode, L]});
     else {
-      const sub: ConditionNode = {type:'group', logic:'and', nodes:[newNode, leaf()]};
+      const sub: ConditionNode = {type:'group', logic:'and', nodes:[side==='L' ? L : R, newNode]};
       change({...node, nodes: side==='L' ? [sub, R] : [L, sub]});
     }
   };
@@ -347,14 +347,27 @@ export function ReminderPage() {
   const [dragIndex, setDragIndex] = useState<number|null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number|null>(null);
   const [filterText, setFilterText] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all'|'enabled'|'disabled'>('all');
+  const [filterEnabled, setFilterEnabled] = useState<Set<boolean>>(new Set([true, false]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(['urgent', 'reminder', 'notification', 'info']));
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'type' | 'status'>('type');
+  const filterRef = useRef<HTMLDivElement>(null);
 
-  const filteredRules = reminderRules.filter(rule => {
-    if (filterStatus==='enabled' && !rule.enabled) return false;
-    if (filterStatus==='disabled' && rule.enabled) return false;
-    if (filterText.trim()) { const l=filterText.toLowerCase(); const mt=rule.title.toLowerCase().includes(l); const mc=(rule.content||'').toLowerCase().includes(l); if (!mt && !mc) return false; }
-    return true;
-  });
+  const filteredRules = reminderRules
+    .filter(rule => {
+      if (!filterEnabled.has(rule.enabled)) return false;
+      if (!filterTypes.has(rule.urgency)) return false;
+      if (filterText.trim()) { const l=filterText.toLowerCase(); const mt=rule.title.toLowerCase().includes(l); const mc=(rule.content||'').toLowerCase().includes(l); if (!mt && !mc) return false; }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'type') {
+        const order = ['urgent', 'reminder', 'notification', 'info'];
+        return order.indexOf(a.urgency) - order.indexOf(b.urgency);
+      }
+      // enabled first, disabled second
+      return a.enabled === b.enabled ? 0 : a.enabled ? -1 : 1;
+    });
 
   const handleDragStart = (index:number) => (e:React.DragEvent) => { setDragIndex(index); e.dataTransfer.effectAllowed='move'; (e.target as HTMLElement).style.opacity='0.3'; };
   const handleDragEnd = (e:React.DragEvent) => { setDragIndex(null); setDragOverIndex(null); (e.target as HTMLElement).style.opacity=''; };
@@ -372,6 +385,16 @@ export function ReminderPage() {
   };
 
   useEffect(() => { window.electronAPI.getBuiltinSoundUrls().then(setBuiltinSounds).catch(() => {}); }, []);
+
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [filterOpen]);
 
   const startAdd = () => { setForm({id:'',title:'',content:'',conditionTree:grp('and'),urgency:'notification',enabled:true}); setEditingId('__new__'); };
   const startEdit = (rule:ReminderRule) => { setForm(JSON.parse(JSON.stringify(rule))); setEditingId(rule.id); };
@@ -462,22 +485,75 @@ export function ReminderPage() {
           <button className="btn btn-primary btn-full" onClick={startAdd}>+ {t('reminderAdd')}</button>
 
           {/* Search & Filter */}
-          <div style={{marginTop:12,marginBottom:8}}>
-            <div style={{position:'relative',marginBottom:6}}>
+          <div ref={filterRef} style={{marginTop:12,marginBottom:8}}>
+            <div style={{position:'relative', marginBottom:6}}>
               <Search size={14} style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',color:'var(--color-on-dark-soft)'}} />
               <input type="text" value={filterText} onChange={e=>setFilterText(e.target.value)} placeholder={t('reminderSearchPlaceholder')}
-                style={{width:'100%',height:30,padding:'4px 8px 4px 28px',borderRadius:6,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontSize:12,fontFamily:'inherit',outline:'none'}} />
+                style={{width:'100%',height:30,padding:'4px 8px 4px 28px',borderRadius:6,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#faf9f5',fontSize:12,fontFamily:'inherit',outline:'none',boxSizing:'border-box',paddingRight:40}} />
+              <button onClick={()=>setFilterOpen(!filterOpen)}
+                title={t('reminderFilterAll')}
+                style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',width:26,height:26,borderRadius:4,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+                  color:(filterEnabled.size<2||filterTypes.size<4)?'var(--color-accent-teal)':'var(--color-on-dark-soft)'}}>
+                <Filter size={13} />
+              </button>
+              {/* Filter dropdown */}
+              {filterOpen && (
+                <div style={{position:'absolute',top:'100%',right:0,marginTop:4,minWidth:200,zIndex:100,
+                  background:'var(--color-surface-dark-elevated,#252320)',border:'1px solid rgba(255,255,255,0.12)',
+                  borderRadius:8,padding:'8px 0',boxShadow:'0 4px 16px rgba(0,0,0,0.35)'}}>
+                  {/* Status */}
+                  <div style={{padding:'4px 14px 2px',fontSize:9,fontWeight:600,color:'var(--color-on-dark-soft)',
+                    textTransform:'uppercase',letterSpacing:'1px',marginBottom:2}}>{t('reminderEnabled')} / {t('reminderDisabled')}</div>
+                  {[true, false].map(en => {
+                    const key = en ? 'reminderEnabled' : 'reminderDisabled';
+                    const checked = filterEnabled.has(en);
+                    return (
+                      <label key={String(en)}
+                        style={{display:'flex',alignItems:'center',gap:8,padding:'4px 14px',cursor:'pointer',fontSize:12,color:'#faf9f5',userSelect:'none'}}>
+                        <input type="checkbox" checked={checked} onChange={()=>{
+                          const next = new Set(filterEnabled);
+                          checked ? next.delete(en) : next.add(en);
+                          if (next.size) setFilterEnabled(next);
+                        }} style={{accentColor:'var(--color-accent-teal)'}} />
+                        {t(key)}
+                      </label>
+                    );
+                  })}
+                  <div style={{height:1,background:'rgba(255,255,255,0.08)',margin:'6px 12px'}} />
+                  {/* Urgency */}
+                  <div style={{padding:'4px 14px 2px',fontSize:9,fontWeight:600,color:'var(--color-on-dark-soft)',
+                    textTransform:'uppercase',letterSpacing:'1px',marginBottom:2}}>{t('reminderNotifTypeLabel')}</div>
+                  {NOTIF_TYPES.map(nt => {
+                    const checked = filterTypes.has(nt);
+                    return (
+                      <label key={nt}
+                        style={{display:'flex',alignItems:'center',gap:8,padding:'4px 14px',cursor:'pointer',fontSize:12,color:'#faf9f5',userSelect:'none'}}>
+                        <input type="checkbox" checked={checked} onChange={()=>{
+                          const next = new Set(filterTypes);
+                          checked ? next.delete(nt) : next.add(nt);
+                          if (next.size) setFilterTypes(next);
+                        }} style={{accentColor:'var(--color-accent-teal)'}} />
+                        {t(`reminderNotifType${nt.charAt(0).toUpperCase()+nt.slice(1)}` as any)}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div style={{display:'flex',gap:4}}>
-              {(['all','enabled','disabled'] as const).map(status => (
-                <button key={status} onClick={()=>setFilterStatus(status)}
-                  style={{padding:'3px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:24,
-                    border:filterStatus===status?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
-                    background:filterStatus===status?'rgba(93,184,166,0.15)':'transparent',
-                    color:filterStatus===status?'var(--color-accent-teal)':'#faf9f5',
-                    fontFamily:'inherit',fontWeight:filterStatus===status?600:400,
-                  }}>{t(status==='all'?'reminderFilterAll':status==='enabled'?'reminderEnabled':'reminderDisabled')}</button>
-              ))}
+            {/* Sort row */}
+            <div style={{display:'flex',gap:4,alignItems:'center'}}>
+              <button onClick={()=>setSortBy('type')}
+                style={{padding:'3px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:24,
+                  border:sortBy==='type'?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                  background:sortBy==='type'?'rgba(93,184,166,0.15)':'transparent',
+                  color:sortBy==='type'?'var(--color-accent-teal)':'#faf9f5',
+                  fontFamily:'inherit',fontWeight:sortBy==='type'?600:400}}>{t('reminderSortByType')}</button>
+              <button onClick={()=>setSortBy('status')}
+                style={{padding:'3px 10px',borderRadius:4,fontSize:11,cursor:'pointer',height:24,
+                  border:sortBy==='status'?'1.5px solid var(--color-accent-teal)':'1px solid rgba(255,255,255,0.12)',
+                  background:sortBy==='status'?'rgba(93,184,166,0.15)':'transparent',
+                  color:sortBy==='status'?'var(--color-accent-teal)':'#faf9f5',
+                  fontFamily:'inherit',fontWeight:sortBy==='status'?600:400}}>{t('reminderSortByStatus')}</button>
             </div>
           </div>
 

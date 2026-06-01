@@ -170,6 +170,8 @@ export const zh: Translations = {
   reminderReordered: '提醒已排序',
   reminderSearchPlaceholder: '搜索提醒…',
   reminderFilterAll: '全部',
+  reminderSortByType: '按类型',
+  reminderSortByStatus: '按状态',
   reminderSoundLabel: '提醒音效',
   reminderSoundNone: '无',
   reminderSoundCustom: '选择文件…',
