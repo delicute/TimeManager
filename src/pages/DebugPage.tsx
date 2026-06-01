@@ -83,7 +83,7 @@ export function DebugPage() {
     const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
     const raw = isEntertainment ? sec * debtRate : Math.floor(sec / (weight || 1));
     // Entertainment consumes balance (negative), Study/Hobby earns (positive when delta>0)
-    const balanceChange = isEntertainment ? -raw : (delta > 0 ? raw : -raw);
+    const balanceChange = isEntertainment ? (delta > 0 ? -raw : raw) : (delta > 0 ? raw : -raw);
 
     // Compute current today total for this type (respecting existing override)
     const currentOverride = state.balance.debugTodayOverride?.[type];
@@ -115,24 +115,29 @@ export function DebugPage() {
     // Update balance + milestone continuous time (entertainment has no milestones)
     window.electronAPI.loadBalance().then((b: any) => {
       if (isEntertainment) {
-        // Consume: dailyGiftedRemaining first, then earnedBalance (can go negative/debt)
-        let consume = Math.abs(balanceChange);
         let earned = b.earnedBalance || 0;
         let gifted = b.dailyGiftedRemaining || 0;
-        // 1. consume from gifted first
-        if (gifted > 0) {
-          const take = Math.min(gifted, consume);
-          gifted -= take;
-          consume -= take;
+        if (balanceChange < 0) {
+          // Consume: dailyGiftedRemaining first, then earnedBalance (can go negative/debt)
+          let consume = Math.abs(balanceChange);
+          // 1. consume from gifted first
+          if (gifted > 0) {
+            const take = Math.min(gifted, consume);
+            gifted -= take;
+            consume -= take;
+          }
+          // 2. then from earned
+          if (consume > 0 && earned > 0) {
+            const take = Math.min(earned, consume);
+            earned -= take;
+            consume -= take;
+          }
+          // 3. remainder goes to debt
+          if (consume > 0) earned -= consume;
+        } else {
+          // Refund: add back to earnedBalance (debt first, then positive)
+          earned += balanceChange;
         }
-        // 2. then from earned
-        if (consume > 0 && earned > 0) {
-          const take = Math.min(earned, consume);
-          earned -= take;
-          consume -= take;
-        }
-        // 3. remainder goes to debt
-        if (consume > 0) earned -= consume;
         const updated = {
           ...b,
           earnedBalance: earned,
