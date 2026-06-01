@@ -250,7 +250,7 @@ function BinNode({ node, onChange, onDelete, onCycleType, onWrapNot, onAddLeaf, 
           </button>
         )}
         {onAddLeaf && <button onClick={onAddLeaf} style={{ ...tinyBtn }}><Plus size={10} />{t('reminderAddCondition')}</button>}
-        <button onClick={onDelete} style={{ ...tinyBtn, color: cannotDelete ? 'var(--color-on-dark-soft)' : 'var(--color-error)' }}><Trash2 size={10} />{t('reminderDelete')}</button>
+        <button onClick={onDelete} disabled={cannotDelete} style={{ ...tinyBtn, color: cannotDelete ? 'var(--color-on-dark-soft)' : 'var(--color-error)', cursor: cannotDelete ? 'default' : 'pointer' }}><Trash2 size={10} />{t('reminderDelete')}</button>
       </div>}
     </div>
   );
