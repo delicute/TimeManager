@@ -568,7 +568,7 @@ export function ReminderPage() {
           {filteredRules.length===0
             ? <div className="empty-hint" style={{marginTop:32}}>{t('reminderNoRules')}</div>
             : <div style={{marginTop:4,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,alignItems:'stretch'}}>{filteredRules.map((rule, index)=>(
-                <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',margin:0,opacity:dragIndex===index?0.3:(rule.enabled?1:0.55),filter:rule.enabled?'none':'grayscale(0.65)',border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined}}>
+                <div key={rule.id} className="card reminder-card" draggable={!editingId} onDragStart={handleDragStart(index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver(index)} onDrop={handleDrop(index)} style={{padding:'10px 12px',margin:0,minWidth:0,opacity:dragIndex===index?0.3:(rule.enabled?1:0.55),filter:rule.enabled?'none':'grayscale(0.65)',border:dragOverIndex===index?'2px dashed var(--color-accent-teal)':undefined}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:rule.content?4:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0,flex:1}}>
                       <div style={{width:3,height:20,borderRadius:2,background:NOTIF_COLORS[rule.urgency]||'#e8a55a',flexShrink:0}}/>
