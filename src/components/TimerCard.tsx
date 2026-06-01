@@ -12,8 +12,6 @@ interface TimerCardProps {
   intervalSeconds: number;
   accentColor: string;
   showConsumption?: boolean;
-  giftedRemaining?: number;
-  earnedRemaining?: number;
 }
 
 export function TimerCard({
@@ -22,8 +20,6 @@ export function TimerCard({
   intervalSeconds,
   accentColor,
   showConsumption,
-  giftedRemaining,
-  earnedRemaining,
 }: TimerCardProps) {
   const { state, dispatch, startSession, stopSession } = useAppStore();
   const { session } = state;
@@ -72,18 +68,14 @@ export function TimerCard({
 
       {/* Stats */}
       {showConsumption ? (
-        <div className="stats-grid cols-3">
+        <div className="stats-grid cols-2">
           <div className="stat-item">
             <div className="stat-label">{t('sessionConsumed')}</div>
             <div className="stat-value warning">{sessionConsumed > 0 ? `${sessionConsumed}s` : '0s'}</div>
           </div>
           <div className="stat-item">
-            <div className="stat-label">{t('giftedRemain')}</div>
-            <div className="stat-value positive">{formatDuration(giftedRemaining ?? 0)}</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-label">{t('earnedRemain')}</div>
-            <div className="stat-value neutral">{formatDuration(earnedRemaining ?? 0)}</div>
+            <div className="stat-label">{t(todayKeyMap[type])}</div>
+            <div className="stat-value">{formatDuration(computeTodayTotal())}</div>
           </div>
         </div>
       ) : (

@@ -297,7 +297,8 @@ function setupIPC() {
             const name = path.parse(file).name;
             const buf = fs.readFileSync(path.join(audioDir, file));
             const ext = path.extname(file).slice(1);
-            result[name] = `data:audio/${ext};base64,${buf.toString('base64')}`;
+            const mimeMap: Record<string, string> = { wav: 'wav', mp3: 'mpeg', ogg: 'ogg' };
+            result[name] = `data:audio/${mimeMap[ext] || ext};base64,${buf.toString('base64')}`;
           }
         }
       }
@@ -684,13 +685,17 @@ function resolveAudioDataUrl(soundSetting: string): string {
   if (!soundSetting) return '';
   if (soundSetting.startsWith('builtin:')) {
     const name = soundSetting.slice(8);
-    const audioPath = getAssetPath(`assets/audio/${name}.wav`);
-    try {
-      if (fs.existsSync(audioPath)) {
-        const buf = fs.readFileSync(audioPath);
-        return `data:audio/wav;base64,${buf.toString('base64')}`;
-      }
-    } catch { /* ignore */ }
+    const exts = ['.wav', '.mp3', '.ogg'];
+    const mimeMap: Record<string, string> = { wav: 'wav', mp3: 'mpeg', ogg: 'ogg' };
+    for (const ext of exts) {
+      const audioPath = getAssetPath(`assets/audio/${name}${ext}`);
+      try {
+        if (fs.existsSync(audioPath)) {
+          const buf = fs.readFileSync(audioPath);
+          return `data:audio/${mimeMap[ext.slice(1)] || ext.slice(1)};base64,${buf.toString('base64')}`;
+        }
+      } catch { /* ignore */ }
+    }
   } else if (soundSetting.startsWith('file:')) {
     return soundSetting.slice(5);
   }

@@ -739,9 +739,6 @@ function simulateEntertainmentConsumption(
     if (s.isActive && s.startTime) {
       const endTime = Date.now();
       const elapsed = (endTime - s.startTime) / 1000;
-      // Hoisted to parent scope — used both inside and after the `if (elapsed >= 1)` block
-      let startBalForNotif: BalanceState | null = null;
-
       if (elapsed >= 1) {
         const elapsedSec = Math.floor(elapsed);
         let balanceDelta = 0;
@@ -791,8 +788,7 @@ function simulateEntertainmentConsumption(
               finalBalance.dailyGiftedRemaining += giftedDiff;
             }
           }
-          // 保存快照用于结束通知计算实际消耗（含负债 2× 速率）
-          startBalForNotif = { ...startBal };
+          // 保存快照用于结束通知计算
           startBalanceRef.current = null;
         }
 
@@ -868,17 +864,7 @@ function simulateEntertainmentConsumption(
           const earned = Math.floor(elapsed / w);
           window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `赚取 ${earned} 余额` : `Earned ${earned}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
         } else {
-          // 计算实际消耗量（含负债 2× 速率），而非简单 elapsed 秒数
-          let actualConsumed = ticks;
-          if (startBalForNotif) {
-            const expected = simulateEntertainmentConsumption(
-              startBalForNotif.earnedBalance, startBalForNotif.dailyGiftedRemaining, ticks
-            );
-            actualConsumed = (startBalForNotif.dailyGiftedRemaining + Math.max(0, startBalForNotif.earnedBalance))
-              - (expected.dailyGiftedRemaining + Math.max(0, expected.earnedBalance))
-              + Math.max(0, -expected.earnedBalance);
-          }
-          window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${actualConsumed} 余额` : `Consumed ${actualConsumed}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
+          window.electronAPI.notificationShow({ type: activeType, notifType: 'info', title: bl === 'zh' ? `消耗 ${ticks} 余额` : `Consumed ${ticks}`, body: '', color: '#a09d96', duration: cfg.notificationDuration ?? 5 });
         }
       } catch { /* ignore */ }
     } else {

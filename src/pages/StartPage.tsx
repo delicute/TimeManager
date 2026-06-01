@@ -61,8 +61,6 @@ export function StartPage({ initialTab }: StartPageProps) {
         intervalSeconds={tabInterval}
         accentColor={activeTab.color}
         showConsumption={activeTab.id === 'Entertainment'}
-        giftedRemaining={activeTab.id === 'Entertainment' ? state.balance.dailyGiftedRemaining : undefined}
-        earnedRemaining={activeTab.id === 'Entertainment' ? state.balance.earnedBalance : undefined}
       />
     </>
   );
