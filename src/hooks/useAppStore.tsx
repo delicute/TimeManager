@@ -681,18 +681,7 @@ function simulateEntertainmentConsumption(
           if (ts.lastTriggered > 0) continue;
 
           ts.lastTriggered = now;
-          const cfg = settingsRef.current;
-          const locale = cfg.locale || 'zh';
-          const notifColors: Record<string, string> = { urgent: '#c64545', warning: '#e8a55a', reminder: '#5db8a6', notification: '#5db872', info: '#a09d96', low: '#a09d96', medium: '#5db872', high: '#e8a55a', critical: '#c64545' };
-          const body = rule.content || renderLeafSummary(tree, metrics, locale);
-          window.electronAPI.notificationShow({
-            type: 'reminder',
-            notifType: rule.urgency || 'reminder',
-            title: rule.title || (locale === 'zh' ? '提醒' : 'Reminder'),
-            body,
-            color: notifColors[rule.urgency] || '#e8a55a',
-            duration: cfg.notificationDuration ?? 5,
-          });
+          window.electronAPI.reminderShowToast(rule);
         }
       } catch { /* ignore */ }
     }, REMINDER_INTERVAL);

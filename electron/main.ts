@@ -554,7 +554,7 @@ function renderTreeHtml(node: any, values: Record<string, number>, path: string,
 
 function generateToastHtml(rule: any): string {
   const urgencyColors: Record<string, string> = {
-    low: '#a09d96', medium: '#5db8a6', high: '#e8a55a', critical: '#c64545',
+    reminder: '#5db8a6', urgent: '#c64545', notification: '#5db872', info: '#a09d96',
   };
   const barColor = urgencyColors[rule.urgency] || '#e8a55a';
   const animClass = rule.urgency === 'critical' ? 'toast-alert' : rule.urgency === 'high' ? 'toast-pulse' : '';
