@@ -523,6 +523,9 @@ function simulateEntertainmentConsumption(
   // ─── Main-process tick listener (不受窗口隐藏节流影响) ─────
   useEffect(() => {
     const cleanup = window.electronAPI.onSessionTick(() => {
+      // 日切重置：跨天时重置每日赠送余额（lastDate 不变时是空操作）
+      dispatch({ type: 'BALANCE_RESET_DAILY' });
+
       const s = sessionRef.current;
       if (!s.isActive || s.isPaused) return;
 
