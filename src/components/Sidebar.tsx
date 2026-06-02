@@ -68,10 +68,15 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             <span className="balance-debt-badge">{t('balanceDebt')}</span>
           )}
         </div>
-        <div className={`balance-value ${balance.earnedBalance < 0 ? 'debt' : ''}`}>
-          {balance.earnedBalance < 0
-            ? `-${formatDuration(Math.abs(balance.earnedBalance))}`
+        <div className={`balance-value ${totalAvailable <= 0 ? 'debt' : ''}`}>
+          {totalAvailable <= 0
+            ? formatDuration(0)
             : formatDuration(totalAvailable)}
+          {balance.earnedBalance < 0 && totalAvailable > 0 && (
+            <span className="balance-debt-hint">
+              {' '}({t('balanceDebt')} {formatDuration(Math.abs(balance.earnedBalance))})
+            </span>
+          )}
         </div>
         <div className="balance-detail">
           {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}

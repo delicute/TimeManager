@@ -169,6 +169,13 @@ body {
 }
 
 .balance-debt-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-error);
+  white-space: nowrap;
+}
+
+.balance-debt-hint {
   font-size: 11px;
   color: var(--color-error);
   margin-top: 2px;

@@ -560,6 +560,19 @@ function simulateEntertainmentConsumption(
           for (let i = 0; i < delta; i++) {
             dispatch({ type: 'BALANCE_TRY_CONSUME' });
           }
+          // Immediately sync balanceRef after dispatch so the reminder engine
+          // sees the updated balance without waiting for useEffect (mirrors
+          // BALANCE_TRY_CONSUME reducer logic)
+          let eb = balanceRef.current.earnedBalance;
+          let dg = balanceRef.current.dailyGiftedRemaining;
+          for (let i = 0; i < delta; i++) {
+            const r = eb < 0 ? 2 : 1;
+            let rem = r;
+            if (dg > 0) { const t = Math.min(dg, rem); dg -= t; rem -= t; }
+            if (rem > 0 && eb > 0) { const t = Math.min(eb, rem); eb -= t; rem -= t; }
+            if (rem > 0) { eb -= rem; }
+          }
+          balanceRef.current = { ...balanceRef.current, earnedBalance: eb, dailyGiftedRemaining: dg };
         }
       }
     });

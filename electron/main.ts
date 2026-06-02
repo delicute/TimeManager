@@ -255,23 +255,26 @@ function setupIPC() {
         if (app.isPackaged) {
           app.setLoginItemSettings({ openAtLogin: true, args: ['--silent'] });
         } else {
-          // For unpackaged dev setup: create startup batch file
+          // For unpackaged dev setup: create a VBScript in Startup folder
+          // (VBScript with Run 0,False runs the process with a hidden window — no cmd popup)
           const startupDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
           ensureDir(startupDir);
-          // Find the project root (parent of electron dir)
           const projectDir = path.resolve(__dirname, '..');
           const npxPath = path.join(app.getPath('home'), 'AppData', 'Roaming', 'npm', 'npx.cmd');
-          const batContent =
-            `@echo off\r\n` +
-            `cd /d "${projectDir}"\r\n` +
-            `start "" /B "${npxPath}" electron . --silent\r\n`;
-          fs.writeFileSync(path.join(startupDir, 'TimeManager.cmd'), batContent, 'utf-8');
+          // Escape backslashes and quotes for VBS string
+          const escNpx = npxPath.replace(/\\/g, '\\\\').replace(/"/g, '""');
+          const escProj = projectDir.replace(/\\/g, '\\\\').replace(/"/g, '""');
+          const vbsContent =
+            `Dim shell\r\n` +
+            `Set shell = CreateObject("WScript.Shell")\r\n` +
+            `shell.Run "cmd /c cd /d """ & "${escProj}" & """ && """" & "${escNpx}" & """ electron . --silent", 0, False\r\n`;
+          fs.writeFileSync(path.join(startupDir, 'TimeManager.vbs'), vbsContent, 'utf-8');
         }
       } else {
-        // Disable: clear both registry and batch file
+        // Disable: clear both registry and startup scripts
         app.setLoginItemSettings({ openAtLogin: false });
         const startupDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
-        for (const name of ['TimeManager.cmd', 'TimeManager.bat', 'TimeManager.lnk']) {
+        for (const name of ['TimeManager.cmd', 'TimeManager.bat', 'TimeManager.vbs', 'TimeManager.lnk']) {
           try { const p = path.join(startupDir, name); if (fs.existsSync(p)) fs.unlinkSync(p); } catch {}
         }
       }
@@ -401,7 +404,7 @@ function setupIPC() {
   });
 
   // ─── Session Notification (single container window) ──
-  ipcMain.handle('notification:show', (_, data: { type: string; title: string; body: string; color: string; duration: number }) => {
+  ipcMain.handle('notification:show', (_, data: { type: string; notifType?: string; title: string; body: string; color: string; duration: number; sound?: string }) => {
     showContainerNotification(data);
   });
 
