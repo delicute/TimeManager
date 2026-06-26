@@ -432,6 +432,8 @@ function simulateEntertainmentConsumption(
           } else if (s.currentType === 'Entertainment') {
             balanceDelta = -elapsedSec;
           }
+          // Study/Hobby: 赚取余额已由 tick handler 通过 BALANCE_ADD_EARNED 更新到
+          // balanceRef.current，此处不需要再加（否则会重复计算）
           const entry: TimeLogEntry = {
             startTime: new Date(s.startTime).toISOString(),
             endTime: new Date(endTime).toISOString(),
@@ -441,6 +443,7 @@ function simulateEntertainmentConsumption(
           window.electronAPI.writeLogEntrySync(entry);
         }
       }
+      // 直接保存 balanceRef.current（tick handler 已保证其准确性到最近1秒内）
       window.electronAPI.saveBalanceSync(bal);
     } catch { /* ignore */ }
   }, []);
@@ -546,6 +549,11 @@ function simulateEntertainmentConsumption(
           const delta = expectedEarned - lastEarned;
           lastTickTimeRef.current[key] = expectedEarned;
           dispatch({ type: 'BALANCE_ADD_EARNED', payload: delta });
+          // 同步 balanceRef 确保提醒引擎能立即读到新余额
+          balanceRef.current = {
+            ...balanceRef.current,
+            earnedBalance: balanceRef.current.earnedBalance + delta,
+          };
         }
       } else if (s.currentType === 'Entertainment') {
         const key = 'entertainment';
@@ -574,6 +582,17 @@ function simulateEntertainmentConsumption(
           }
           balanceRef.current = { ...balanceRef.current, earnedBalance: eb, dailyGiftedRemaining: dg };
         }
+      }
+    });
+    return () => cleanup();
+  }, [dispatch]);
+
+  // ─── 主进程余额同步监听（后台运行时防止余额漂移）────────
+  useEffect(() => {
+    const cleanup = window.electronAPI.onBalanceSync((synced) => {
+      if (sessionRef.current.isActive) {
+        balanceRef.current = { ...balanceRef.current, earnedBalance: synced.earnedBalance, dailyGiftedRemaining: synced.dailyGiftedRemaining };
+        dispatch({ type: 'SET_BALANCE', payload: { ...balanceRef.current, lastDate: balanceRef.current.lastDate } });
       }
     });
     return () => cleanup();

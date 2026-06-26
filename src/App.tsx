@@ -28,10 +28,21 @@ export function App() {
   // Session action IDs that are also registered as global shortcuts
   const SESSION_ACTIONS = new Set(['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop', 'sessionPause', 'sessionPrint']);
 
-  // Sync session state to main process for tray menu
+  // Sync session/balance/settings to main process for tray + background balance tracking
   useEffect(() => {
-    window.electronAPI.sessionUpdateState({ isActive: session.isActive, type: session.currentType });
-  }, [session.isActive, session.currentType]);
+    window.electronAPI.sessionUpdateState({
+      isActive: session.isActive,
+      type: session.currentType,
+      startTime: session.startTime,
+      isPaused: session.isPaused,
+      pausedAt: session.pausedAt,
+      _balance: balance,
+      _settings: state.settings,
+    });
+    // 注意：balance 不在依赖数组中——主进程只需要会话开始时的余额快照，
+    // 平衡自身的推算由主进程独立完成，无需 renderer 每秒上报余额。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.isActive, session.currentType, session.startTime, session.isPaused, session.pausedAt, state.settings]);
 
   // Listen for tray actions
   useEffect(() => {

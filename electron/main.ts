@@ -14,8 +14,27 @@ let tray: Tray | null = null;
 let reminderToastWindow: BrowserWindow | null = null;
 let startSilent = process.argv.includes('--silent');
 
-let currentSessionState: { isActive: boolean; type: string } = { isActive: false, type: 'None' };
+let currentSessionState: { isActive: boolean; type: string; startTime: number | null; isPaused: boolean; pausedAt?: number } = { isActive: false, type: 'None', startTime: null, isPaused: false };
+// 主进程追踪的余额（仅用于会话开始快照，不做实时更新）
+let trackedBalance: { earnedBalance: number; dailyGiftedRemaining: number } = { earnedBalance: 0, dailyGiftedRemaining: 1800 };
+let sessionStartBalance: { earnedBalance: number; dailyGiftedRemaining: number } | null = null;
+let trackedSettings: { studyWeight: number; hobbyWeight: number } = { studyWeight: 2, hobbyWeight: 4 };
 let tickInterval: ReturnType<typeof setInterval> | null = null;
+let balanceSyncCount = 0; // 每10次 tick 发一次余额同步
+
+// 模拟娱乐消费（与 renderer 端 simulateEntertainmentConsumption 一致）
+function simulateConsumption(startEarned: number, startGifted: number, durationSec: number): { earnedBalance: number; dailyGiftedRemaining: number } {
+  let earned = startEarned;
+  let gifted = startGifted;
+  for (let i = 0; i < durationSec; i++) {
+    const rate = earned < 0 ? 2 : 1;
+    let remaining = rate;
+    if (gifted > 0) { const t = Math.min(gifted, remaining); gifted -= t; remaining -= t; }
+    if (remaining > 0 && earned > 0) { const t = Math.min(earned, remaining); earned -= t; remaining -= t; }
+    if (remaining > 0) { earned -= remaining; }
+  }
+  return { earnedBalance: earned, dailyGiftedRemaining: gifted };
+}
 
 // ─── Main-process tick timer (不受窗口隐藏时的定时器节流影响) ───
 function updateTickTimer() {
@@ -25,6 +44,37 @@ function updateTickTimer() {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('session:tick');
         }
+
+        // 主进程每10秒推算一次期望余额并同步到渲染进程（后台防漂移）
+        balanceSyncCount++;
+        if (balanceSyncCount >= 10 && currentSessionState.isActive && currentSessionState.startTime && sessionStartBalance) {
+          balanceSyncCount = 0;
+          const now = Date.now();
+
+          // 计算有效经过时间（扣除暂停时段）
+          let effectiveElapsedSec = Math.floor((now - currentSessionState.startTime) / 1000);
+          if (currentSessionState.isPaused && currentSessionState.pausedAt) {
+            effectiveElapsedSec = Math.floor((currentSessionState.pausedAt - currentSessionState.startTime) / 1000);
+          }
+
+          let syncedBalance = { ...sessionStartBalance };
+
+          if (currentSessionState.type === 'Entertainment') {
+            // 从会话开始时的余额重新推算整个会话的消费
+            const result = simulateConsumption(sessionStartBalance.earnedBalance, sessionStartBalance.dailyGiftedRemaining, effectiveElapsedSec);
+            syncedBalance = result;
+          } else if (currentSessionState.type === 'Study' || currentSessionState.type === 'Hobby') {
+            const w = currentSessionState.type === 'Study' ? trackedSettings.studyWeight : trackedSettings.hobbyWeight;
+            const expectedEarned = Math.floor(effectiveElapsedSec / w);
+            syncedBalance.earnedBalance = sessionStartBalance.earnedBalance + expectedEarned;
+          }
+
+          try {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('balance:sync', syncedBalance);
+            }
+          } catch { /* ignore */ }
+        }
       }, 1000);
     }
   } else {
@@ -32,6 +82,7 @@ function updateTickTimer() {
       clearInterval(tickInterval);
       tickInterval = null;
     }
+    balanceSyncCount = 0;
   }
 }
 
@@ -414,7 +465,24 @@ function setupIPC() {
 
   // ─── Tray Session IPC ────────────────────────────
   ipcMain.handle('session:stateUpdate', (_, state) => {
+    // 检测会话是否新开始（startTime 从 null→非null 或更换）
+    const wasInactive = !currentSessionState.isActive || !currentSessionState.startTime;
+    const startTimeChanged = state.startTime && state.startTime !== currentSessionState.startTime;
     currentSessionState = state;
+    if (state._balance) {
+      trackedBalance = { earnedBalance: state._balance.earnedBalance, dailyGiftedRemaining: state._balance.dailyGiftedRemaining };
+      // 新会话开始时，拍下余额快照作为推算基准
+      if (state.isActive && state.startTime && (wasInactive || startTimeChanged)) {
+        sessionStartBalance = { earnedBalance: state._balance.earnedBalance, dailyGiftedRemaining: state._balance.dailyGiftedRemaining };
+        debugLog(`session start balance snapshot: earned=${sessionStartBalance.earnedBalance} gifted=${sessionStartBalance.dailyGiftedRemaining}`);
+      }
+    }
+    if (!state.isActive) {
+      sessionStartBalance = null;
+    }
+    if (state._settings) {
+      trackedSettings = { studyWeight: state._settings.studyWeight ?? 2, hobbyWeight: state._settings.hobbyWeight ?? 4 };
+    }
     rebuildTrayMenu();
     updateTickTimer();
   });

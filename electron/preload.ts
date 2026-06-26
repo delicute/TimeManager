@@ -79,12 +79,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('globalShortcut:trigger', handler);
   },
 
-  // ─── Tray IPC ─────────────────────────────────────
+  // ─── Tray & Background Sync IPC ────────────────────
   sessionUpdateState: (state: any) => ipcRenderer.invoke('session:stateUpdate', state),
   onSessionTick: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('session:tick', handler);
     return () => ipcRenderer.removeListener('session:tick', handler);
+  },
+  onBalanceSync: (callback: (balance: any) => void) => {
+    const handler = (_event: any, balance: any) => callback(balance);
+    ipcRenderer.on('balance:sync', handler);
+    return () => ipcRenderer.removeListener('balance:sync', handler);
   },
   onTrayAction: (callback: (action: any) => void) => {
     const h1 = (_event: any, type: string) => callback({ action: 'startSession', type });
