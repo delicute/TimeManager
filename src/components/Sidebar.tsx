@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { Play, BarChart3, Bell, Settings, BookOpen, Palette, Gamepad2, Clock } from 'lucide-react';
+import { Play, BarChart3, Bell, Settings, BookOpen, Palette, Gamepad2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useT, statusKeyMap, navKeyMap } from '../hooks/useI18n';
 import { Bug } from "lucide-react";
@@ -27,13 +26,6 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const { state } = useAppStore();
   const { balance, session, todayLogs } = state;
   const t = useT();
-
-  // ─── 当前时间（每分钟更新） ─────────────────────────────
-  const [currentTime, setCurrentTime] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(id);
-  }, []);
 
   // Compute today's total per type
   const todaySeconds: Record<string, number> = { Study: 0, Hobby: 0, Entertainment: 0 };
@@ -90,12 +82,6 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           {t('balanceGifted')}: {formatDuration(balance.dailyGiftedRemaining)}
           {' | '} {t('balanceEarned')}: {balance.earnedBalance < 0 ? `-${formatDuration(Math.abs(balance.earnedBalance))}` : formatDuration(balance.earnedBalance)}
         </div>
-      </div>
-
-      {/* Current Time */}
-      <div className="sidebar-clock">
-        <Clock size={14} />
-        <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
 
       {/* Status Indicator */}
