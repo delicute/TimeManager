@@ -561,8 +561,7 @@ function simulateEntertainmentConsumption(
         const contKey = s.currentType === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
         const claimKey = s.currentType === 'Study' ? 'studyClaimed' : 'hobbyClaimed';
         const m = balanceRef.current.milestones || { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0 };
-        const prevContinuous = (m[contKey as keyof typeof m] as number) || 0;
-        const currentContinuous = prevContinuous + elapsed;
+        const currentContinuous = elapsed;
         let claimed = (m[claimKey as keyof typeof m] as number) || 0;
         let rewardTotal = 0;
 
@@ -904,14 +903,9 @@ function simulateEntertainmentConsumption(
           const lastEndKey = isStudy ? 'lastStudyEnd' : 'lastHobbyEnd';
           const milestoneList = isStudy ? STUDY_MILESTONES : HOBBY_MILESTONES;
 
-          // Add this session's duration to continuous
+          // Use current session duration (session-only, not cumulative)
           const m = milestones as NonNullable<BalanceState['milestones']>;
-          let continuous = m[contKey] + elapsed;
-          const lastEnd = m[lastEndKey] || 0;
-          // Reset if gap too large
-          if (lastEnd > 0 && s.startTime - lastEnd > CONTINUITY_GAP * 1000) {
-            continuous = elapsed;
-          }
+          let continuous = elapsed;
 
           let claimed = m[claimKey] || 0;
           let rewardTotal = 0;
