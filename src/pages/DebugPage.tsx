@@ -15,6 +15,7 @@ const UNIT_LABELS: Record<string,string> = { s:'s', m:'m', h:'h' };
 let _val: Record<string,string> = { Study:'1', Hobby:'1', Entertainment:'1', balance:'100' };
 let _unit: Record<string,'s'|'m'|'h'> = { Study:'m', Hobby:'m', Entertainment:'m', balance:'s' };
 let _includeLog = true;
+let _linkBalance = true; // true=联动余额, false=只改显示
 let _notifCount = 1;
 let _notifType: NotifType = 'notification';
 let _notifTitle = '';
@@ -26,6 +27,7 @@ export function DebugPage() {
   const t = useT();
 
   const [includeLog, setIncludeLog] = useState(_includeLog);
+  const [linkBalance, setLinkBalance] = useState(_linkBalance);
   const [notifCount, setNotifCount] = useState(_notifCount);
   const [notifType, setNotifType] = useState<NotifType>(_notifType);
   const [notifTitle, setNotifTitle] = useState(_notifTitle);
@@ -43,6 +45,7 @@ export function DebugPage() {
   useEffect(() => { _val = val; }, [val]);
   useEffect(() => { _unit = unit; }, [unit]);
   useEffect(() => { _includeLog = includeLog; }, [includeLog]);
+  useEffect(() => { _linkBalance = linkBalance; }, [linkBalance]);
   useEffect(() => { _notifCount = notifCount; }, [notifCount]);
   useEffect(() => { _notifType = notifType; }, [notifType]);
   useEffect(() => { _notifTitle = notifTitle; }, [notifTitle]);
@@ -70,6 +73,21 @@ export function DebugPage() {
     window.electronAPI.saveSettings(updated);
   };
 
+  // Compute current today total for a type (respecting debugTodayOverride)
+  const getTodayTotal = (type: SessionType): number => {
+    const override = state.balance.debugTodayOverride?.[type];
+    if (override !== undefined) return override;
+    let total = 0;
+    for (const log of state.todayLogs) {
+      if (log.activityType === type) {
+        total += Math.floor(
+          (new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000
+        );
+      }
+    }
+    return total;
+  };
+
   // Adjust time for a session type
   const adjTime = (type: SessionType, delta: number) => {
     const sec = Math.abs(delta);
@@ -78,31 +96,25 @@ export function DebugPage() {
     const isHobby = type === 'Hobby';
     const isEntertainment = type === 'Entertainment';
     const weight = isStudy ? state.settings.studyWeight : state.settings.hobbyWeight;
-    // Study/Hobby: earn 1 per `weight` seconds.
-    // Entertainment: consume 1 per second (2 when in debt), matching real session.
-    const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
-    const raw = isEntertainment ? sec * debtRate : Math.floor(sec / (weight || 1));
-    // Entertainment consumes balance (negative), Study/Hobby earns (positive when delta>0)
-    const balanceChange = isEntertainment ? (delta > 0 ? -raw : raw) : (delta > 0 ? raw : -raw);
 
-    // Compute current today total for this type (respecting existing override)
-    const currentOverride = state.balance.debugTodayOverride?.[type];
-    let currentTotal = 0;
-    if (currentOverride !== undefined) {
-      currentTotal = currentOverride;
-    } else {
-      for (const log of state.todayLogs) {
-        if (log.activityType === type) {
-          currentTotal += Math.floor(
-            (new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / 1000
-          );
-        }
-      }
-    }
-
-    // Apply the delta to today's total via debugTodayOverride
+    // Compute new debugTodayOverride
+    const currentTotal = getTodayTotal(type);
     const newTotal = Math.max(0, currentTotal + (delta > 0 ? sec : -sec));
     const debugOverride = { ...(state.balance.debugTodayOverride || {}), [type]: newTotal };
+
+    // ─── Display-only mode: just update debugTodayOverride ─────
+    if (!linkBalance) {
+      const updated = { ...state.balance, debugTodayOverride: debugOverride };
+      window.electronAPI.saveBalance(updated);
+      dispatch({ type: 'SET_BALANCE', payload: updated });
+      return;
+    }
+
+    // ─── Link balance mode: full calculation ──────────────────
+    const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
+    const raw = isEntertainment ? sec * debtRate : Math.floor(sec / (weight || 1));
+    // Entertainment consumes (negative), Study/Hobby earns (positive when delta>0)
+    const balanceChange = isEntertainment ? (delta > 0 ? -raw : raw) : (delta > 0 ? raw : -raw);
 
     // Write log entry for balance tracking
     window.electronAPI.writeLogEntry({
@@ -112,51 +124,35 @@ export function DebugPage() {
     });
     window.electronAPI.getTodayLogs().then(logs => dispatch({ type: 'SET_TODAY_LOGS', payload: logs }));
 
-    // Update balance + milestone continuous time (entertainment has no milestones)
-    window.electronAPI.loadBalance().then((b: any) => {
-      if (isEntertainment) {
-        let earned = b.earnedBalance || 0;
-        let gifted = b.dailyGiftedRemaining || 0;
-        if (balanceChange < 0) {
-          // Consume: dailyGiftedRemaining first, then earnedBalance (can go negative/debt)
-          let consume = Math.abs(balanceChange);
-          // 1. consume from gifted first
-          if (gifted > 0) {
-            const take = Math.min(gifted, consume);
-            gifted -= take;
-            consume -= take;
-          }
-          // 2. then from earned
-          if (consume > 0 && earned > 0) {
-            const take = Math.min(earned, consume);
-            earned -= take;
-            consume -= take;
-          }
-          // 3. remainder goes to debt
-          if (consume > 0) earned -= consume;
-        } else {
-          // Refund: add back to earnedBalance (debt first, then positive)
-          earned += balanceChange;
-        }
-        const updated = {
-          ...b,
-          earnedBalance: earned,
-          dailyGiftedRemaining: gifted,
-        };
-        window.electronAPI.saveBalance(updated);
-        dispatch({ type: 'SET_BALANCE', payload: { ...updated, debugTodayOverride: debugOverride } });
-        return;
+    // Use in-memory state.balance (NOT loadBalance which is stale during active session)
+    const bal = state.balance;
+    if (isEntertainment) {
+      let earned = bal.earnedBalance;
+      let gifted = bal.dailyGiftedRemaining;
+      if (balanceChange < 0) {
+        // Consume: dailyGiftedRemaining first, then earnedBalance (can go into debt)
+        let consume = Math.abs(balanceChange);
+        if (gifted > 0) { const take = Math.min(gifted, consume); gifted -= take; consume -= take; }
+        if (consume > 0 && earned > 0) { const take = Math.min(earned, consume); earned -= take; consume -= take; }
+        if (consume > 0) earned -= consume;
+      } else {
+        // Refund
+        earned += balanceChange;
       }
-
-      const m = b.milestones || { studyContinuous:0, hobbyContinuous:0, studyClaimed:0, hobbyClaimed:0 };
+      const updated = { ...bal, earnedBalance: earned, dailyGiftedRemaining: gifted, debugTodayOverride: debugOverride };
+      window.electronAPI.saveBalance(updated);
+      dispatch({ type: 'SET_BALANCE', payload: updated });
+      // Notify main process so balance:sync doesn't overwrite
+      window.electronAPI.debugAdjustBalance({ earnedDelta: earned - bal.earnedBalance, giftedDelta: gifted - bal.dailyGiftedRemaining });
+    } else {
+      // Study/Hobby: milestones + balance
+      const m = bal.milestones || { studyContinuous:0, hobbyContinuous:0, studyClaimed:0, hobbyClaimed:0 };
       const contKey = isStudy ? 'studyContinuous' : 'hobbyContinuous';
       const claimKey = isStudy ? 'studyClaimed' : 'hobbyClaimed';
       const newCont = Math.max(0, (m[contKey] || 0) + (delta > 0 ? sec : -sec));
       let claimed = (m[claimKey] || 0) as number;
       let rewardTotal = 0;
       const locale = state.settings.locale || 'zh';
-
-      // Milestone definitions (same as useAppStore)
       const msList = isStudy ? STUDY_MILESTONES : HOBBY_MILESTONES;
 
       msList.forEach((ms, i) => {
@@ -175,34 +171,112 @@ export function DebugPage() {
         }
       });
 
-      // Session earnings → earnedBalance, milestone gifts → dailyGiftedRemaining
+      // All milestones claimed notification (for debug linkBalance mode)
+      const allMilestoneBits = (1 << msList.length) - 1;
+      if (claimed === allMilestoneBits && rewardTotal > 0) {
+        window.electronAPI.notificationShow({
+          type, notifType: 'milestone',
+          title: locale === 'zh' ? '🎉 全部领取' : '🎉 All Collected',
+          body: locale === 'zh'
+            ? '今日奖励已全部领取，等待明天吧~'
+            : "Today's rewards all collected. See you tomorrow~",
+          color: '#c4a35a',
+          duration: (state.settings.notificationDuration ?? 5) * 2,
+        });
+      }
+
+      const newEarned = (bal.earnedBalance || 0) + balanceChange;
+      const newGifted = (bal.dailyGiftedRemaining || 1800) + rewardTotal;
       const updated = {
-        ...b,
-        earnedBalance: (b.earnedBalance || 0) + balanceChange,
-        dailyGiftedRemaining: (b.dailyGiftedRemaining || 1800) + rewardTotal,
+        ...bal,
+        earnedBalance: newEarned,
+        dailyGiftedRemaining: newGifted,
         milestones: { ...m, [contKey]: newCont, [claimKey]: claimed },
+        debugTodayOverride: debugOverride,
       };
       window.electronAPI.saveBalance(updated);
-      dispatch({ type: 'SET_BALANCE', payload: { ...updated, debugTodayOverride: debugOverride } });
-    });
+      dispatch({ type: 'SET_BALANCE', payload: updated });
+      // Notify main process so balance:sync doesn't overwrite
+      window.electronAPI.debugAdjustBalance({ earnedDelta: balanceChange, giftedDelta: rewardTotal });
+    }
+
     const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
     const n = Math.floor(sec / mult(unit[type]));
     const rateInfo = isEntertainment && debtRate > 1 ? ` (负债率×${debtRate})` : '';
     notify(`Debug: ${label}`, `余额${balanceChange >= 0 ? '+' : ''}${balanceChange} (${delta > 0 ? '+' : '-'}${n}${unit[type]}${rateInfo})`);
   };
 
-  // Set today's total for a session type to a specific value (does NOT change balance)
+  // Set today's total for a session type to a specific value
   const setTodayTotal = (type: SessionType, targetSeconds: number) => {
-    const currentOverride = state.balance.debugTodayOverride || {};
+    const currentTotal = getTodayTotal(type);
+    const diff = targetSeconds - currentTotal;
+    const debugOverride = { ...(state.balance.debugTodayOverride || {}), [type]: targetSeconds };
+
+    // ─── Display-only mode: just update debugTodayOverride ─────
+    if (!linkBalance) {
+      const updated = { ...state.balance, debugTodayOverride: debugOverride };
+      dispatch({ type: 'SET_BALANCE', payload: updated });
+      window.electronAPI.saveBalance(updated);
+      const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
+      const n = Math.floor(targetSeconds / mult(unit[type]));
+      notify(`Debug: ${label}`, `设定为 ${n}${unit[type]}`);
+      return;
+    }
+
+    // ─── Link balance mode: adjust balance by diff ────────────
+    const isStudy = type === 'Study';
+    const isHobby = type === 'Hobby';
+    const isEntertainment = type === 'Entertainment';
+    const weight = isStudy ? state.settings.studyWeight : state.settings.hobbyWeight;
+    const debtRate = state.balance.earnedBalance < 0 ? 2 : 1;
+
+    // Calculate balance change from diff
+    let balanceChange = 0;
+    if (isEntertainment) {
+      // More time = more consumption (negative), less time = refund (positive)
+      balanceChange = -diff * debtRate;
+    } else {
+      balanceChange = Math.floor(diff / (weight || 1));
+    }
+
+    // Write log entry
+    window.electronAPI.writeLogEntry({
+      startTime: new Date(Date.now() - Math.abs(diff) * 1000).toISOString(),
+      endTime: new Date().toISOString(),
+      activityType: type, balanceChange, debug: true,
+    });
+    window.electronAPI.getTodayLogs().then(logs => dispatch({ type: 'SET_TODAY_LOGS', payload: logs }));
+
+    // Apply balance change
+    let newEarned = state.balance.earnedBalance;
+    let newGifted = state.balance.dailyGiftedRemaining;
+
+    if (isEntertainment && balanceChange < 0) {
+      let consume = Math.abs(balanceChange);
+      if (newGifted > 0) { const take = Math.min(newGifted, consume); newGifted -= take; consume -= take; }
+      if (consume > 0 && newEarned > 0) { const take = Math.min(newEarned, consume); newEarned -= take; consume -= take; }
+      if (consume > 0) newEarned -= consume;
+    } else {
+      newEarned += balanceChange;
+    }
+
     const updated = {
       ...state.balance,
-      debugTodayOverride: { ...currentOverride, [type]: targetSeconds } as Record<string, number>,
+      earnedBalance: newEarned,
+      dailyGiftedRemaining: newGifted,
+      debugTodayOverride: debugOverride,
     };
     dispatch({ type: 'SET_BALANCE', payload: updated });
     window.electronAPI.saveBalance(updated);
+    // Notify main process so balance:sync doesn't overwrite
+    window.electronAPI.debugAdjustBalance({
+      earnedDelta: newEarned - state.balance.earnedBalance,
+      giftedDelta: newGifted - state.balance.dailyGiftedRemaining,
+    });
+
     const label = type === 'Study' ? '学习' : type === 'Hobby' ? '爱好' : '娱乐';
     const n = Math.floor(targetSeconds / mult(unit[type]));
-    notify(`Debug: ${label}`, `设定为 ${n}${unit[type]}`);
+    notify(`Debug: ${label}`, `设定为 ${n}${unit[type]}，余额${balanceChange >= 0 ? '+' : ''}${balanceChange}`);
   };
 
   // Set balance to a specific value
@@ -241,6 +315,21 @@ export function DebugPage() {
           <input type="checkbox" checked={includeLog} onChange={e=>setIncludeLog(e.target.checked)} style={{accentColor:'#5db8a6'}} />
           <Clock size={13}/> {t('debugIncludeLog')}
         </label>
+      </div>
+
+      {/* 联动余额 / 只改显示 切换 */}
+      <div className="card" style={{padding:'5px 12px',marginBottom:6}}>
+        <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12}}>
+          <span style={{color:'#ffffff',whiteSpace:'nowrap'}}>{t('debugBalanceMode')}:</span>
+          <button onClick={()=>setLinkBalance(true)}
+            style={{flex:1,padding:'3px 8px',borderRadius:4,border: linkBalance ? '1.5px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',background: linkBalance ? 'rgba(93,184,166,0.15)' : 'transparent',color: linkBalance ? 'var(--color-accent-teal)' : '#ffffff',cursor:'pointer',fontSize:12}}>
+            {t('debugLinkBalance')}
+          </button>
+          <button onClick={()=>setLinkBalance(false)}
+            style={{flex:1,padding:'3px 8px',borderRadius:4,border: !linkBalance ? '1.5px solid var(--color-accent-teal)' : '1px solid rgba(255,255,255,0.12)',background: !linkBalance ? 'rgba(93,184,166,0.15)' : 'transparent',color: !linkBalance ? 'var(--color-accent-teal)' : '#ffffff',cursor:'pointer',fontSize:12}}>
+            {t('debugDisplayOnly')}
+          </button>
+        </div>
       </div>
 
       {/* 数值更改 */}

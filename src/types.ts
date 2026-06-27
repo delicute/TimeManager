@@ -235,6 +235,7 @@ declare global {
       setMinimizeToTray: (value: boolean) => Promise<void>;
       notificationShow: (data: { type: string; notifType: string; title: string; body: string; color: string; duration: number; sound?: string }) => Promise<void>;
       notificationDismiss: (id: string) => Promise<void>;
+      debugAdjustBalance: (data: { earnedDelta: number; giftedDelta: number }) => Promise<void>;
       sessionUpdateState: (state: { isActive: boolean; type: string; startTime?: number | null; isPaused?: boolean; pausedAt?: number; _balance?: BalanceState; _settings?: AppSettings }) => Promise<void>;
       onTrayAction: (callback: (action: { action: string; type?: string; page?: string }) => void) => () => void;
       onSessionTick: (callback: () => void) => () => void;

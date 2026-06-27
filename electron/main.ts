@@ -487,6 +487,17 @@ function setupIPC() {
     updateTickTimer();
   });
 
+  // ─── Debug panel balance adjustment sync ─────────
+  ipcMain.handle('balance:debugAdjust', (_, { earnedDelta, giftedDelta }: { earnedDelta: number; giftedDelta: number }) => {
+    trackedBalance.earnedBalance += earnedDelta;
+    trackedBalance.dailyGiftedRemaining += giftedDelta;
+    // Adjust sessionStartBalance so subsequent balance:sync doesn't overwrite debug changes
+    if (sessionStartBalance) {
+      sessionStartBalance.earnedBalance += earnedDelta;
+      sessionStartBalance.dailyGiftedRemaining += giftedDelta;
+    }
+  });
+
   // Forward tray actions to renderer
   ipcMain.handle('tray:startSession', (_, type) => {
     mainWindow?.webContents.send('tray:startSession', type);

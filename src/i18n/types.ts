@@ -197,6 +197,9 @@ export interface Translations {
   debugTypeLabel: string;
   debugSend: string;
   debugKeepOpen: string;
+  debugBalanceMode: string;
+  debugLinkBalance: string;
+  debugDisplayOnly: string;
 
   // RecordPage
   recordDateFrom: string;

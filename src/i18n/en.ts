@@ -216,6 +216,9 @@ export const en: Translations = {
   debugTypeLabel: 'Type',
   debugSend: 'Send',
   debugKeepOpen: 'Keep Debug Panel Open',
+  debugBalanceMode: 'Balance Mode',
+  debugLinkBalance: 'Adjust Balance',
+  debugDisplayOnly: 'Display Only',
 
   // RecordPage
   recordDateFrom: 'From',

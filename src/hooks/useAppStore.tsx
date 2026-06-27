@@ -555,6 +555,67 @@ function simulateEntertainmentConsumption(
             earnedBalance: balanceRef.current.earnedBalance + delta,
           };
         }
+
+        // ─── Milestone reward check (immediate notification) ───
+        const msList = s.currentType === 'Study' ? STUDY_MILESTONES : HOBBY_MILESTONES;
+        const contKey = s.currentType === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
+        const claimKey = s.currentType === 'Study' ? 'studyClaimed' : 'hobbyClaimed';
+        const m = balanceRef.current.milestones || { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0 };
+        const prevContinuous = (m[contKey as keyof typeof m] as number) || 0;
+        const currentContinuous = prevContinuous + elapsed;
+        let claimed = (m[claimKey as keyof typeof m] as number) || 0;
+        let rewardTotal = 0;
+
+        msList.forEach((ms, i) => {
+          if (!(claimed & (1 << i)) && currentContinuous >= ms.threshold) {
+            claimed |= (1 << i);
+            rewardTotal += ms.reward;
+            const locale = cfg.locale || 'zh';
+            const label = locale === 'zh' ? ms.labelZH : ms.labelEN;
+            const rewardMin = Math.round(ms.reward / 60);
+            const threshDisplay = ms.threshold >= 3600
+              ? `${Math.round(ms.threshold / 3600)}h`
+              : `${Math.round(ms.threshold / 60)}min`;
+            const desc = locale === 'zh'
+              ? `连续大于${threshDisplay}，获得${rewardMin}min赠送余额`
+              : `Continuous >${threshDisplay}, earned ${rewardMin}min gifted balance`;
+            window.electronAPI.notificationShow({
+              type: s.currentType,
+              notifType: 'milestone',
+              title: label,
+              body: desc,
+              color: '#e8a55a',
+              duration: cfg.notificationDuration ?? 5,
+            });
+          }
+        });
+
+        if (rewardTotal > 0) {
+          // All milestones claimed notification
+          const allMilestoneBits = (1 << msList.length) - 1;
+          if (claimed === allMilestoneBits) {
+            const locale = cfg.locale || 'zh';
+            window.electronAPI.notificationShow({
+              type: s.currentType,
+              notifType: 'milestone',
+              title: locale === 'zh' ? '🎉 全部领取' : '🎉 All Collected',
+              body: locale === 'zh' ? '今日奖励已全部领取，等待明天吧~' : "Today's rewards all collected. See you tomorrow~",
+              color: '#c4a35a',
+              duration: (cfg.notificationDuration ?? 5) * 2,
+            });
+          }
+          // Update balanceRef with milestone state
+          balanceRef.current = {
+            ...balanceRef.current,
+            dailyGiftedRemaining: (balanceRef.current.dailyGiftedRemaining || 1800) + rewardTotal,
+            milestones: {
+              ...m,
+              [contKey]: Math.floor(currentContinuous),
+              [claimKey]: claimed,
+            },
+          };
+          dispatch({ type: 'SET_BALANCE', payload: { ...balanceRef.current } });
+        }
       } else if (s.currentType === 'Entertainment') {
         const key = 'entertainment';
         // Count-based approach matching Study/Hobby pattern:
@@ -878,6 +939,22 @@ function simulateEntertainmentConsumption(
               });
             }
           });
+
+          // All milestones claimed notification
+          const allMilestoneBits = (1 << milestoneList.length) - 1;
+          if (claimed === allMilestoneBits && rewardTotal > 0) {
+            const locale = cfg.locale || 'zh';
+            window.electronAPI.notificationShow({
+              type: activeType,
+              notifType: 'milestone',
+              title: locale === 'zh' ? '🎉 全部领取' : '🎉 All Collected',
+              body: locale === 'zh'
+                ? '今日奖励已全部领取，等待明天吧~'
+                : "Today's rewards all collected. See you tomorrow~",
+              color: '#c4a35a',
+              duration: (cfg.notificationDuration ?? 5) * 2,
+            });
+          }
 
           // Merge milestone progress + rewards into finalBalance
           finalBalance = {

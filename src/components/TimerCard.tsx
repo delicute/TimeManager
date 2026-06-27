@@ -91,18 +91,23 @@ export function TimerCard({
         </div>
       )}
 
-      {/* Milestone Progress Bar (Study & Hobby only) */}
+      {/* Milestone Progress Bar (Study & Hobby only) — based on CONSECUTIVE time */}
       {(type === 'Study' || type === 'Hobby') && (() => {
         const milestones = type === 'Study' ? STUDY_MILESTONES : HOBBY_MILESTONES;
         const claimKey = type === 'Study' ? 'studyClaimed' : 'hobbyClaimed';
+        const contKey = type === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
         const mData = state.balance.milestones;
         const claimed = mData?.[claimKey as keyof typeof mData] as number || 0;
-        // Use today's total time from logs + current session (survives app restart)
-        const dailyTotal = computeTodayTotal();
+
+        // Use consecutive time from milestones + current session (if active)
+        let continuousTime = mData?.[contKey as keyof typeof mData] as number || 0;
+        if (isActive) continuousTime += elapsedSeconds;
+        continuousTime = Math.floor(continuousTime);
+
         // Only show unclaimed milestones that haven't been passed yet
         const activeMilestones = milestones.filter((_, i) => {
           if (claimed & (1 << i)) return false;
-          return dailyTotal < milestones[i].threshold;
+          return continuousTime < milestones[i].threshold;
         });
         const maxTh = milestones[milestones.length - 1].threshold;
         if (activeMilestones.length === 0) {
@@ -117,7 +122,7 @@ export function TimerCard({
                 ))}
               </div>
               <div className="milestone-top-row">
-                <span className="milestone-current-time">{dailyTotal < 60 ? `${Math.round(dailyTotal)}s` : formatDuration(Math.round(dailyTotal / 60) * 60)}</span>
+                <span className="milestone-current-time">{continuousTime < 60 ? `${Math.round(continuousTime)}s` : formatDuration(Math.round(continuousTime / 60) * 60)}</span>
                 <div className="milestone-marks">
                   {milestones.map((m, i) => (
                     <span key={i} style={{ left: `${(m.threshold / maxTh) * 100}%` }}>{m.label}</span>
@@ -130,7 +135,7 @@ export function TimerCard({
             </div>
           );
         }
-        const progress = (dailyTotal / maxTh) * 100;
+        const progress = (continuousTime / maxTh) * 100;
 
         return (
           <div className="milestone-bar-wrap">
@@ -151,9 +156,9 @@ export function TimerCard({
                   style={{ left: `${(m.threshold / maxTh) * 100}%` }} />
               ))}
             </div>
-            {/* Bottom row: current time + milestones on same line */}
+            {/* Bottom row: current consecutive time + milestones on same line */}
             <div className="milestone-top-row">
-              <span className="milestone-current-time">{dailyTotal < 60 ? `${Math.round(dailyTotal)}s` : formatDuration(Math.round(dailyTotal / 60) * 60)}</span>
+              <span className="milestone-current-time">{continuousTime < 60 ? `${Math.round(continuousTime)}s` : formatDuration(Math.round(continuousTime / 60) * 60)}</span>
               <div className="milestone-marks">
                 {activeMilestones.map((m, i) => (
                   <span key={i} style={{ left: `${(m.threshold / maxTh) * 100}%` }}>{m.label}</span>

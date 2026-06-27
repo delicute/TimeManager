@@ -216,6 +216,9 @@ export const zh: Translations = {
   debugTypeLabel: '类型',
   debugSend: '发送',
   debugKeepOpen: '保持调试面板开启',
+  debugBalanceMode: '余额模式',
+  debugLinkBalance: '联动余额',
+  debugDisplayOnly: '只改显示',
 
   // RecordPage
   recordDateFrom: '从',
