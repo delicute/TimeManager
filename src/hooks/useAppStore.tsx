@@ -8,7 +8,6 @@ import { STUDY_MILESTONES, HOBBY_MILESTONES } from '../constants';
 // ─── Constants ──────────────────────────────────────────────
 const DAILY_GIFT = 1800; // 30 minutes
 const REMINDER_INTERVAL = 200; // 200ms polling
-const CONTINUITY_GAP = 300; // 5 minutes max gap to maintain continuity
 
 // ─── Defaults ────────────────────────────────────────────────
 const defaultSettings: AppSettings = {
@@ -406,11 +405,8 @@ function simulateEntertainmentConsumption(
             const lastEndKey = isStudy ? 'lastStudyEnd' : 'lastHobbyEnd';
             const msList = isStudy ? STUDY_MILESTONES : HOBBY_MILESTONES;
             const ms = bal.milestones || { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0, lastStudyEnd: 0, lastHobbyEnd: 0 };
-            let continuous = (ms[contKey] || 0) + elapsed;
-            const lastEnd = (ms[lastEndKey] || 0);
-            if (lastEnd > 0 && s.startTime - lastEnd > CONTINUITY_GAP * 1000) {
-              continuous = elapsed;
-            }
+            // Session-only continuous for milestone threshold check
+            let continuous = elapsed;
             let claimed = (ms[claimKey] || 0) as number;
             let rewardTotal = 0;
             msList.forEach((mst, i) => {
@@ -424,7 +420,7 @@ function simulateEntertainmentConsumption(
               dailyGiftedRemaining: bal.dailyGiftedRemaining + rewardTotal,
               milestones: {
                 ...ms,
-                [contKey]: continuous,
+                [contKey]: Math.max(ms[contKey] || 0, continuous),
                 [claimKey]: claimed,
                 [lastEndKey]: endTime,
               },
@@ -561,6 +557,7 @@ function simulateEntertainmentConsumption(
         const contKey = s.currentType === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
         const claimKey = s.currentType === 'Study' ? 'studyClaimed' : 'hobbyClaimed';
         const m = balanceRef.current.milestones || { studyContinuous: 0, hobbyContinuous: 0, studyClaimed: 0, hobbyClaimed: 0 };
+        const prevCont = (m[contKey as keyof typeof m] as number) || 0;
         const currentContinuous = elapsed;
         let claimed = (m[claimKey as keyof typeof m] as number) || 0;
         let rewardTotal = 0;
@@ -609,7 +606,7 @@ function simulateEntertainmentConsumption(
             dailyGiftedRemaining: (balanceRef.current.dailyGiftedRemaining || 1800) + rewardTotal,
             milestones: {
               ...m,
-              [contKey]: Math.floor(currentContinuous),
+              [contKey]: Math.max(prevCont, Math.floor(elapsed)),
               [claimKey]: claimed,
             },
           };
@@ -951,12 +948,13 @@ function simulateEntertainmentConsumption(
           }
 
           // Merge milestone progress + rewards into finalBalance
+          const savedCont = m[contKey] || 0;
           finalBalance = {
             ...finalBalance,
             dailyGiftedRemaining: finalBalance.dailyGiftedRemaining + rewardTotal,
             milestones: {
               ...milestones,
-              [contKey]: continuous,
+              [contKey]: Math.max(savedCont, continuous),
               [claimKey]: claimed,
               [lastEndKey]: endTime,
             },

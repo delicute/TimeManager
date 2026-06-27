@@ -95,11 +95,14 @@ export function TimerCard({
       {(type === 'Study' || type === 'Hobby') && (() => {
         const milestones = type === 'Study' ? STUDY_MILESTONES : HOBBY_MILESTONES;
         const claimKey = type === 'Study' ? 'studyClaimed' : 'hobbyClaimed';
+        const contKey = type === 'Study' ? 'studyContinuous' : 'hobbyContinuous';
         const mData = state.balance.milestones;
         const claimed = mData?.[claimKey as keyof typeof mData] as number || 0;
 
-        // Use current session time only (not cumulative)
-        let continuousTime = isActive ? Math.floor(elapsedSeconds) : 0;
+        // Show today's longest consecutive time (max between saved max and current session)
+        const savedMax = mData?.[contKey as keyof typeof mData] as number || 0;
+        const sessionTime = isActive ? Math.floor(elapsedSeconds) : 0;
+        let continuousTime = Math.max(savedMax, sessionTime);
 
         // Only show unclaimed milestones that haven't been passed yet
         const activeMilestones = milestones.filter((_, i) => {
