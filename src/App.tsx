@@ -10,6 +10,7 @@ import { DEFAULT_HOTKEYS, type SessionType } from './types';
 import { formatDurationFull, formatDuration } from './utils/formatting';
 import { ToastProvider } from './hooks/useToast';
 import { ToastContainer } from './components/Toast';
+import { useIdleDetection } from './hooks/useIdleDetection';
 
 export function App() {
   const [currentPage, setCurrentPage] = useState('Start');
@@ -24,6 +25,9 @@ export function App() {
   balanceRef.current = balance;
   const settingsRef = useRef(state.settings);
   settingsRef.current = state.settings;
+
+  // Idle auto-pause detection
+  useIdleDetection();
 
   // Session action IDs that are also registered as global shortcuts
   const SESSION_ACTIONS = new Set(['sessionStudy', 'sessionHobby', 'sessionEntertainment', 'sessionStop', 'sessionPause', 'sessionPrint']);

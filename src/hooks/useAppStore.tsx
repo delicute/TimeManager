@@ -25,6 +25,8 @@ const defaultSettings: AppSettings = {
   notificationEnabled: true,
   notificationDuration: 5,
   globalHotkeys: false,
+  idlePauseEnabled: false,
+  idlePauseMinutes: 5,
 };
 
 const defaultState: AppState = {
@@ -54,6 +56,7 @@ type Action =
   | { type: 'SESSION_START'; payload: SessionType }
   | { type: 'SESSION_STOP' }
   | { type: 'SESSION_PAUSE' }
+  | { type: 'SESSION_AUTO_PAUSE' }
   | { type: 'SESSION_RESUME' }
   | { type: 'SESSION_TICK' }
   | { type: 'BALANCE_ADD_EARNED'; payload: number }
@@ -86,12 +89,16 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SESSION_PAUSE':
       // Guard: ignore if already paused — prevents invalid state transitions
       if (state.session.isPaused) return state;
-      return { ...state, session: { ...state.session, isPaused: true, pausedAt: Date.now() } };
+      return { ...state, session: { ...state.session, isPaused: true, pausedAt: Date.now(), autoPaused: false } };
+    case 'SESSION_AUTO_PAUSE':
+      // Guard: ignore if already paused
+      if (state.session.isPaused) return state;
+      return { ...state, session: { ...state.session, isPaused: true, pausedAt: Date.now(), autoPaused: true } };
     case 'SESSION_RESUME': {
       // Guard: only resume if actually paused with a valid pausedAt
       if (!state.session.isPaused || !state.session.pausedAt) return state;
       const pausedMs = Date.now() - state.session.pausedAt;
-      const { pausedAt: _, ...rest } = state.session;
+      const { pausedAt: _, autoPaused: _a, ...rest } = state.session;
       return {
         ...state,
         session: { ...rest, isPaused: false, startTime: (state.session.startTime ?? Date.now()) + pausedMs },

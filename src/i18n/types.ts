@@ -168,6 +168,10 @@ export interface Translations {
   notifEnabled: string;
   notifDuration: string;
   notifDurationUnit: string;
+  idlePauseTitle: string;
+  idlePauseEnabled: string;
+  idlePauseDuration: string;
+  idlePauseUnit: string;
   debugTitle: string;
   settingsTabGeneral: string;
   settingsTabWeight: string;

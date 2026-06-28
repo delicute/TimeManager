@@ -1,8 +1,6 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen, shell, globalShortcut } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import zlib from 'zlib';
-
 let BASE_PATH = path.join(app.getPath('userData'), 'data');
 
 function getLogsPath() { return path.join(BASE_PATH, 'logs'); }
@@ -1035,46 +1033,6 @@ function createWindow() {
 
 // ─── Tray ────────────────────────────────────────────────────
 
-function createFallbackIcon(size: number): Electron.NativeImage {
-  // Build a minimal PNG from raw RGBA data
-  const raw = Buffer.alloc(size * size * 4);
-  for (let i = 0; i < size * size; i++) {
-    raw[i * 4] = 0xcc; raw[i * 4 + 1] = 0x78;
-    raw[i * 4 + 2] = 0x5c; raw[i * 4 + 3] = 0xff;
-  }
-  const scanlines = Buffer.alloc(size * (1 + size * 4));
-  for (let y = 0; y < size; y++) {
-    scanlines[y * (1 + size * 4)] = 0; // filter none
-    raw.copy(scanlines, y * (1 + size * 4) + 1, y * size * 4, (y + 1) * size * 4);
-  }
-  const compressed = zlib.deflateSync(scanlines);
-
-  function crc32(buf: Buffer): number {
-    let c = 0xffffffff;
-    const table = new Int32Array(256);
-    for (let n = 0; n < 256; n++) { let v = n; for (let k = 0; k < 8; k++) v = v & 1 ? 0xedb88320 ^ (v >>> 1) : v >>> 1; table[n] = v; }
-    for (let i = 0; i < buf.length; i++) c = table[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
-    return (c ^ 0xffffffff) >>> 0;
-  }
-  function pngChunk(type: string, data: Buffer): Buffer {
-    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
-    const typeB = Buffer.from(type, 'ascii');
-    const crcData = Buffer.concat([typeB, data]);
-    const crcV = Buffer.alloc(4); crcV.writeUInt32BE(crc32(crcData));
-    return Buffer.concat([len, typeB, data, crcV]);
-  }
-
-  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
-
-  return nativeImage.createFromBuffer(
-    Buffer.concat([sig, pngChunk('IHDR', ihdr), pngChunk('IDAT', compressed), pngChunk('IEND', Buffer.alloc(0))]),
-    { width: size, height: size }
-  );
-}
-
 function rebuildTrayMenu() {
   if (!tray) return;
   const { isActive, type: currentType } = currentSessionState;
@@ -1106,18 +1064,7 @@ function rebuildTrayMenu() {
 
 function createTray() {
   const trayIconPath = getAssetPath('assets/ico/ico_16x16.ico');
-  const iconExists = fs.existsSync(trayIconPath);
-  debugLog(`Tray icon path: ${trayIconPath}`);
-  debugLog(`Tray icon exists: ${iconExists}`);
-  debugLog(`app.isPackaged: ${app.isPackaged}`);
-  debugLog(`resourcesPath: ${process.resourcesPath}`);
   let icon = nativeImage.createFromPath(trayIconPath);
-  if (icon.isEmpty()) {
-    debugLog('Tray icon is empty, using fallback');
-    icon = createFallbackIcon(16);
-  } else {
-    debugLog(`Tray icon loaded OK, size: ${JSON.stringify(icon.getSize())}`);
-  }
   tray = new Tray(icon);
   tray.setToolTip('TimeManager');
 

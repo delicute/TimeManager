@@ -21,7 +21,11 @@ export function formatDurationFull(seconds: number): string {
   return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-export function formatWeight(val: number): string {
+export function formatWeight(val: number, step?: number): string {
+  if (step && step < 1) {
+    const decimals = String(step).split('.')[1]?.length || 1;
+    return val.toFixed(decimals).replace(/\.?0+$/, '') + 's';
+  }
   return val % 1 === 0 ? `${val.toFixed(0)}s` : `${val.toFixed(1)}s`;
 }
 

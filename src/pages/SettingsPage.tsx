@@ -13,6 +13,7 @@ const DEFAULTS: AppSettings = {
   studyWeight: 2, studyWeightMin: 0.5, studyWeightMax: 60, studyWeightStep: 0.5,
   hobbyWeight: 4, hobbyWeightMin: 0.5, hobbyWeightMax: 120, hobbyWeightStep: 0.5,
   notificationEnabled: true, notificationDuration: 5, debug: false,
+  idlePauseEnabled: false, idlePauseMinutes: 5,
 };
 
 const SECTION_TABS = [
@@ -171,19 +172,39 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
         </div>
       </>}
 
+        <div className="card" style={cardStyle}>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--color-on-dark)',marginBottom:4}}>{t('idlePauseTitle')}</div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>{t('idlePauseEnabled')}</span>
+            <label className="toggle"><input type="checkbox" checked={!!s.idlePauseEnabled} onChange={e=>updateSetting({idlePauseEnabled:e.target.checked})}/><span className="toggle-slider"/></label>
+          </div>
+          {s.idlePauseEnabled && (
+            <div style={rowStyle}>
+              <span style={labelStyle}>{t('idlePauseDuration')}</span>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div className="slider-wrap" style={{width:120}}>
+                  <div className="slider-track"><div className="slider-fill" style={{width:`${((s.idlePauseMinutes-1)/(30-1))*100}%`}} /></div>
+                  <input type="range" min={1} max={30} step={1} value={s.idlePauseMinutes} onChange={e=>updateSetting({idlePauseMinutes:parseInt(e.target.value)})} />
+                </div>
+                <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{s.idlePauseMinutes}{t('idlePauseUnit')}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
       {/* ===== 权重 ===== */}
       {section === 'weight' && <>
         <div className="card" style={cardStyle}>
           <div style={{fontSize:14,fontWeight:600,color:'var(--color-on-dark)',marginBottom:4}}>{t('weightSettings')}</div>
 
           <div style={{color:'var(--color-study)',fontWeight:600,fontSize:13,marginBottom:2}}>{t('navStudy')}</div>
-          <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.studyWeight)})}</div>
+          <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.studyWeight,s.studyWeightStep)})}</div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <div className="slider-wrap">
               <div className="slider-track"><div className="slider-fill" style={{width:`${((s.studyWeight-s.studyWeightMin)/(s.studyWeightMax-s.studyWeightMin))*100}%`}} /></div>
               <input type="range" min={s.studyWeightMin} max={s.studyWeightMax} step={s.studyWeightStep} value={s.studyWeight} onChange={e=>updateSetting({studyWeight:parseFloat(e.target.value)})} />
             </div>
-            <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.studyWeight)}</span>
+            <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.studyWeight,s.studyWeightStep)}</span>
           </div>
           <div className="limit-inputs" style={{marginTop:2,gap:6}}>
             <div className="limit-input"><label style={{fontSize:10}}>{t('min')}</label><input type="text" value={studyMin} onChange={e=>setStudyMin(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(studyMin);if(!isNaN(v)&&v<s.studyWeightMax)updateSetting({studyWeightMin:v})}}/></div>
@@ -194,13 +215,13 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
           <hr style={{border:'none',height:1,background:'rgba(255,255,255,0.08)',margin:'8px 0'}}/>
 
           <div style={{color:'var(--color-hobby)',fontWeight:600,fontSize:13,marginBottom:2}}>{t('navHobby')}</div>
-          <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.hobbyWeight)})}</div>
+          <div style={{fontSize:11,color:'var(--color-on-dark-soft)',marginBottom:4}}>{t('earnPerSecond',{time:formatWeight(s.hobbyWeight,s.hobbyWeightStep)})}</div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <div className="slider-wrap">
               <div className="slider-track"><div className="slider-fill" style={{width:`${((s.hobbyWeight-s.hobbyWeightMin)/(s.hobbyWeightMax-s.hobbyWeightMin))*100}%`}} /></div>
               <input type="range" min={s.hobbyWeightMin} max={s.hobbyWeightMax} step={s.hobbyWeightStep} value={s.hobbyWeight} onChange={e=>updateSetting({hobbyWeight:parseFloat(e.target.value)})} />
             </div>
-            <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.hobbyWeight)}</span>
+            <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{formatWeight(s.hobbyWeight,s.hobbyWeightStep)}</span>
           </div>
           <div className="limit-inputs" style={{marginTop:2,gap:6}}>
             <div className="limit-input"><label style={{fontSize:10}}>{t('min')}</label><input type="text" value={hobbyMin} onChange={e=>setHobbyMin(e.target.value)} style={{width:46}} onBlur={()=>{const v=parseFloat(hobbyMin);if(!isNaN(v)&&v<s.hobbyWeightMax)updateSetting({hobbyWeightMin:v})}}/></div>

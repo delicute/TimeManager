@@ -36,6 +36,8 @@ export interface AppSettings {
   minSessionLogSec?: number;
   minSessionLogEnabled?: boolean;
   globalHotkeys?: boolean;
+  idlePauseEnabled: boolean;
+  idlePauseMinutes: number;
 }
 
 export const DEFAULT_HOTKEYS: Record<string, string> = {
@@ -139,13 +141,6 @@ export interface ReminderRule {
   _currentValues?: Record<string, number>;
   _locale?: string;
 
-  // Deprecated — kept for migration from flat format
-  conditions?: ReminderCondition[];
-  logic?: 'and' | 'or';
-  condition?: ReminderCondition;
-  condition2?: ReminderCondition;
-  _currentValue?: number;
-  _currentValue2?: number;
 }
 
 export interface ReminderTriggerState {
@@ -192,6 +187,7 @@ export interface AppState {
     tickCount: number;
     isPaused: boolean;
     pausedAt?: number;
+    autoPaused?: boolean;
   };
   balance: BalanceState;
   settings: AppSettings;

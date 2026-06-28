@@ -7,7 +7,7 @@ import { Select } from '../components/Select';
 import type { ReminderRule, ConditionNode, ReminderMetric, ReminderOperator, SessionType, BoolType } from '../types';
 import { useToast } from '../hooks/useToast';
 
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function genId() { return crypto.randomUUID(); }
 
 const NOTIF_TYPES = ['reminder', 'urgent', 'notification', 'info'] as const;
 const NOTIF_COLORS: Record<string, string> = { reminder: '#5db8a6', urgent: '#c64545', notification: '#5db872', info: '#a09d96' };
@@ -59,7 +59,7 @@ function simplifyTree(node: ConditionNode): ConditionNode {
     const filtered = simple.filter(n => !(n.type === 'group' && n.nodes.length === 0));
     // Collapse single-child groups (avoids Group(onlyChild) redundancy)
     if (filtered.length === 1) return filtered[0];
-    return { ...node, nodes: filtered.length > 2 ? filtered.slice(0, 2) : filtered };
+    return { ...node, nodes: filtered };
   }
   if (node.type === 'not') {
     const inner = simplifyTree(node.node);

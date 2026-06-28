@@ -46,7 +46,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowSetAlwaysOnTop: (onTop: boolean) => ipcRenderer.invoke('window:setAlwaysOnTop', onTop),
 
   // Audio
-  getBeepDataUrl: () => ipcRenderer.invoke('audio:getBeepDataUrl'),
   getBuiltinSoundUrls: () => ipcRenderer.invoke('audio:getBuiltinUrls'),
   readAudioFile: (filePath: string) => ipcRenderer.invoke('audio:readFile', filePath),
   selectAudioFile: () => ipcRenderer.invoke('dialog:selectAudioFile'),

@@ -192,6 +192,10 @@ export const en: Translations = {
   notifEnabled: 'Show notifications',
   notifDuration: 'Duration',
   notifDurationUnit: 's',
+  idlePauseTitle: 'Idle Auto-Pause',
+  idlePauseEnabled: 'Enable idle pause',
+  idlePauseDuration: 'Idle timeout',
+  idlePauseUnit: 'min',
   // Debug
   debugTitle: 'Debug Panel',
   debugEnable: 'Enable Debug',

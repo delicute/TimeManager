@@ -192,6 +192,10 @@ export const zh: Translations = {
   notifEnabled: '启用通知',
   notifDuration: '停留时间',
   notifDurationUnit: '秒',
+  idlePauseTitle: '空闲自动暂停',
+  idlePauseEnabled: '启用空闲暂停',
+  idlePauseDuration: '无操作等待',
+  idlePauseUnit: '分钟',
   // Debug
   debugTitle: '调试面板',
   debugEnable: '启用调试',
