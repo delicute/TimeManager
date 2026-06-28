@@ -36,7 +36,8 @@ export function useIdleDetection() {
       }
     };
 
-    const events = ['mousemove', 'keydown', 'click', 'touchstart', 'wheel'];
+    // Cover all input types: mouse, touch, pen, keyboard, scroll, window focus
+    const events = ['mousemove', 'pointerdown', 'pointermove', 'keydown', 'click', 'touchstart', 'wheel', 'focus'];
     for (const ev of events) {
       window.addEventListener(ev, onActivity, { passive: true });
     }
@@ -62,7 +63,7 @@ export function useIdleDetection() {
           duration: cfg.notificationDuration ?? 5,
         });
       }
-    }, 5000);
+    }, 3000); // Check every 3s instead of 5s for more responsive detection
 
     return () => {
       for (const ev of events) {
