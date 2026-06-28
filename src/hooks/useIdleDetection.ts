@@ -14,7 +14,10 @@ export function useIdleDetection() {
   useEffect(() => {
     if (!idleEnabled) return;
 
-    const id = setInterval(async () => {
+    let stopped = false;
+
+    const check = async () => {
+      if (stopped) return;
       try {
         const s = sessionRef.current;
         if (!s.isActive || s.currentType === 'None') return;
@@ -22,7 +25,7 @@ export function useIdleDetection() {
         const idleSec = await window.electronAPI.getUserIdleTime();
 
         if (s.autoPaused && s.isPaused) {
-          // Auto-paused — resume as soon as user interacts again
+          // Auto-paused — resume immediately when user interacts
           if (idleSec < 3) {
             dispatch({ type: 'SESSION_RESUME' });
             const cfg = settingsRef.current;
@@ -57,8 +60,14 @@ export function useIdleDetection() {
       } catch {
         // ignore (e.g. during dev or if IPC is unavailable)
       }
-    }, 3000);
+      if (!stopped) setTimeout(check, 1000);
+    };
 
-    return () => clearInterval(id);
+    const timeoutId = setTimeout(check, 1000);
+
+    return () => {
+      stopped = true;
+      clearTimeout(timeoutId);
+    };
   }, [idleEnabled, idleMinutes, dispatch]);
 }
