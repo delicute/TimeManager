@@ -385,12 +385,12 @@ export function RecordPage() {
         <div className="card" style={{ flex: 1, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <TrendingUp size={14} style={{ color: 'var(--color-accent-teal)' }} />
           <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>{t('recordEarned')}</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent-teal)' }}>{totalBalEarned}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent-teal)' }}>{formatDuration(totalBalEarned)}</span>
         </div>
         <div className="card" style={{ flex: 1, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <TrendingDown size={14} style={{ color: 'var(--color-error)' }} />
           <span style={{ fontSize: 11, color: 'var(--color-on-dark-soft)' }}>{t('recordConsumed')}</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-error)' }}>{totalBalConsumed}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-error)' }}>{formatDuration(totalBalConsumed)}</span>
         </div>
       </div>
 

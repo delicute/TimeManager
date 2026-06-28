@@ -170,7 +170,6 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
             </div>
           </div>
         </div>
-      </>}
 
         <div className="card" style={cardStyle}>
           <div style={{fontSize:14,fontWeight:600,color:'var(--color-on-dark)',marginBottom:4}}>{t('idlePauseTitle')}</div>
@@ -186,11 +185,12 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
                   <div className="slider-track"><div className="slider-fill" style={{width:`${((s.idlePauseMinutes-1)/(30-1))*100}%`}} /></div>
                   <input type="range" min={1} max={30} step={1} value={s.idlePauseMinutes} onChange={e=>updateSetting({idlePauseMinutes:parseInt(e.target.value)})} />
                 </div>
-                <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:28,textAlign:'right'}}>{s.idlePauseMinutes}{t('idlePauseUnit')}</span>
+                <span style={{fontSize:13,fontWeight:500,color:'var(--color-on-dark)',minWidth:55,textAlign:'right'}}>{s.idlePauseMinutes}{t('idlePauseUnit')}</span>
               </div>
             </div>
           )}
         </div>
+      </>}
 
       {/* ===== 权重 ===== */}
       {section === 'weight' && <>
