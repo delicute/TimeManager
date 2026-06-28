@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen, shell, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog, screen, shell, globalShortcut, powerMonitor } from 'electron';
 import path from 'path';
 import fs from 'fs';
 let BASE_PATH = path.join(app.getPath('userData'), 'data');
@@ -292,6 +292,9 @@ function setupIPC() {
   });
 
   ipcMain.handle('settings:getBasePath', () => BASE_PATH);
+
+  // OS-level idle time (seconds since last user input)
+  ipcMain.handle('system:getIdleTime', () => powerMonitor.getSystemIdleTime());
 
   ipcMain.handle('shell:openPath', (_, dirPath: string) => {
     try { shell.openPath(dirPath); } catch { /* ignore */ }

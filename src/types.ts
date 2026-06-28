@@ -239,6 +239,7 @@ declare global {
       registerGlobalHotkeys: (hotkeys: Record<string, string>) => Promise<Record<string, boolean>>;
       unregisterGlobalHotkeys: () => Promise<void>;
       onGlobalShortcutTrigger: (callback: (id: string) => void) => () => void;
+      getUserIdleTime: () => Promise<number>;
     };
     __saveActiveSession__?: () => void;
   }

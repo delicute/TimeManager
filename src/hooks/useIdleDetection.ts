@@ -6,7 +6,6 @@ export function useIdleDetection() {
   const idleEnabled = state.settings.idlePauseEnabled;
   const idleMinutes = state.settings.idlePauseMinutes;
 
-  const lastActivityRef = useRef(Date.now());
   const sessionRef = useRef(state.session);
   const settingsRef = useRef(state.settings);
   sessionRef.current = state.session;
@@ -15,61 +14,51 @@ export function useIdleDetection() {
   useEffect(() => {
     if (!idleEnabled) return;
 
-    lastActivityRef.current = Date.now();
+    const id = setInterval(async () => {
+      try {
+        const s = sessionRef.current;
+        if (!s.isActive || s.currentType === 'None') return;
 
-    const onActivity = () => {
-      lastActivityRef.current = Date.now();
-      const s = sessionRef.current;
-      // Auto-resume if currently auto-paused
-      if (s.autoPaused && s.isActive && s.isPaused && s.currentType !== 'None') {
-        dispatch({ type: 'SESSION_RESUME' });
-        const cfg = settingsRef.current;
-        const locale = cfg.locale || 'zh';
-        window.electronAPI.notificationShow({
-          type: s.currentType,
-          notifType: 'info',
-          title: locale === 'zh' ? '检测到操作，计时已恢复' : 'Activity detected, timer resumed',
-          body: '',
-          color: '#5db872',
-          duration: cfg.notificationDuration ?? 5,
-        });
+        const idleSec = await window.electronAPI.getUserIdleTime();
+
+        if (s.autoPaused && s.isPaused) {
+          // Auto-paused — resume as soon as user interacts again
+          if (idleSec < 3) {
+            dispatch({ type: 'SESSION_RESUME' });
+            const cfg = settingsRef.current;
+            const locale = cfg.locale || 'zh';
+            window.electronAPI.notificationShow({
+              type: s.currentType,
+              notifType: 'info',
+              title: locale === 'zh' ? '检测到操作，计时已恢复' : 'Activity detected, timer resumed',
+              body: '',
+              color: '#5db872',
+              duration: cfg.notificationDuration ?? 5,
+            });
+          }
+        } else if (!s.isPaused) {
+          // Active and not paused — check idle threshold
+          if (idleSec >= idleMinutes * 60) {
+            dispatch({ type: 'SESSION_AUTO_PAUSE' });
+            const cfg = settingsRef.current;
+            const locale = cfg.locale || 'zh';
+            window.electronAPI.notificationShow({
+              type: s.currentType,
+              notifType: 'warning',
+              title: locale === 'zh'
+                ? `已闲置 ${idleMinutes} 分钟，计时已暂停`
+                : `Idle for ${idleMinutes} min, timer paused`,
+              body: '',
+              color: '#e8a55a',
+              duration: cfg.notificationDuration ?? 5,
+            });
+          }
+        }
+      } catch {
+        // ignore (e.g. during dev or if IPC is unavailable)
       }
-    };
+    }, 3000);
 
-    // Cover all input types: mouse, touch, pen, keyboard, scroll, window focus
-    const events = ['mousemove', 'pointerdown', 'pointermove', 'keydown', 'click', 'touchstart', 'wheel', 'focus'];
-    for (const ev of events) {
-      window.addEventListener(ev, onActivity, { passive: true });
-    }
-
-    const intervalId = setInterval(() => {
-      const s = sessionRef.current;
-      // Only auto-pause when a session is active and not already paused
-      if (!s.isActive || s.currentType === 'None' || s.isPaused) return;
-
-      const idleMs = Date.now() - lastActivityRef.current;
-      if (idleMs >= idleMinutes * 60 * 1000) {
-        dispatch({ type: 'SESSION_AUTO_PAUSE' });
-        const cfg = settingsRef.current;
-        const locale = cfg.locale || 'zh';
-        window.electronAPI.notificationShow({
-          type: s.currentType,
-          notifType: 'warning',
-          title: locale === 'zh'
-            ? `已闲置 ${idleMinutes} 分钟，计时已暂停`
-            : `Idle for ${idleMinutes} min, timer paused`,
-          body: '',
-          color: '#e8a55a',
-          duration: cfg.notificationDuration ?? 5,
-        });
-      }
-    }, 3000); // Check every 3s instead of 5s for more responsive detection
-
-    return () => {
-      for (const ev of events) {
-        window.removeEventListener(ev, onActivity);
-      }
-      clearInterval(intervalId);
-    };
+    return () => clearInterval(id);
   }, [idleEnabled, idleMinutes, dispatch]);
 }

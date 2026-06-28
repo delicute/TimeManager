@@ -82,6 +82,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   debugAdjustBalance: (data: { earnedDelta: number; giftedDelta: number }) =>
     ipcRenderer.invoke('balance:debugAdjust', data),
 
+  // ─── OS idle time ──────────────────────────────────
+  getUserIdleTime: () => ipcRenderer.invoke('system:getIdleTime'),
+
   // ─── Tray & Background Sync IPC ────────────────────
   sessionUpdateState: (state: any) => ipcRenderer.invoke('session:stateUpdate', state),
   onSessionTick: (callback: () => void) => {
