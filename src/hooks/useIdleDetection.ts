@@ -13,6 +13,8 @@ export function useIdleDetection() {
 
   // Track auto-pause locally — synchronous, no React state round-trip
   const idleAutoPausedRef = useRef(false);
+  // Track previous idle time for trend-based resume detection
+  const lastIdleRef = useRef(0);
 
   useEffect(() => {
     if (!idleEnabled) {
@@ -21,6 +23,7 @@ export function useIdleDetection() {
     }
 
     let stopped = false;
+    const POLL_MS = 500; // pontail: fast enough for near-instant resume, slow enough to not matter
 
     const check = async () => {
       if (stopped) return;
@@ -30,10 +33,14 @@ export function useIdleDetection() {
       if (s.isActive && s.currentType !== 'None') {
         try {
           const idleSec = await window.electronAPI.getUserIdleTime();
+          const prevIdle = lastIdleRef.current;
+          lastIdleRef.current = idleSec;
 
           if (idleAutoPausedRef.current) {
-            // Auto-paused — resume when user interacts
-            if (idleSec < 3) {
+            // Auto-paused — resume when user activity is detected.
+            // Use trend (idle dropped since last check) + low-threshold fallback.
+            // Trend covers any unit mismatch in getSystemIdleTime() return value.
+            if (idleSec < 2 || idleSec < prevIdle) {
               idleAutoPausedRef.current = false;
               dispatch({ type: 'SESSION_RESUME' });
               const cfg = settingsRef.current;
@@ -71,14 +78,15 @@ export function useIdleDetection() {
           // ignore
         }
       } else {
-        // Session not active — reset flag
+        // Session not active — reset flags
         idleAutoPausedRef.current = false;
+        lastIdleRef.current = 0;
       }
 
-      if (!stopped) setTimeout(check, 1000); // pontail: always reschedule, even on inactive
+      if (!stopped) setTimeout(check, POLL_MS);
     };
 
-    const timeoutId = setTimeout(check, 1000);
+    const timeoutId = setTimeout(check, POLL_MS);
     return () => {
       stopped = true;
       clearTimeout(timeoutId);

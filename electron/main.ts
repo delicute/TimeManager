@@ -98,7 +98,7 @@ const NOTIF_SLIDE_MS = 200;
 
 let notifContainer: BrowserWindow | null = null;
 let containerReady = false;
-let notifQueue: { id: string; title: string; body: string; color: string }[] = [];
+let notifQueue: { id: string; iconSvg: string; title: string; body: string; color: string; duration: number }[] = [];
 interface ContainerNotif { id: string; expireTimer: ReturnType<typeof setTimeout>; }
 let containerNotifs: ContainerNotif[] = [];
 
@@ -770,6 +770,8 @@ function createNotificationContainer() {
     // Flush queued notifications
     for (const item of notifQueue) {
       win.webContents.send('container:add', item);
+      const expireTimer = setTimeout(() => dismissContainerNotification(item.id), item.duration * 1000);
+      containerNotifs.push({ id: item.id, expireTimer });
     }
     notifQueue = [];
   });
@@ -808,8 +810,16 @@ function resolveAudioDataUrl(soundSetting: string): string {
 }
 
 function showContainerNotification(data: { type: string; notifType?: string; title: string; body: string; color: string; duration: number; sound?: string }) {
-  if (!notifContainer || notifContainer.isDestroyed()) return;
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const nt = data.notifType || 'info';
+  const iconSvg = NOTIF_SVGS[nt] || NOTIF_SVGS.info;
+  const payload = { id, iconSvg, title: data.title, body: data.body, color: data.color };
+
+  // Queue even before container exists (startup race)
+  if (!notifContainer || notifContainer.isDestroyed()) {
+    notifQueue.push({ ...payload, duration: data.duration });
+    return;
+  }
 
   const expireTimer = setTimeout(() => dismissContainerNotification(id), data.duration * 1000);
   containerNotifs.push({ id, expireTimer });
@@ -827,9 +837,6 @@ function showContainerNotification(data: { type: string; notifType?: string; tit
     }
   }
 
-  const nt = data.notifType || 'info';
-  const iconSvg = NOTIF_SVGS[nt] || NOTIF_SVGS.info;
-  const payload = { id, iconSvg, title: data.title, body: data.body, color: data.color };
   if (containerReady) {
     try {
       notifContainer.webContents.send('container:add', payload);
@@ -846,7 +853,7 @@ function showContainerNotification(data: { type: string; notifType?: string; tit
       createNotificationContainer();
     }
   } else {
-    notifQueue.push(payload);
+    notifQueue.push({ ...payload, duration: data.duration });
   }
 }
 
@@ -1112,8 +1119,8 @@ if (!gotTheLock) {
     ensureDir(BASE_PATH);
     ensureDir(getLogsPath());
     setupIPC();
+    createNotificationContainer(); // before createWindow: prevents startup notification loss
     createWindow();
-    createNotificationContainer();
     createTray();
   });
 
